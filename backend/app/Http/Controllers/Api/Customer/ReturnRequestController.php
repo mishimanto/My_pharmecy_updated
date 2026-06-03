@@ -1,0 +1,58 @@
+<?php
+
+namespace App\Http\Controllers\Api\Customer;
+
+use App\Http\Controllers\Controller;
+use App\Models\Order;
+use App\Models\ReturnRequest;
+use App\Support\ApiResponse;
+use Illuminate\Http\Request;
+
+class ReturnRequestController extends Controller
+{
+    use ApiResponse;
+
+    public function index(Request $request)
+    {
+        return $this->ok(
+            $request->user()->returnRequests()
+                ->with('order', 'orderItem.product', 'refund')
+                ->latest()
+                ->paginate($request->integer('per_page', 10)),
+            'রিটার্ন অনুরোধ তালিকা পাওয়া গেছে।'
+        );
+    }
+
+    public function store(Request $request, int $id)
+    {
+        $data = $request->validate([
+            'order_item_id' => ['nullable', 'exists:order_items,id'],
+            'reason' => ['required', 'string'],
+        ]);
+
+        $order = $request->user()->hasMany(Order::class)->with('items')->findOrFail($id);
+        abort_unless($order->order_status === 'delivered', 422, 'শুধু ডেলিভারড অর্ডারের জন্য রিটার্ন অনুরোধ করা যাবে।');
+
+        if (!empty($data['order_item_id'])) {
+            abort_unless($order->items->contains('id', (int) $data['order_item_id']), 403);
+        }
+
+        $return = ReturnRequest::create([
+            'order_id' => $order->id,
+            'order_item_id' => $data['order_item_id'] ?? null,
+            'user_id' => $request->user()->id,
+            'reason' => $data['reason'],
+            'status' => 'requested',
+        ]);
+
+        return $this->ok($return->load('order', 'orderItem.product', 'refund'), 'রিটার্ন অনুরোধ তৈরি হয়েছে।', 201);
+    }
+
+    public function show(Request $request, int $id)
+    {
+        return $this->ok(
+            $request->user()->returnRequests()->with('order', 'orderItem.product', 'refund')->findOrFail($id),
+            'রিটার্ন বিস্তারিত পাওয়া গেছে।'
+        );
+    }
+}

@@ -1,0 +1,112 @@
+<?php
+
+namespace App\Http\Controllers\Api\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\InventoryBatch;
+use App\Services\AdminActivityService;
+use App\Services\InventoryService;
+use App\Support\ApiResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+
+class InventoryBatchController extends Controller
+{
+    use ApiResponse;
+
+    public function index(Request $request)
+    {
+        $batches = InventoryBatch::query()
+            ->with('product:id,product_name', 'supplier:id,supplier_name')
+            ->when($request->search, fn ($query, $search) => $query->where(fn ($inner) => $inner
+                ->where('batch_number', 'like', "%{$search}%")
+                ->orWhere('status', 'like', "%{$search}%")
+                ->orWhereHas('product', fn ($product) => $product->where('product_name', 'like', "%{$search}%"))
+                ->orWhereHas('supplier', fn ($supplier) => $supplier->where('supplier_name', 'like', "%{$search}%"))))
+            ->latest('id')
+            ->paginate($request->integer('per_page', 15));
+
+        $batches->getCollection()->transform(fn ($batch) => $this->appendAvailable($batch));
+
+        return $this->ok($batches, 'ইনভেন্টরি ব্যাচ তালিকা পাওয়া গেছে।');
+    }
+
+    public function store(Request $request, AdminActivityService $activity, InventoryService $inventory)
+    {
+        $data = $this->validated($request);
+        $batch = InventoryBatch::create($data);
+        $inventory->transaction($batch->id, 'stock_in', (int) $batch->stock_quantity, 'inventory_batch', $batch->id, 'Initial stock');
+        $activity->log($request, 'create', 'inventory_batch', $batch->id, null, $batch->toArray());
+
+        return $this->ok($this->appendAvailable($batch->load('product', 'supplier')), 'ইনভেন্টরি ব্যাচ তৈরি হয়েছে।', 201);
+    }
+
+    public function show(int $id)
+    {
+        return $this->ok($this->appendAvailable(InventoryBatch::with('product', 'supplier')->findOrFail($id)), 'ব্যাচ তথ্য পাওয়া গেছে।');
+    }
+
+    public function update(Request $request, int $id, AdminActivityService $activity, InventoryService $inventory)
+    {
+        $batch = InventoryBatch::findOrFail($id);
+        $old = $batch->toArray();
+        $data = $this->validated($request);
+        $stockDiff = (int) $data['stock_quantity'] - (int) $batch->stock_quantity;
+        $batch->update($data);
+        if ($stockDiff !== 0) {
+            $inventory->transaction($batch->id, 'adjustment', $stockDiff, 'inventory_batch', $batch->id, 'Batch quantity updated');
+        }
+        $activity->log($request, 'update', 'inventory_batch', $batch->id, $old, $batch->fresh()->toArray());
+
+        return $this->ok($this->appendAvailable($batch->load('product', 'supplier')), 'ইনভেন্টরি ব্যাচ আপডেট হয়েছে।');
+    }
+
+    public function status(Request $request, int $id, AdminActivityService $activity, InventoryService $inventory)
+    {
+        $data = $request->validate(['status' => ['required', Rule::in(['active', 'inactive', 'expired', 'damaged'])]]);
+        $batch = InventoryBatch::findOrFail($id);
+        $old = ['status' => $batch->status];
+        $batch->update(['status' => $data['status']]);
+        if (in_array($data['status'], ['expired', 'damaged'], true)) {
+            $inventory->transaction($batch->id, $data['status'], 0, 'inventory_batch', $batch->id, 'Batch status changed');
+        }
+        $activity->log($request, 'status', 'inventory_batch', $batch->id, $old, ['status' => $batch->status]);
+
+        return $this->ok($this->appendAvailable($batch->load('product', 'supplier')), 'ব্যাচ স্ট্যাটাস আপডেট হয়েছে।');
+    }
+
+    public function destroy(Request $request, int $id, AdminActivityService $activity)
+    {
+        $batch = InventoryBatch::findOrFail($id);
+        abort_if($batch->reserved_quantity > 0, 422, 'রিজার্ভ স্টক থাকা ব্যাচ ডিলিট করা যাবে না।');
+        $old = $batch->toArray();
+        $batch->delete();
+        $activity->log($request, 'delete', 'inventory_batch', $id, $old);
+
+        return $this->ok(null, 'ইনভেন্টরি ব্যাচ ডিলিট হয়েছে।');
+    }
+
+    private function validated(Request $request): array
+    {
+        return $request->validate([
+            'product_id' => ['required', 'exists:products,id'],
+            'supplier_id' => ['required', 'exists:suppliers,id'],
+            'batch_number' => ['required', 'string', 'max:100'],
+            'expiry_date' => ['required', 'date'],
+            'manufactured_date' => ['nullable', 'date'],
+            'purchase_price' => ['required', 'numeric', 'min:0'],
+            'selling_price' => ['required', 'numeric', 'min:0'],
+            'stock_quantity' => ['required', 'integer', 'min:0'],
+            'reserved_quantity' => ['nullable', 'integer', 'min:0'],
+            'status' => ['required', Rule::in(['active', 'inactive', 'expired', 'damaged'])],
+        ]);
+    }
+
+    private function appendAvailable(InventoryBatch $batch): InventoryBatch
+    {
+        $batch->available_stock = max(0, $batch->stock_quantity - $batch->reserved_quantity);
+
+        return $batch;
+    }
+}
+

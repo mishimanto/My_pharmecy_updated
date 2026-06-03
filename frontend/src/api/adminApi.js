@@ -1,0 +1,25 @@
+import api from './axios'
+
+export const adminApi = {
+  dashboard: () => api.get('/admin/dashboard'),
+  dashboardSummary: () => api.get('/admin/dashboard/summary'),
+  dashboardRecentOrders: () => api.get('/admin/dashboard/recent-orders'),
+  dashboardPendingPrescriptions: () => api.get('/admin/dashboard/pending-prescriptions'),
+  dashboardLowStock: () => api.get('/admin/dashboard/low-stock'),
+  dashboardNearExpiry: () => api.get('/admin/dashboard/near-expiry'),
+  userHistory: (id, type) => api.get(`/admin/users/${id}/${type}`),
+  report: (type) => api.get(`/admin/reports/${type}`),
+  list: (resource, params) => api.get(`/admin/${resource}`, { params }),
+  show: (resource, id) => api.get(`/admin/${resource}/${id}`),
+  create: (resource, payload) => api.post(`/admin/${resource}`, payload),
+  update: (resource, id, payload) => api.put(`/admin/${resource}/${id}`, payload),
+  patch: (resource, id, action, payload) => api.patch(`/admin/${resource}/${id}/${action}`, payload),
+  remove: (resource, id) => api.delete(`/admin/${resource}/${id}`),
+  uploadProductImages: (id, formData) => api.post(`/admin/products/${id}/images`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  deleteProductImage: (id) => api.delete(`/admin/product-images/${id}`),
+  reviewPrescription: (id, payload) => api.post(`/admin/prescriptions/${id}/review`, payload),
+  createOrderDelivery: (id) => api.post(`/admin/orders/${id}/delivery`),
+  replySupportTicket: (id, formData) => api.post(`/admin/support-tickets/${id}/replies`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  permissions: () => api.get('/admin/permissions'),
+  syncRolePermissions: (id, permissions) => api.post(`/admin/roles/${id}/permissions`, { permissions }),
+}
