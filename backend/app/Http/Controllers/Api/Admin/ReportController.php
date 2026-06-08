@@ -33,7 +33,7 @@ class ReportController extends Controller
             'top_selling_medicines' => DB::table('order_items')
                 ->join('products', 'products.id', '=', 'order_items.product_id')
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
-                ->select('products.id', 'products.product_name', DB::raw('SUM(order_items.quantity) as quantity_sold'), DB::raw('SUM(order_items.subtotal) as sales_amount'))
+                ->select('products.id', 'products.product_name', DB::raw('SUM(order_items.piece_quantity) as quantity_sold'), DB::raw('SUM(order_items.subtotal) as sales_amount'))
                 ->whereIn('orders.order_status', ['delivered', 'refunded'])
                 ->groupBy('products.id', 'products.product_name')
                 ->orderByDesc('quantity_sold')

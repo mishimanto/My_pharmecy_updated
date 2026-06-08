@@ -83,10 +83,13 @@ class ProductController extends Controller
             'brand_name' => ['nullable', 'string', 'max:255'],
             'strength' => ['nullable', 'string', 'max:100'],
             'dosage_form' => ['nullable', 'string', 'max:100'],
+            'pieces_per_strip' => ['required', 'integer', 'min:1'],
+            'strips_per_box' => ['required', 'integer', 'min:1'],
+            'strip_price' => ['nullable', 'numeric', 'min:0'],
+            'box_price' => ['nullable', 'numeric', 'min:0'],
             'requires_prescription' => ['required', 'boolean'],
             'description' => ['nullable', 'string'],
             'is_active' => ['required', 'boolean'],
         ]);
     }
 }
-

@@ -89,7 +89,7 @@ class OrderStatusService
 
     public function relations(): array
     {
-        return ['user', 'items.product', 'items.batches.batch', 'payment', 'delivery'];
+        return ['user', 'address', 'items.product', 'items.batches.batch', 'payment', 'delivery'];
     }
 
     private function releaseReservedStock(Order $order): void
@@ -114,6 +114,10 @@ class OrderStatusService
 
     private function notify(Order $order, string $title, string $message): void
     {
+        if (! $order->user_id) {
+            return;
+        }
+
         DB::table('notifications')->insert([
             'user_id' => $order->user_id,
             'notification_type' => 'order_status_update',

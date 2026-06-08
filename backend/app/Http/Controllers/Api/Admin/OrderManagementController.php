@@ -20,6 +20,8 @@ class OrderManagementController extends Controller
             $search = $request->string('search');
             $query->where(function ($where) use ($search) {
                 $where->where('order_number', 'like', "%{$search}%")
+                    ->orWhere('guest_full_name', 'like', "%{$search}%")
+                    ->orWhere('guest_phone', 'like', "%{$search}%")
                     ->orWhereHas('user', fn ($user) => $user->where('full_name', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%"));
             });
         }

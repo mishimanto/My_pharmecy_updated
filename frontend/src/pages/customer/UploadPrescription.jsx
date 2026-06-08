@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/common/PageHeader'
 import { prescriptionApi } from '../../api/prescriptionApi'
+import { useCustomerAuth } from '../../context/CustomerAuthContext'
 
 export default function UploadPrescription() {
+  const { ensureGuestToken } = useCustomerAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState({ patient_name: '', doctor_name: '', notes: '' })
   const [file, setFile] = useState(null)
@@ -22,6 +24,7 @@ export default function UploadPrescription() {
     Object.entries(form).forEach(([key, value]) => body.append(key, value || ''))
 
     try {
+      ensureGuestToken()
       await prescriptionApi.create(body)
       toast.success('প্রেসক্রিপশন আপলোড হয়েছে')
       navigate('/prescriptions')
@@ -45,4 +48,3 @@ export default function UploadPrescription() {
     </>
   )
 }
-

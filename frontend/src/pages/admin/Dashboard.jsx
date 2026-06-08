@@ -55,7 +55,7 @@ export default function Dashboard() {
       </div>
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <Panel title="সাম্প্রতিক অর্ডার">
-          {orders.map((order) => <Row key={order.id} title={order.order_number} meta={`${order.user?.full_name || '-'} - ${order.order_status}`} value={money(order.total_amount)} />)}
+          {orders.map((order) => <Row key={order.id} title={order.order_number} meta={`${order.customer_name || order.user?.full_name || '-'} - ${order.order_status}`} value={money(order.total_amount)} />)}
         </Panel>
         <Panel title="পেন্ডিং প্রেসক্রিপশন">
           {prescriptions.map((item) => <Row key={item.id} title={`প্রেসক্রিপশন #${item.id}`} meta={item.user?.full_name || '-'} value={date(item.uploaded_at)} />)}

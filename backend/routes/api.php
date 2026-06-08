@@ -60,6 +60,19 @@ Route::prefix('customer')->group(function () {
     Route::get('/products/{id}', [ProductBrowseController::class, 'show']);
     Route::get('/auth/{provider}/redirect', [AuthController::class, 'redirect']);
     Route::get('/auth/{provider}/callback', [AuthController::class, 'callback']);
+    Route::get('/cart', [CartController::class, 'index']);
+    Route::post('/cart/items', [CartController::class, 'store']);
+    Route::put('/cart/items/{itemId}', [CartController::class, 'update']);
+    Route::delete('/cart/items/{itemId}', [CartController::class, 'destroy']);
+    Route::delete('/cart/clear', [CartController::class, 'clear']);
+    Route::post('/checkout', [CheckoutController::class, 'store']);
+    Route::get('/orders/{id}/tracking', [DeliveryTrackingController::class, 'show']);
+    Route::post('/orders/{id}/payment/cod', [PaymentController::class, 'cod']);
+    Route::get('/orders/{id}', [OrderController::class, 'show']);
+    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);
+    Route::get('/prescriptions', [PrescriptionController::class, 'index']);
+    Route::post('/prescriptions', [PrescriptionController::class, 'store']);
+    Route::get('/prescriptions/{id}', [PrescriptionController::class, 'show']);
 
     Route::middleware(['auth:sanctum', 'customer.auth'])->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
@@ -68,22 +81,9 @@ Route::prefix('customer')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::apiResource('addresses', AddressController::class)->except(['show']);
         Route::patch('/addresses/{id}/default', [AddressController::class, 'setDefault']);
-        Route::get('/cart', [CartController::class, 'index']);
-        Route::post('/cart/items', [CartController::class, 'store']);
-        Route::put('/cart/items/{itemId}', [CartController::class, 'update']);
-        Route::delete('/cart/items/{itemId}', [CartController::class, 'destroy']);
-        Route::delete('/cart/clear', [CartController::class, 'clear']);
-        Route::post('/checkout', [CheckoutController::class, 'store']);
         Route::get('/orders', [OrderController::class, 'index']);
-        Route::get('/orders/{id}/tracking', [DeliveryTrackingController::class, 'show']);
-        Route::post('/orders/{id}/payment/cod', [PaymentController::class, 'cod']);
-        Route::get('/orders/{id}', [OrderController::class, 'show']);
-        Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);
         Route::post('/orders/{id}/return-request', [ReturnRequestController::class, 'store']);
         Route::get('/orders/{orderId}/delivery', [DeliveryTrackingController::class, 'show']);
-        Route::get('/prescriptions', [PrescriptionController::class, 'index']);
-        Route::post('/prescriptions', [PrescriptionController::class, 'store']);
-        Route::get('/prescriptions/{id}', [PrescriptionController::class, 'show']);
         Route::get('/support-tickets', [SupportTicketController::class, 'index']);
         Route::post('/support-tickets', [SupportTicketController::class, 'store']);
         Route::get('/support-tickets/{id}', [SupportTicketController::class, 'show']);

@@ -12,17 +12,28 @@ class CheckoutService
 {
     public function __construct(private InventoryService $inventory) {}
 
-    public function checkout(Cart $cart, int $addressId, string $paymentMethod = 'COD', ?string $notes = null, ?int $prescriptionId = null): Order
-    {
-        return DB::transaction(function () use ($cart, $addressId, $paymentMethod, $notes, $prescriptionId) {
+    public function checkout(
+        Cart $cart,
+        ?int $addressId,
+        string $paymentMethod = 'COD',
+        ?string $notes = null,
+        ?int $prescriptionId = null,
+        ?string $guestToken = null,
+        ?array $guestAddress = null,
+    ): Order {
+        return DB::transaction(function () use ($cart, $addressId, $paymentMethod, $notes, $prescriptionId, $guestToken, $guestAddress) {
             $cart->load('items.product');
-            abort_if($cart->items->isEmpty(), 422, 'কার্ট খালি।');
+            abort_if($cart->items->isEmpty(), 422, 'Cart is empty.');
 
             $orderItems = collect();
-            foreach ($cart->items as $cartItem) {
-                abort_unless($cartItem->product->is_active, 422, "{$cartItem->product->product_name} সক্রিয় নয়।");
 
-                $allocations = $this->inventory->selectBatchesByFEFO($cartItem->product_id, $cartItem->quantity)
+            foreach ($cart->items as $cartItem) {
+                abort_unless($cartItem->product->is_active, 422, "{$cartItem->product->product_name} is not active.");
+
+                $pieceQuantity = max(1, (int) ($cartItem->piece_quantity ?: ($cartItem->quantity * max(1, $cartItem->pieces_per_unit))));
+                $subtotal = round($cartItem->quantity * $cartItem->unit_price, 2);
+
+                $allocations = $this->inventory->selectBatchesByFEFO($cartItem->product_id, $pieceQuantity)
                     ->map(fn ($allocation) => [
                         'batch' => $allocation['batch'],
                         'quantity' => $allocation['quantity'],
@@ -30,22 +41,33 @@ class CheckoutService
                     ]);
 
                 $orderItems->push([
-                    'cart_item' => $cartItem,
                     'product' => $cartItem->product,
                     'allocations' => $allocations,
-                    'unit_price' => $allocations->first()['unit_price'],
-                    'subtotal' => $allocations->sum(fn ($allocation) => $allocation['quantity'] * $allocation['unit_price']),
+                    'purchase_unit' => $cartItem->purchase_unit,
+                    'purchase_quantity' => $cartItem->quantity,
+                    'pieces_per_unit' => max(1, (int) $cartItem->pieces_per_unit),
+                    'piece_quantity' => $pieceQuantity,
+                    'unit_price' => (float) $cartItem->unit_price,
+                    'subtotal' => $subtotal,
                 ]);
             }
 
             $requiresPrescription = $cart->items->contains(fn ($item) => (bool) $item->product->requires_prescription);
-            $prescription = $this->resolvePrescription($cart->user_id, $requiresPrescription, $prescriptionId);
+            $prescription = $this->resolvePrescription($cart->user_id, $guestToken, $requiresPrescription, $prescriptionId);
             $subtotal = $orderItems->sum('subtotal');
             $delivery = 60;
 
             $order = Order::create([
                 'user_id' => $cart->user_id,
                 'address_id' => $addressId,
+                'guest_token' => $cart->guest_token ?: $guestToken,
+                'guest_full_name' => $addressId ? null : ($guestAddress['full_name'] ?? null),
+                'guest_phone' => $addressId ? null : ($guestAddress['phone'] ?? null),
+                'guest_address_line_1' => $addressId ? null : ($guestAddress['address_line_1'] ?? null),
+                'guest_address_line_2' => $addressId ? null : ($guestAddress['address_line_2'] ?? null),
+                'guest_city' => $addressId ? null : ($guestAddress['city'] ?? null),
+                'guest_area' => $addressId ? null : ($guestAddress['area'] ?? null),
+                'guest_postal_code' => $addressId ? null : ($guestAddress['postal_code'] ?? null),
                 'order_number' => 'PH-' . now()->format('Ymd') . '-' . Str::upper(Str::random(6)),
                 'order_date' => now(),
                 'order_status' => $this->initialStatus($requiresPrescription, $prescription),
@@ -61,7 +83,10 @@ class CheckoutService
             foreach ($orderItems as $item) {
                 $orderItem = $order->items()->create([
                     'product_id' => $item['product']->id,
-                    'quantity' => $item['cart_item']->quantity,
+                    'purchase_unit' => $item['purchase_unit'],
+                    'quantity' => $item['purchase_quantity'],
+                    'pieces_per_unit' => $item['pieces_per_unit'],
+                    'piece_quantity' => $item['piece_quantity'],
                     'unit_price' => $item['unit_price'],
                     'discount' => 0,
                     'subtotal' => $item['subtotal'],
@@ -89,35 +114,38 @@ class CheckoutService
                 $prescription->update(['order_id' => $order->id]);
             }
 
-            DB::table('notifications')->insert([
-                'user_id' => $cart->user_id,
-                'notification_type' => 'order_status_update',
-                'title' => 'অর্ডার করা হয়েছে',
-                'message' => "আপনার অর্ডার {$order->order_number} গ্রহণ করা হয়েছে।",
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            if ($cart->user_id) {
+                DB::table('notifications')->insert([
+                    'user_id' => $cart->user_id,
+                    'notification_type' => 'order_status_update',
+                    'title' => 'Order placed',
+                    'message' => "Your order {$order->order_number} has been received.",
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
 
             $cart->items()->delete();
 
-            return $order->load('items.product', 'items.batches.batch', 'payment', 'delivery');
+            return $order->load('user', 'address', 'items.product', 'items.batches.batch', 'payment', 'delivery');
         });
     }
 
-    private function resolvePrescription(int $userId, bool $required, ?int $prescriptionId): ?Prescription
+    private function resolvePrescription(?int $userId, ?string $guestToken, bool $required, ?int $prescriptionId): ?Prescription
     {
-        if (!$required && !$prescriptionId) {
+        if (! $required && ! $prescriptionId) {
             return null;
         }
 
-        abort_if($required && !$prescriptionId, 422, 'প্রেসক্রিপশন আবশ্যক।');
+        abort_if($required && ! $prescriptionId, 422, 'A prescription is required for this order.');
 
         $prescription = Prescription::query()
-            ->where('user_id', $userId)
+            ->when($userId, fn ($query) => $query->where('user_id', $userId))
+            ->when(! $userId, fn ($query) => $query->where('guest_token', $guestToken))
             ->findOrFail($prescriptionId);
 
-        abort_if($prescription->status === 'rejected', 422, 'প্রেসক্রিপশন বাতিল করা হয়েছে।');
-        abort_if($prescription->status === 'need_clarification', 422, 'প্রেসক্রিপশনে আরও তথ্য দরকার।');
+        abort_if($prescription->status === 'rejected', 422, 'The selected prescription was rejected.');
+        abort_if($prescription->status === 'need_clarification', 422, 'The selected prescription needs clarification.');
 
         return $prescription;
     }

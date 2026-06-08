@@ -15,24 +15,53 @@ export default function Login() {
     setLoading(true)
     try {
       await login(form)
-      toast.success('লগইন সফল হয়েছে')
-      navigate('/')
+      toast.success('Login successful.')
+      navigate('/account')
     } catch (error) {
-      toast.error(error.response?.data?.message || 'লগইন করা যায়নি')
+      toast.error(error.response?.data?.message || 'Login could not be completed.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <AuthLayout title="কাস্টমার লগইন">
-      <form className="space-y-3" onSubmit={submit}>
-        <input className="w-full rounded border px-3 py-2" placeholder="ইমেইল অথবা ফোন" value={form.login} onChange={(e) => setForm({ ...form, login: e.target.value })} />
-        <input className="w-full rounded border px-3 py-2" type="password" placeholder="পাসওয়ার্ড" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-        <button disabled={loading} className="w-full rounded bg-emerald-600 px-3 py-2 text-white disabled:opacity-60">{loading ? 'লগইন হচ্ছে...' : 'লগইন'}</button>
-        <Link className="block text-sm text-emerald-700" to="/register">নতুন অ্যাকাউন্ট তৈরি করুন</Link>
+    <AuthLayout
+      title="Customer login"
+      subtitle="Use your phone number or email and continue into orders, addresses, prescriptions, and support."
+    >
+      <form className="space-y-4" onSubmit={submit}>
+        <div>
+          <label className="text-sm font-medium text-slate-700">Phone or email</label>
+          <input
+            className="mt-2 w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+            placeholder="01XXXXXXXXX or email@example.com"
+            value={form.login}
+            onChange={(event) => setForm({ ...form, login: event.target.value })}
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-slate-700">Password</label>
+          <input
+            className="mt-2 w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+            type="password"
+            placeholder="Enter your password"
+            value={form.password}
+            onChange={(event) => setForm({ ...form, password: event.target.value })}
+          />
+        </div>
+
+        <button disabled={loading} className="w-full bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60">
+          {loading ? 'Signing in...' : 'Login to account'}
+        </button>
+
+        <div className="border-t border-slate-200 pt-4 text-sm text-slate-500">
+          New customer?{' '}
+          <Link className="font-semibold text-emerald-700" to="/register">
+            Create your account
+          </Link>
+        </div>
       </form>
     </AuthLayout>
   )
 }
-

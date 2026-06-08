@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { CustomerAuthProvider } from './context/CustomerAuthContext'
 import { StaffAuthProvider } from './context/StaffAuthContext'
+import { StorefrontProvider } from './context/StorefrontContext'
 import CustomerRoutes from './routes/CustomerRoutes'
 import AdminRoutes from './routes/AdminRoutes'
 import Login from './pages/customer/Login'
@@ -11,16 +12,18 @@ import AdminLogin from './pages/admin/AdminLogin'
 export default function App() {
   return (
     <CustomerAuthProvider>
-      <StaffAuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/*" element={<AdminRoutes />} />
-          <Route path="/*" element={<CustomerRoutes />} />
-        </Routes>
-        <Toaster position="top-right" toastOptions={{ duration: 2800 }} />
-      </StaffAuthProvider>
+      <StorefrontProvider>
+        <StaffAuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/*" element={<AdminRoutes />} />
+            <Route path="/*" element={<CustomerRoutes />} />
+          </Routes>
+          <Toaster position="top-right" toastOptions={{ duration: 2800 }} />
+        </StaffAuthProvider>
+      </StorefrontProvider>
     </CustomerAuthProvider>
   )
 }
