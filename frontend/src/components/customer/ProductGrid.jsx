@@ -1,94 +1,152 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Link } from 'react-router-dom'
-import { cartApi } from '../../api/cartApi'
+import { useSearchParams } from 'react-router-dom'
 import { productApi } from '../../api/productApi'
-import { money } from '../../utils/formatters'
+import { useStorefront } from '../../context/StorefrontContext'
 import EmptyState from '../common/EmptyState'
-
-const availableStock = (batch) => Number(batch?.stock_quantity || 0) - Number(batch?.reserved_quantity || 0)
+import ProductCard, { ProductCardSkeleton } from './ProductCard'
+import { getDefaultPurchaseOption } from '../../utils/purchaseUnits'
 
 export default function ProductGrid() {
-  const [products, setProducts] = useState([])
-  const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
+  const { addToCart } = useStorefront()
+  const [searchParams] = useSearchParams()
+  const initialSearch = searchParams.get('search') || ''
+  const initialCategoryId = searchParams.get('category_id') || ''
+  const initialRequiresPrescription = searchParams.get('requires_prescription') || ''
+  const initialParams = {
+    search: initialSearch,
+    page: 1,
+    category_id: initialCategoryId,
+    manufacturer_id: '',
+    requires_prescription: initialRequiresPrescription,
+  }
+  const initialCachedList = productApi.getCachedList(initialParams)
+
+  const [products, setProducts] = useState(initialCachedList?.data || [])
+  const [search, setSearch] = useState(initialSearch)
+  const [loading, setLoading] = useState(!initialCachedList)
   const [page, setPage] = useState(1)
-  const [meta, setMeta] = useState(null)
-  const [categories, setCategories] = useState([])
-  const [manufacturers, setManufacturers] = useState([])
-  const [filters, setFilters] = useState({ category_id: '', manufacturer_id: '', requires_prescription: '' })
+  const [meta, setMeta] = useState(initialCachedList)
+  const [categories, setCategories] = useState(() => productApi.getCachedCategories())
+  const [manufacturers, setManufacturers] = useState(() => productApi.getCachedManufacturers())
+  const [filters, setFilters] = useState({
+    category_id: initialCategoryId,
+    manufacturer_id: '',
+    requires_prescription: initialRequiresPrescription,
+  })
+  const deferredSearch = useDeferredValue(search)
 
   useEffect(() => {
     productApi.categories().then(({ data }) => setCategories(data.data || [])).catch(() => {})
     productApi.manufacturers().then(({ data }) => setManufacturers(data.data || [])).catch(() => {})
   }, [])
 
+  const requestParams = useMemo(
+    () => ({ search: deferredSearch, page, ...filters }),
+    [deferredSearch, page, filters],
+  )
+
+  const cachedPayload = useMemo(
+    () => productApi.getCachedList(requestParams),
+    [requestParams],
+  )
+
   useEffect(() => {
+    const hasSeedData = Boolean(cachedPayload?.data?.length)
+    let syncTimer = null
+
+    if (cachedPayload) {
+      syncTimer = window.setTimeout(() => {
+        setProducts(cachedPayload.data || [])
+        setMeta(cachedPayload)
+      }, 0)
+    }
+
     const timer = setTimeout(() => {
-      setLoading(true)
+      if (!hasSeedData) {
+        setLoading(true)
+      }
+
       productApi
-        .list({ search, page, ...filters })
+        .list(requestParams)
         .then(({ data }) => {
           const payload = data.data
-          setProducts((payload.data || []).filter((product) => product.is_active !== false && availableStock(product.batches?.[0]) > 0))
+          setProducts(payload.data || [])
           setMeta(payload)
         })
-        .catch(() => toast.error('ওষুধ লোড করা যায়নি'))
+        .catch(() => toast.error('Could not load products.'))
         .finally(() => setLoading(false))
-    }, 250)
-    return () => clearTimeout(timer)
-  }, [search, page, filters])
+    }, hasSeedData ? 0 : 120)
+
+    return () => {
+      clearTimeout(timer)
+      if (syncTimer) window.clearTimeout(syncTimer)
+    }
+  }, [cachedPayload, requestParams])
 
   const hasNext = useMemo(() => meta?.current_page < meta?.last_page, [meta])
 
   const add = async (product) => {
+    const option = getDefaultPurchaseOption(product)
+
     try {
-      await cartApi.add({ product_id: product.id, quantity: 1 })
-      toast.success('কার্টে যোগ করা হয়েছে')
+      await addToCart({
+        product_id: product.id,
+        purchase_unit: option?.code || 'piece',
+        quantity: 1,
+      })
+      toast.success(`Added 1 ${option?.label || 'Piece'} to cart.`)
     } catch {
-      toast.error('কার্টে যোগ করা যায়নি')
+      toast.error('Could not add this item to the cart.')
     }
   }
 
   return (
     <div>
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-        <input className="w-full rounded border border-slate-300 bg-white px-3 py-2" placeholder="ওষুধের নাম, জেনেরিক বা ব্র্যান্ড দিয়ে খুঁজুন" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1) }} />
-        <select className="rounded border border-slate-300 bg-white px-3 py-2" value={filters.category_id} onChange={(event) => { setFilters({ ...filters, category_id: event.target.value }); setPage(1) }}><option value="">সব ক্যাটাগরি</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.category_name}</option>)}</select>
-        <select className="rounded border border-slate-300 bg-white px-3 py-2" value={filters.manufacturer_id} onChange={(event) => { setFilters({ ...filters, manufacturer_id: event.target.value }); setPage(1) }}><option value="">সব ম্যানুফ্যাকচারার</option>{manufacturers.map((item) => <option key={item.id} value={item.id}>{item.manufacturer_name}</option>)}</select>
-        <select className="rounded border border-slate-300 bg-white px-3 py-2" value={filters.requires_prescription} onChange={(event) => { setFilters({ ...filters, requires_prescription: event.target.value }); setPage(1) }}><option value="">সব</option><option value="1">প্রেসক্রিপশন প্রয়োজন</option><option value="0">প্রেসক্রিপশন ছাড়া</option></select>
-        <button className="rounded border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700" onClick={() => { setSearch(''); setFilters({ category_id: '', manufacturer_id: '', requires_prescription: '' }); setPage(1) }}>রিসেট</button>
+      <div className="mb-6 grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(0,1fr))_auto]">
+        <input
+          className="border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+          placeholder="Search by product, generic, or brand"
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value)
+            setPage(1)
+          }}
+        />
+        <select className="border border-slate-300 bg-white px-3 py-3 text-sm" value={filters.category_id} onChange={(event) => { setFilters({ ...filters, category_id: event.target.value }); setPage(1) }}>
+          <option value="">All categories</option>
+          {categories.map((item) => <option key={item.id} value={item.id}>{item.category_name}</option>)}
+        </select>
+        <select className="border border-slate-300 bg-white px-3 py-3 text-sm" value={filters.manufacturer_id} onChange={(event) => { setFilters({ ...filters, manufacturer_id: event.target.value }); setPage(1) }}>
+          <option value="">All manufacturers</option>
+          {manufacturers.map((item) => <option key={item.id} value={item.id}>{item.manufacturer_name}</option>)}
+        </select>
+        <select className="border border-slate-300 bg-white px-3 py-3 text-sm" value={filters.requires_prescription} onChange={(event) => { setFilters({ ...filters, requires_prescription: event.target.value }); setPage(1) }}>
+          <option value="">All products</option>
+          <option value="1">Prescription required</option>
+          <option value="0">No prescription</option>
+        </select>
+        <button className="border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700" onClick={() => { setSearch(''); setFilters({ category_id: '', manufacturer_id: '', requires_prescription: '' }); setPage(1) }}>
+          Reset
+        </button>
       </div>
-      {loading && <p className="text-sm text-slate-500">ওষুধ লোড হচ্ছে...</p>}
-      {!loading && products.length === 0 && <EmptyState title="কোনো ওষুধ পাওয়া যায়নি" text="অন্য নামে খুঁজে দেখুন অথবা পরে আবার চেষ্টা করুন।" />}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {products.map((product) => {
-          const batch = product.batches?.[0]
-          return (
-            <article key={product.id} className="rounded border border-slate-200 bg-white p-4 shadow-sm">
-              <Link to={`/products/${product.id}`} className="block">
-                <div className="mb-3 flex h-28 items-center justify-center rounded bg-emerald-50 text-3xl font-semibold text-emerald-700">Rx</div>
-                <h2 className="text-base font-semibold text-slate-950">{product.product_name}</h2>
-                <p className="text-sm text-slate-600">{product.generic_name || product.brand_name || 'জেনেরিক তথ্য নেই'}</p>
-              </Link>
-              <div className="mt-3 flex items-center justify-between">
-                <div>
-                  <span className="block font-semibold text-emerald-700">{money(product.display_price || batch?.selling_price)}</span>
-                  <span className="text-xs text-slate-500">স্টক: {product.available_stock ?? availableStock(batch)}</span>
-                </div>
-                <button className="rounded bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700" onClick={() => add(product)}>কার্টে যোগ</button>
-              </div>
-              {product.requires_prescription && <p className="mt-2 rounded bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800">প্রেসক্রিপশন প্রয়োজন</p>}
-            </article>
-          )
-        })}
+
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        {loading && products.length === 0
+          ? Array.from({ length: 9 }, (_, index) => <ProductCardSkeleton key={`product-skeleton-${index}`} />)
+          : products.map((product) => (
+            <ProductCard key={product.id} product={product} onAdd={add} />
+          ))}
       </div>
+
+      {!loading && products.length === 0 && <div className="mt-6"><EmptyState title="No products found" text="Try another search or adjust the filters." /></div>}
+
       {meta && (
-        <div className="mt-5 flex items-center justify-between text-sm text-slate-600">
-          <span>পৃষ্ঠা {meta.current_page || page} / {meta.last_page || 1}</span>
+        <div className="mt-6 flex items-center justify-between text-sm text-slate-600">
+          <span>Page {meta.current_page || page} / {meta.last_page || 1}</span>
           <div className="flex gap-2">
-            <button disabled={page <= 1} className="rounded border px-3 py-1 disabled:opacity-40" onClick={() => setPage((value) => Math.max(1, value - 1))}>আগে</button>
-            <button disabled={!hasNext} className="rounded border px-3 py-1 disabled:opacity-40" onClick={() => setPage((value) => value + 1)}>পরে</button>
+            <button disabled={page <= 1} className="border border-slate-300 bg-white px-3 py-2 disabled:opacity-40" onClick={() => setPage((value) => Math.max(1, value - 1))}>Previous</button>
+            <button disabled={!hasNext} className="border border-slate-300 bg-white px-3 py-2 disabled:opacity-40" onClick={() => setPage((value) => value + 1)}>Next</button>
           </div>
         </div>
       )}

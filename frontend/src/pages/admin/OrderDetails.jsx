@@ -79,6 +79,9 @@ export default function OrderDetails() {
                 <div>
                   <p className="font-semibold text-slate-950">{item.product?.product_name}</p>
                   <p className="text-sm text-slate-500">{item.product?.generic_name} {item.product?.strength}</p>
+                  <p className="mt-2 text-xs text-slate-500">
+                    {item.quantity} {item.purchase_unit || 'piece'} x {money(item.unit_price)} ({item.piece_quantity || item.quantity} pieces)
+                  </p>
                 </div>
                 <p className="font-semibold text-slate-950">{money(item.subtotal)}</p>
               </div>
@@ -86,7 +89,7 @@ export default function OrderDetails() {
                 {item.batches?.map((allocation) => (
                   <div key={allocation.id} className="flex justify-between">
                     <span>{allocation.batch?.batch_number}</span>
-                    <span>{allocation.quantity} x {money(allocation.unit_price)}</span>
+                    <span>{allocation.quantity} pieces allocated</span>
                   </div>
                 ))}
               </div>

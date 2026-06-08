@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AdminLayout from '../layouts/AdminLayout'
 import ProtectedAdminRoute from './ProtectedAdminRoute'
+import AdminProfile from '../pages/admin/AdminProfile'
 import Dashboard from '../pages/admin/Dashboard'
 import Users from '../pages/admin/Users'
 import UserDetails from '../pages/admin/UserDetails'
@@ -10,6 +11,7 @@ import Roles from '../pages/admin/Roles'
 import RoleForm from '../pages/admin/RoleForm'
 import Categories from '../pages/admin/Categories'
 import Manufacturers from '../pages/admin/Manufacturers'
+import ManufacturerForm from '../pages/admin/ManufacturerForm'
 import Products from '../pages/admin/Products'
 import ProductCreate from '../pages/admin/ProductCreate'
 import ProductEdit from '../pages/admin/ProductEdit'
@@ -41,6 +43,7 @@ export default function AdminRoutes() {
     <ProtectedAdminRoute>
       <Routes>
         <Route element={<AdminLayout />}>
+          <Route path="profile" element={<AdminProfile />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="users" element={<Users />} />
           <Route path="users/:id" element={<UserDetails />} />
@@ -52,6 +55,8 @@ export default function AdminRoutes() {
           <Route path="roles/:id/edit" element={<RoleForm />} />
           <Route path="categories" element={<Categories />} />
           <Route path="manufacturers" element={<Manufacturers />} />
+          <Route path="manufacturers/create" element={<ManufacturerForm />} />
+          <Route path="manufacturers/:id/edit" element={<ManufacturerForm />} />
           <Route path="products" element={<Products />} />
           <Route path="products/create" element={<ProductCreate />} />
           <Route path="products/:id/edit" element={<ProductEdit />} />

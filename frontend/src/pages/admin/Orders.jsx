@@ -55,7 +55,7 @@ export default function Orders() {
             {orders.map((order) => (
               <tr key={order.id}>
                 <td className="px-4 py-3 font-medium text-slate-950">{order.order_number}</td>
-                <td className="px-4 py-3 text-slate-600">{order.user?.full_name || '-'}</td>
+                <td className="px-4 py-3 text-slate-600">{order.customer_name || order.user?.full_name || '-'}</td>
                 <td className="px-4 py-3"><span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">{order.order_status}</span></td>
                 <td className="px-4 py-3 text-slate-700">{money(order.total_amount)}</td>
                 <td className="px-4 py-3 text-slate-600">{date(order.order_date)}</td>
