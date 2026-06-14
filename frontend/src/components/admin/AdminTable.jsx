@@ -20,23 +20,23 @@ export default function AdminTable({ resource }) {
         setRows(data.data.data || [])
         setMeta(data.data)
       })
-      .catch(() => active && toast.error('ডাটা লোড করা যায়নি'))
+      .catch(() => active && toast.error('Unable to load data.'))
       .finally(() => active && setLoading(false))
     return () => { active = false }
   }, [resource, search, page])
 
   const remove = async (id) => {
     const result = await Swal.fire({
-      title: 'রেকর্ড ডিলিট করবেন?',
-      text: 'এই কাজটি নিশ্চিত করলে রেকর্ড মুছে যাবে।',
+      title: 'Delete this record?',
+      text: 'This action will permanently remove the record.',
       showCancelButton: true,
-      confirmButtonText: 'ডিলিট',
-      cancelButtonText: 'বাতিল',
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
       confirmButtonColor: '#dc2626',
     })
     if (!result.isConfirmed) return
     await adminApi.remove(resource, id)
-    toast.success('রেকর্ড ডিলিট হয়েছে')
+    toast.success('Record deleted.')
     setRows((current) => current.filter((row) => row.id !== id))
   }
 
@@ -46,10 +46,10 @@ export default function AdminTable({ resource }) {
   return (
     <div>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-        <input className="w-full rounded border border-slate-300 bg-white px-3 py-2" placeholder="সার্চ করুন" value={search} onChange={(event) => { setLoading(true); setSearch(event.target.value); setPage(1) }} />
-        <button className="rounded border border-slate-300 bg-white px-4 py-2 text-sm" onClick={() => { setLoading(true); setSearch(''); setPage(1) }}>রিসেট</button>
+        <input className="w-full rounded border border-slate-300 bg-white px-3 py-2" placeholder="Search" value={search} onChange={(event) => { setLoading(true); setSearch(event.target.value); setPage(1) }} />
+        <button className="rounded border border-slate-300 bg-white px-4 py-2 text-sm" onClick={() => { setLoading(true); setSearch(''); setPage(1) }}>Reset</button>
       </div>
-      {loading && <p className="text-sm text-slate-500">লোড হচ্ছে...</p>}
+      {loading && <p className="text-sm text-slate-500">Loading...</p>}
       {!loading && rows.length === 0 && <EmptyState />}
       {rows.length > 0 && (
         <div className="overflow-x-auto rounded border border-slate-200 bg-white">
@@ -61,7 +61,7 @@ export default function AdminTable({ resource }) {
               {rows.map((row) => (
                 <tr key={row.id} className="border-t border-slate-100">
                   {columns.map((column) => <td key={column} className="max-w-[220px] truncate px-3 py-2">{String(row[column] ?? '-')}</td>)}
-                  {!readOnly && <td className="px-3 py-2 text-right"><button className="rounded bg-rose-50 px-2 py-1 text-rose-700" onClick={() => remove(row.id)}>ডিলিট</button></td>}
+                  {!readOnly && <td className="px-3 py-2 text-right"><button className="rounded bg-rose-50 px-2 py-1 text-rose-700" onClick={() => remove(row.id)}>Delete</button></td>}
                 </tr>
               ))}
             </tbody>
@@ -70,10 +70,10 @@ export default function AdminTable({ resource }) {
       )}
       {meta && (
         <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
-          <span>পৃষ্ঠা {meta.current_page || page} / {meta.last_page || 1}</span>
+          <span>Page {meta.current_page || page} / {meta.last_page || 1}</span>
           <div className="flex gap-2">
-            <button disabled={page <= 1} className="rounded border px-3 py-1 disabled:opacity-40" onClick={() => { setLoading(true); setPage((value) => Math.max(1, value - 1)) }}>আগে</button>
-            <button disabled={!meta || meta.current_page >= meta.last_page} className="rounded border px-3 py-1 disabled:opacity-40" onClick={() => { setLoading(true); setPage((value) => value + 1) }}>পরে</button>
+            <button disabled={page <= 1} className="rounded border px-3 py-1 disabled:opacity-40" onClick={() => { setLoading(true); setPage((value) => Math.max(1, value - 1)) }}>Previous</button>
+            <button disabled={!meta || meta.current_page >= meta.last_page} className="rounded border px-3 py-1 disabled:opacity-40" onClick={() => { setLoading(true); setPage((value) => value + 1) }}>Next</button>
           </div>
         </div>
       )}

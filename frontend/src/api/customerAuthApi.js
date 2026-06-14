@@ -3,7 +3,21 @@ import api from './axios'
 export const customerAuthApi = {
   login: (payload) => api.post('/customer/login', payload),
   register: (payload) => api.post('/customer/register', payload),
+  forgotPassword: (payload) => api.post('/customer/forgot-password', payload),
+  resetPassword: (payload) => api.post('/customer/reset-password', payload),
   me: () => api.get('/customer/profile'),
-  updateProfile: (payload) => api.put('/customer/profile', payload),
+  updateProfile: (payload) => {
+    if (payload instanceof FormData) {
+      if (!payload.has('_method')) {
+        payload.append('_method', 'PUT')
+      }
+
+      return api.post('/customer/profile', payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    }
+
+    return api.put('/customer/profile', payload)
+  },
   logout: () => api.post('/customer/logout'),
 }

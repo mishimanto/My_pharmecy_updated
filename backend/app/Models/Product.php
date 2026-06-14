@@ -2,8 +2,19 @@
 
 namespace App\Models;
 
+use Illuminate\Support\Str;
+
 class Product extends PharmacyModel
 {
+    protected static function booted(): void
+    {
+        static::saving(function (Product $product) {
+            if ($product->product_name && (! $product->slug || $product->isDirty('product_name'))) {
+                $product->slug = static::uniqueSlug($product->product_name, $product->id);
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return [
@@ -14,6 +25,25 @@ class Product extends PharmacyModel
             'strip_price' => 'float',
             'box_price' => 'float',
         ];
+    }
+
+    private static function uniqueSlug(string $name, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($name) ?: 'product';
+        $slug = $base;
+        $suffix = 2;
+
+        while (
+            static::query()
+                ->where('slug', $slug)
+                ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
+                ->exists()
+        ) {
+            $slug = "{$base}-{$suffix}";
+            $suffix += 1;
+        }
+
+        return $slug;
     }
 
     public function category() { return $this->belongsTo(Category::class); }

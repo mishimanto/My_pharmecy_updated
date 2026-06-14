@@ -1,5 +1,31 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import {
+  FiActivity,
+  FiAlertCircle,
+  FiBox,
+  FiChevronDown,
+  FiCreditCard,
+  FiFileText,
+  FiGrid,
+  FiHeadphones,
+  FiHome,
+  FiLayers,
+  FiList,
+  FiLogOut,
+  FiMapPin,
+  FiMenu,
+  FiPackage,
+  FiPieChart,
+  FiSettings,
+  FiShield,
+  FiShoppingBag,
+  FiTag,
+  FiTruck,
+  FiUser,
+  FiUsers,
+  FiX,
+} from 'react-icons/fi'
 import { useStaffAuth } from '../context/StaffAuthContext'
 import { hasPermission } from '../utils/permissions'
 
@@ -7,51 +33,51 @@ const navigationGroups = [
   {
     title: 'Overview',
     items: [
-      ['/admin/dashboard', 'ড্যাশবোর্ড', 'report.view'],
-      ['/admin/orders', 'অর্ডার', 'order.view'],
-      ['/admin/prescriptions', 'প্রেসক্রিপশন', 'prescription.view'],
-      ['/admin/payments', 'পেমেন্ট', 'payment.view'],
-      ['/admin/deliveries', 'ডেলিভারি', 'delivery.manage'],
+      { to: '/admin/dashboard', label: 'Dashboard', permission: 'report.view', icon: FiHome },
+      { to: '/admin/orders', label: 'Orders', permission: 'order.view', icon: FiShoppingBag },
+      { to: '/admin/prescriptions', label: 'Prescriptions', permission: 'prescription.view', icon: FiFileText },
+      { to: '/admin/payments', label: 'Payments', permission: 'payment.view', icon: FiCreditCard },
+      { to: '/admin/deliveries', label: 'Deliveries', permission: 'delivery.manage', icon: FiTruck },
     ],
   },
   {
     title: 'Catalog',
     items: [
-      ['/admin/categories', 'ক্যাটাগরি', 'product.view'],
-      ['/admin/manufacturers', 'ম্যানুফ্যাকচারার', 'product.view'],
-      ['/admin/products', 'প্রোডাক্ট', 'product.view'],
+      { to: '/admin/categories', label: 'Categories', permission: 'product.view', icon: FiGrid },
+      { to: '/admin/manufacturers', label: 'Manufacturers', permission: 'product.view', icon: FiTag },
+      { to: '/admin/products', label: 'Products', permission: 'product.view', icon: FiBox },
     ],
   },
   {
     title: 'Inventory',
     items: [
-      ['/admin/suppliers', 'সাপ্লায়ার', 'inventory.view'],
-      ['/admin/inventory', 'ইনভেন্টরি', 'inventory.view'],
-      ['/admin/inventory/batches', 'ব্যাচ', 'inventory.view'],
-      ['/admin/inventory/transactions', 'স্টক লেনদেন', 'inventory.view'],
-      ['/admin/inventory/low-stock', 'লো স্টক', 'inventory.view'],
-      ['/admin/inventory/near-expiry', 'নিয়ার এক্সপায়ারি', 'inventory.view'],
+      { to: '/admin/suppliers', label: 'Suppliers', permission: 'inventory.view', icon: FiUsers },
+      { to: '/admin/inventory', label: 'Inventory', permission: 'inventory.view', icon: FiPackage },
+      { to: '/admin/inventory/batches', label: 'Batches', permission: 'inventory.view', icon: FiLayers },
+      { to: '/admin/inventory/transactions', label: 'Stock Transactions', permission: 'inventory.view', icon: FiList },
+      { to: '/admin/inventory/low-stock', label: 'Low Stock', permission: 'inventory.view', icon: FiAlertCircle },
+      { to: '/admin/inventory/near-expiry', label: 'Near Expiry', permission: 'inventory.view', icon: FiActivity },
     ],
   },
   {
     title: 'Operations',
     items: [
-      ['/admin/users', 'কাস্টমার', 'user.view'],
-      ['/admin/delivery-areas', 'ডেলিভারি এলাকা', 'delivery.manage'],
-      ['/admin/riders', 'রাইডার', 'delivery.manage'],
-      ['/admin/support', 'সাপোর্ট', 'support.manage'],
-      ['/admin/returns', 'রিটার্ন', 'return.manage'],
-      ['/admin/refunds', 'রিফান্ড', 'refund.approve'],
+      { to: '/admin/users', label: 'Customers', permission: 'user.view', icon: FiUser },
+      { to: '/admin/delivery-areas', label: 'Delivery Areas', permission: 'delivery.manage', icon: FiMapPin },
+      { to: '/admin/riders', label: 'Riders', permission: 'delivery.manage', icon: FiTruck },
+      { to: '/admin/support', label: 'Support', permission: 'support.manage', icon: FiHeadphones },
+      { to: '/admin/returns', label: 'Returns', permission: 'return.manage', icon: FiPackage },
+      { to: '/admin/refunds', label: 'Refunds', permission: 'refund.approve', icon: FiCreditCard },
     ],
   },
 ]
 
 const settingsItems = [
-  ['/admin/profile', 'আমার প্রোফাইল', null],
-  ['/admin/staff', 'স্টাফ', 'staff.view'],
-  ['/admin/roles', 'রোল ও পারমিশন', 'role.manage'],
-  ['/admin/reports', 'রিপোর্ট', 'report.view'],
-  ['/admin/activity-logs', 'অ্যাক্টিভিটি লগ', 'activity-log.view'],
+  { to: '/admin/profile', label: 'My Profile', permission: null, icon: FiUser },
+  { to: '/admin/staff', label: 'Staff', permission: 'staff.view', icon: FiUsers },
+  { to: '/admin/roles', label: 'Roles & Permissions', permission: 'role.manage', icon: FiShield },
+  { to: '/admin/reports', label: 'Reports', permission: 'report.view', icon: FiPieChart },
+  { to: '/admin/activity-logs', label: 'Activity Logs', permission: 'activity-log.view', icon: FiActivity },
 ]
 
 function initials(name = '') {
@@ -61,6 +87,14 @@ function initials(name = '') {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('') || 'AD'
+}
+
+function formatToday() {
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date())
 }
 
 export default function AdminLayout() {
@@ -74,26 +108,28 @@ export default function AdminLayout() {
       navigationGroups
         .map((group) => ({
           ...group,
-          items: group.items.filter(([, , permission]) => !permission || hasPermission(staff, permission)),
+          items: group.items.filter((item) => !item.permission || hasPermission(staff, item.permission)),
         }))
         .filter((group) => group.items.length > 0),
     [staff],
   )
 
   const visibleSettings = useMemo(
-    () => settingsItems.filter(([, , permission]) => !permission || hasPermission(staff, permission)),
+    () => settingsItems.filter((item) => !item.permission || hasPermission(staff, item.permission)),
     [staff],
   )
 
-  const allVisibleLinks = useMemo(
-    () => [...visibleGroups.flatMap((group) => group.items), ...visibleSettings],
-    [visibleGroups, visibleSettings],
+  const activeItem = useMemo(
+    () =>
+      [...visibleGroups.flatMap((group) => group.items), ...visibleSettings].find(
+        (item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
+      ),
+    [location.pathname, visibleGroups, visibleSettings],
   )
 
-  const activeLabel =
-    allVisibleLinks.find(([to]) => location.pathname === to || location.pathname.startsWith(`${to}/`))?.[1] || 'Admin Panel'
-
   const roleNames = staff?.roles?.map((role) => role.name).join(', ') || 'Staff Access'
+  const statusLabel = staff?.status ? staff.status[0].toUpperCase() + staff.status.slice(1) : 'Unknown'
+  const todayLabel = useMemo(() => formatToday(), [])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -116,9 +152,9 @@ export default function AdminLayout() {
             <div className="border-b border-white/10 px-5 py-5">
               <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/18 via-teal-400/10 to-slate-900 p-4 shadow-[0_24px_60px_-32px_rgba(16,185,129,0.85)]">
                 <p className="text-xs uppercase tracking-[0.28em] text-emerald-200/80">My Pharmecy</p>
-                <h1 className="mt-2 text-xl font-semibold">Admin Console</h1>
+                <h1 className="mt-2 text-xl font-semibold">Admin Panel</h1>
                 <p className="mt-2 text-sm leading-6 text-slate-300">
-                  অর্ডার, ইনভেন্টরি, কাস্টমার সাপোর্ট আর daily operations এক জায়গা থেকে ম্যানেজ করুন।
+                  Manage orders, inventory, customer support, and daily operations from one workspace.
                 </p>
               </div>
             </div>
@@ -129,8 +165,8 @@ export default function AdminLayout() {
                   <div key={group.title}>
                     <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">{group.title}</p>
                     <div className="mt-3 space-y-1.5">
-                      {group.items.map(([to, label]) => (
-                        <NavItem key={to} to={to} label={label} />
+                      {group.items.map((item) => (
+                        <NavItem key={item.to} item={item} />
                       ))}
                     </div>
                   </div>
@@ -148,80 +184,105 @@ export default function AdminLayout() {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur">
+          <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
             <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
               <div className="flex min-w-0 items-center gap-3">
                 <button
                   type="button"
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-950 lg:hidden"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-950 lg:hidden"
                   onClick={() => setSidebarOpen((open) => !open)}
                 >
                   <span className="sr-only">Open sidebar</span>
-                  <span className="space-y-1.5">
-                    <span className="block h-0.5 w-5 rounded-full bg-current" />
-                    <span className="block h-0.5 w-5 rounded-full bg-current" />
-                    <span className="block h-0.5 w-5 rounded-full bg-current" />
-                  </span>
+                  <FiMenu className="h-4 w-4" />
                 </button>
+
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">Admin Workspace</p>
-                  <h2 className="truncate text-xl font-semibold text-slate-950">{activeLabel}</h2>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Admin Workspace</p>
+                    <span className="hidden text-slate-300 sm:inline">/</span>
+                    <p className="text-xs font-medium text-slate-500">{todayLabel}</p>
+                  </div>
+                  <h2 className="truncate text-xl font-semibold text-slate-950">{activeItem?.label || 'Admin Panel'}</h2>
                 </div>
               </div>
 
-              <div className="relative">
-                <button
-                  type="button"
-                  className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm transition hover:border-slate-300"
-                  onClick={() => setSettingsOpen((open) => !open)}
-                >
-                  <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-sm font-semibold text-white">
-                    {initials(staff?.full_name)}
+              <div className="flex items-center gap-3">
+                <div className="hidden items-center gap-2 xl:flex">
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">
+                    {roleNames}
                   </span>
-                  <span className="hidden text-left sm:block">
-                    <span className="block text-sm font-semibold text-slate-950">{staff?.full_name || 'Admin User'}</span>
-                    <span className="block text-xs text-slate-500">Settings & account</span>
+                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
+                    {statusLabel}
                   </span>
-                  <span className={`text-slate-400 transition ${settingsOpen ? 'rotate-180' : ''}`}>⌄</span>
-                </button>
+                </div>
 
-                {settingsOpen ? (
-                  <div className="absolute right-0 mt-3 w-72 overflow-hidden rounded-3xl border border-slate-200 bg-white p-2 shadow-[0_24px_70px_-28px_rgba(15,23,42,0.35)]">
-                    <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                      <p className="text-sm font-semibold text-slate-950">{staff?.full_name || 'Admin User'}</p>
-                      <p className="mt-1 text-xs text-slate-500">{staff?.email || 'No email available'}</p>
-                      <p className="mt-2 text-xs font-medium text-emerald-700">{roleNames}</p>
-                    </div>
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm transition hover:border-slate-300"
+                    onClick={() => setSettingsOpen((open) => !open)}
+                  >
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-sm font-semibold text-white">
+                      {initials(staff?.full_name)}
+                    </span>
+                    <span className="hidden min-w-0 text-left md:block">
+                      <span className="block truncate text-sm font-semibold text-slate-950">{staff?.full_name || 'Admin User'}</span>
+                      <span className="block truncate text-xs text-slate-500">{staff?.email || 'No email available'}</span>
+                    </span>
+                    <FiChevronDown className={`h-4 w-4 text-slate-400 transition ${settingsOpen ? 'rotate-180' : ''}`} />
+                  </button>
 
-                    <div className="mt-2 space-y-1">
-                      {visibleSettings.map(([to, label]) => (
-                        <NavLink
-                          key={to}
-                          to={to}
-                          className={({ isActive }) =>
-                            `flex items-center justify-between rounded-2xl px-4 py-3 text-sm transition ${
-                              isActive ? 'bg-slate-950 text-white' : 'text-slate-700 hover:bg-slate-100'
-                            }`
-                          }
+                  {settingsOpen ? (
+                    <div className="absolute right-0 mt-3 w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_24px_70px_-28px_rgba(15,23,42,0.35)]">
+                      <div className="rounded-xl bg-slate-50 px-4 py-3">
+                        <p className="text-sm font-semibold text-slate-950">{staff?.full_name || 'Admin User'}</p>
+                        <p className="mt-1 text-xs text-slate-500">{staff?.email || 'No email available'}</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">{roleNames}</span>
+                          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-medium text-emerald-700">{statusLabel}</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-2 space-y-1">
+                        {visibleSettings.map((item) => (
+                          <NavLink
+                            key={item.to}
+                            to={item.to}
+                            className={({ isActive }) =>
+                              `flex items-center justify-between rounded-xl px-4 py-3 text-sm transition ${
+                                isActive ? 'bg-slate-950 text-white' : 'text-slate-700 hover:bg-slate-100'
+                              }`
+                            }
+                          >
+                            {({ isActive }) => (
+                              <>
+                                <span className="flex items-center gap-3">
+                                  <item.icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                                  <span>{item.label}</span>
+                                </span>
+                                <span className="text-xs opacity-70">Open</span>
+                              </>
+                            )}
+                          </NavLink>
+                        ))}
+                      </div>
+
+                      <div className="mt-2 border-t border-slate-200 pt-2">
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-medium text-rose-600 transition hover:bg-rose-50"
+                          onClick={logout}
                         >
-                          <span>{label}</span>
-                          <span className="text-xs opacity-70">Open</span>
-                        </NavLink>
-                      ))}
+                          <span className="flex items-center gap-3">
+                            <FiLogOut className="h-4 w-4" />
+                            <span>Log out</span>
+                          </span>
+                          <span className="text-xs uppercase tracking-[0.2em]">Exit</span>
+                        </button>
+                      </div>
                     </div>
-
-                    <div className="mt-2 border-t border-slate-200 pt-2">
-                      <button
-                        type="button"
-                        className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium text-rose-600 transition hover:bg-rose-50"
-                        onClick={logout}
-                      >
-                        <span>লগআউট</span>
-                        <span className="text-xs uppercase tracking-[0.2em]">Exit</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
+                  ) : null}
+                </div>
               </div>
             </div>
           </header>
@@ -238,10 +299,10 @@ export default function AdminLayout() {
   )
 }
 
-function NavItem({ to, label }) {
+function NavItem({ item }) {
   return (
     <NavLink
-      to={to}
+      to={item.to}
       className={({ isActive }) =>
         `group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition ${
           isActive
@@ -253,7 +314,7 @@ function NavItem({ to, label }) {
       {({ isActive }) => (
         <>
           <span className={`h-2.5 w-2.5 rounded-full transition ${isActive ? 'bg-emerald-500' : 'bg-slate-600 group-hover:bg-slate-400'}`} />
-          <span>{label}</span>
+          <span>{item.label}</span>
         </>
       )}
     </NavLink>

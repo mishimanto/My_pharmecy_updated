@@ -1,35 +1,49 @@
-import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
-import { FiArrowRight, FiMapPin, FiPackage, FiShield, FiTruck } from 'react-icons/fi'
+import {
+  FiAlertCircle,
+  FiArrowRight,
+  FiCheckCircle,
+  FiClock,
+  FiCreditCard,
+  FiMapPin,
+  FiPackage,
+  FiTruck,
+} from 'react-icons/fi'
 import { orderApi } from '../../api/orderApi'
 import PageHeader from '../../components/common/PageHeader'
-import { date, money } from '../../utils/formatters'
+import { useLanguage } from '../../context/LanguageContext'
+import { date } from '../../utils/formatters'
+import { getDeliveryStatusLabel, getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
 
-const cancellable = ['pending', 'prescription_review', 'confirmed']
+const cancellable = ['pending_confirmation', 'prescription_review']
 
 export default function OrderDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { isBangla } = useLanguage()
+  const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
+  const locale = isBangla ? 'bn-BD' : 'en-US'
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     orderApi.show(id)
       .then((res) => setOrder(res.data.data))
-      .catch(() => toast.error('Order details could not be loaded.'))
+      .catch(() => toast.error(t('অর্ডারের বিস্তারিত লোড করা যায়নি।', 'Order details could not be loaded.')))
       .finally(() => setLoading(false))
-  }, [id])
+  }, [id, t])
 
   const cancelOrder = async () => {
     const result = await Swal.fire({
-      title: 'Cancel this order?',
-      text: 'Reserved stock will be released for other customers.',
+      title: t('এই অর্ডার বাতিল করবেন?', 'Cancel this order?'),
+      text: t('অ্যাডমিন কনফার্ম করার আগে এই অর্ডার বাতিল করা যাবে।', 'This order can be cancelled before admin confirmation.'),
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Cancel order',
-      cancelButtonText: 'Keep order',
+      confirmButtonText: t('অর্ডার বাতিল', 'Cancel order'),
+      cancelButtonText: t('রেখে দিন', 'Keep order'),
     })
 
     if (!result.isConfirmed) return
@@ -37,161 +51,355 @@ export default function OrderDetails() {
     try {
       const res = await orderApi.cancel(id)
       setOrder(res.data.data)
-      toast.success('Order cancelled successfully.')
+      toast.success(t('অর্ডার বাতিল হয়েছে।', 'Order cancelled successfully.'))
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Order could not be cancelled.')
+      toast.error(error.response?.data?.message || t('অর্ডার বাতিল করা যায়নি।', 'Order could not be cancelled.'))
     }
   }
 
-  const confirmCod = async () => {
-    try {
-      await orderApi.codPayment(id)
-      toast.success('COD payment preference confirmed.')
-      const refreshed = await orderApi.show(id)
-      setOrder(refreshed.data.data)
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'COD confirmation could not be completed.')
-    }
+  const formattedDate = useMemo(
+    () => date(order?.order_date, locale),
+    [locale, order?.order_date],
+  )
+
+  const formatMoney = useCallback((value) => `৳${new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0))}`, [locale])
+
+  if (loading) {
+    return <p className="text-sm text-slate-500">{t('অর্ডারের বিস্তারিত লোড হচ্ছে...', 'Loading order details...')}</p>
   }
 
-  if (loading) return <p className="text-sm text-slate-500">Loading order details...</p>
-  if (!order) return <p className="text-sm text-slate-500">Order not found.</p>
+  if (!order) {
+    return <p className="text-sm text-slate-500">{t('অর্ডার পাওয়া যায়নি।', 'Order not found.')}</p>
+  }
+
+  const canOpenPaymentPage = ['BKASH', 'NAGAD'].includes(order.payment_method)
+    && ['awaiting_proof', 'under_review', 'failed'].includes(order.payment_status)
+
+  const paymentOverview = getPaymentOverview(order.payment_status, isBangla)
+  const paymentMethod = getPaymentMethodLabel(order.payment_method, isBangla)
+  const deliveryStatus = getDeliveryStatusLabel(order.delivery?.delivery_status, isBangla)
+  const orderStatus = getOrderStatusLabel(order.order_status, isBangla)
+  const showMakePayment = !paymentOverview.isSettled && canOpenPaymentPage
 
   return (
     <>
       <PageHeader
         title={order.order_number}
-        subtitle={`${date(order.order_date)} • ${order.order_status}`}
-        action={
+        action={(
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => navigate(`/orders/${order.id}/tracking`)} className="border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700">
-              Delivery tracking
+            <button
+              type="button"
+              onClick={() => navigate(`/orders/${order.id}/tracking`)}
+              className="inline-flex items-center gap-2 border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
+            >
+              <FiTruck className="h-4 w-4" />
+              {t('ডেলিভারি ট্র্যাকিং', 'Delivery tracking')}
             </button>
-            {order.payment_method === 'COD' ? (
-              <button onClick={confirmCod} className="bg-slate-950 px-4 py-2 text-sm font-semibold text-white">
-                Confirm COD
-              </button>
-            ) : null}
+
             {cancellable.includes(order.order_status) ? (
-              <button onClick={cancelOrder} className="border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700">
-                Cancel order
+              <button
+                type="button"
+                onClick={cancelOrder}
+                className="inline-flex items-center gap-2 border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:border-rose-300"
+              >
+                <FiAlertCircle className="h-4 w-4" />
+                {t('অর্ডার বাতিল', 'Cancel order')}
               </button>
             ) : null}
           </div>
-        }
+        )}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <section className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <StatusCard label="Order status" value={order.order_status} icon={FiPackage} />
-            <StatusCard label="Payment status" value={order.payment_status} icon={FiShield} />
-            <StatusCard label="Delivery status" value={order.delivery?.delivery_status || 'Not created'} icon={FiTruck} />
-            <StatusCard label="Total amount" value={money(order.total_amount)} icon={FiArrowRight} />
+          <div className="border border-slate-200 bg-white shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
+            <div className="border-b border-slate-200 p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">
+                    {t('অর্ডার ও পেমেন্টের তথ্য', 'Order and payment details')}
+                  </p>
+                </div>
+                <div className="inline-flex border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">
+                  {orderStatus}
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <MetricCard
+                  label={t('মোট অর্ডার', 'Order total')}
+                  value={formatMoney(order.total_amount)}
+                  icon={FiCreditCard}
+                  tone="slate"
+                />
+                <MetricCard
+                  label={t('পেমেন্ট মেথড', 'Payment method')}
+                  value={paymentMethod}
+                  icon={FiClock}
+                  tone="amber"
+                />
+                <MetricCard
+                  label={t('ডেলিভারি স্ট্যাটাস', 'Delivery status')}
+                  value={deliveryStatus}
+                  icon={FiTruck}
+                  tone="sky"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 p-6 md:grid-cols-2">
+              <InlineInfo
+                label={t('অর্ডার তারিখ', 'Order date')}
+                value={formattedDate}
+              />
+
+              <InlineInfo
+                label={t('ট্রানজ্যাকশন আইডি', 'Transaction ID')}
+                value={order.payment?.transaction_id || t('জমা দেওয়া হয়নি', 'Not submitted')}
+              />
+            </div>
           </div>
 
           <div className="border border-slate-200 bg-white shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
             <div className="border-b border-slate-200 p-6">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">Ordered items</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Medicine and unit breakdown.</h2>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">
+                {t('অর্ডার আইটেম', 'Ordered items')}
+              </p>
             </div>
 
             <div className="divide-y divide-slate-200">
-              {order.items?.map((item) => (
-                <div key={item.id} className="grid gap-4 p-6 lg:grid-cols-[1fr_140px]">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-semibold text-slate-950">{item.product?.product_name}</h3>
-                      {item.product?.requires_prescription ? (
-                        <span className="border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-700">
-                          Prescription
-                        </span>
-                      ) : null}
+              {order.items?.map((item) => {
+                const meta = [
+                  item.product?.generic_name,
+                  item.product?.strength,
+                  item.product?.dosage_form,
+                ].filter(Boolean).join(' • ')
+
+                return (
+                  <div key={item.id} className="grid gap-4 p-6 lg:grid-cols-[minmax(0,1fr)_150px]">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-semibold text-slate-950">
+                          {item.product?.product_name || t('নাম পাওয়া যায়নি', 'Product name unavailable')}
+                        </h3>
+                        {item.product?.requires_prescription ? (
+                          <span className="border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-700">
+                            {t('প্রেসক্রিপশন', 'Prescription')}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <p className="mt-2 text-sm text-slate-500">
+                        {meta || t('জেনেরিক ও স্ট্রেংথ তথ্য নেই', 'Generic and strength details are not listed.')}
+                      </p>
+
+                      <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                        <MetaChip>{item.quantity} {item.purchase_unit || 'piece'}</MetaChip>
+                        <MetaChip>{item.piece_quantity || item.quantity} {t('পিস মোট', 'pieces total')}</MetaChip>
+                        <MetaChip>{formatMoney(item.unit_price)} {t('প্রতি ইউনিট', 'each')}</MetaChip>
+                      </div>
+
+                      <p className="mt-4 text-xs leading-6 text-slate-500">
+                        {t('ব্যাচ এলোকেশন', 'Batch allocation')}: {item.batches?.map((batch) => `${batch.batch?.batch_number} x ${batch.quantity}`).join(', ') || t('উল্লেখ নেই', 'Not listed')}
+                      </p>
                     </div>
-                    <p className="mt-2 text-sm text-slate-500">
-                      {item.product?.generic_name || '-'} {item.product?.strength || ''} {item.product?.dosage_form || ''}
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                      <span className="border border-slate-200 bg-slate-50 px-2 py-1 text-slate-700">{item.quantity} {item.purchase_unit || 'piece'}</span>
-                      <span className="border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">{item.piece_quantity || item.quantity} pieces total</span>
-                      <span className="border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">{money(item.unit_price)} each</span>
+
+                    <div className="text-left lg:text-right">
+                      <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                        {t('মোট', 'Total')}
+                      </div>
+                      <div className="mt-2 text-2xl font-semibold text-slate-950">
+                        {formatMoney(item.subtotal)}
+                      </div>
                     </div>
-                    <p className="mt-3 text-xs leading-6 text-slate-500">
-                      Batch allocation: {item.batches?.map((batch) => `${batch.batch?.batch_number} x ${batch.quantity}`).join(', ') || 'Not listed'}
-                    </p>
                   </div>
-                  <div className="text-left lg:text-right">
-                    <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Subtotal</div>
-                    <div className="mt-2 text-2xl font-semibold text-slate-950">{money(item.subtotal)}</div>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </section>
 
         <aside className="space-y-6">
-          <div className="border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
-            <div className="border-b border-slate-200 pb-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">Order summary</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Payment and delivery totals.</h2>
-            </div>
-            <div className="mt-4 space-y-3 text-sm text-slate-600">
-              <div className="flex justify-between"><span>Subtotal</span><span>{money(order.subtotal_amount)}</span></div>
-              <div className="flex justify-between"><span>Delivery charge</span><span>{money(order.delivery_charge)}</span></div>
-              <div className="flex justify-between border-t border-slate-200 pt-3 text-base font-semibold text-slate-950"><span>Total</span><span>{money(order.total_amount)}</span></div>
-              <div className="border border-slate-200 bg-slate-50 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Payment method</div>
-                <div className="mt-2 text-sm font-semibold text-slate-950">{order.payment_method}</div>
-                <div className="mt-1 text-sm text-slate-500">Status: {order.payment_status}</div>
+          <SurfaceCard>
+            <SectionHeading eyebrow={t('পেমেন্ট সারাংশ', 'Payment summary')} />
+
+            <div className={`mt-3 border p-5 ${paymentOverview.panelClass}`}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className={`text-3xl font-semibold ${paymentOverview.textClass}`}>
+                    {paymentOverview.label}
+                  </div>
+                </div>
+                {showMakePayment ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/orders/${order.id}/payment`)}
+                    className="inline-flex items-center gap-2 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  >
+                    {t('পেমেন্ট করুন', 'Payment')}
+                    <FiArrowRight className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <div className={`inline-flex h-11 w-11 items-center justify-center border ${paymentOverview.iconClass}`}>
+                    {paymentOverview.isSettled ? <FiCheckCircle className="h-5 w-5" /> : <FiAlertCircle className="h-5 w-5" />}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-5 space-y-3 border-t border-white/70 pt-4 text-sm text-slate-700">
+                <DataRow label={t('পেমেন্ট মেথড', 'Payment method')} value={paymentMethod} />
+                <DataRow label={t('রিভিউ স্টেট', 'Review state')} value={getPaymentStatusLabel(order.payment_status, isBangla)} />
+                <DataRow label={t('অর্ডার টোটাল', 'Order total')} value={formatMoney(order.total_amount)} emphasized />
               </div>
             </div>
-          </div>
 
-          <div className="border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
+            {order.payment?.reviewed_note ? (
+              <div className="mt-4 border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                <span className="font-semibold text-slate-950">{t('রিভিউ নোট', 'Review note')}:</span> {order.payment.reviewed_note}
+              </div>
+            ) : null}
+          </SurfaceCard>
+
+          <SurfaceCard>
+            <SectionHeading eyebrow={t('অর্ডার সামারি', 'Order summary')} />
+
+            <div className="mt-4 space-y-3 text-sm text-slate-600">
+              <DataRow label={t('সাবটোটাল', 'Subtotal')} value={formatMoney(order.subtotal_amount)} />
+              <DataRow label={t('ডেলিভারি চার্জ', 'Delivery charge')} value={formatMoney(order.delivery_charge)} />
+              {Number(order.discount_amount || 0) > 0 ? (
+                <DataRow label={t('কুপন ডিসকাউন্ট', 'Coupon discount')} value={`-${formatMoney(order.discount_amount)}`} />
+              ) : null}
+              <DataRow label={t('মোট', 'Total')} value={formatMoney(order.total_amount)} emphasized />
+            </div>
+
+            {order.admin_note ? (
+              <div className="mt-4 border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                <span className="font-semibold text-slate-950">{t('অ্যাডমিন নোট', 'Admin note')}:</span> {order.admin_note}
+              </div>
+            ) : null}
+
+            {order.cancellation_reason ? (
+              <div className="mt-4 border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                <span className="font-semibold">{t('বাতিলের কারণ', 'Cancellation reason')}:</span> {order.cancellation_reason}
+              </div>
+            ) : null}
+          </SurfaceCard>
+
+          <SurfaceCard>
             <div className="flex items-start gap-3">
               <div className="inline-flex h-10 w-10 items-center justify-center border border-slate-200 bg-slate-50 text-slate-950">
                 <FiMapPin className="h-5 w-5" />
               </div>
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">Shipping address</p>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">{order.customer_name || 'Customer delivery info'}</h2>
-                <p className="mt-3 text-sm leading-8 text-slate-600">{order.shipping_address || 'Address not available'}</p>
+              <div className="min-w-0 flex-1">
+                <SectionHeading
+                  eyebrow={t('শিপিং ঠিকানা', 'Shipping address')}
+                  title={order.customer_name || t('ডেলিভারি তথ্য', 'Delivery information')}
+                />
+                <p className="mt-3 text-sm leading-7 text-slate-600">
+                  {order.shipping_address || t('ঠিকানা পাওয়া যায়নি', 'Address not available')}
+                </p>
               </div>
             </div>
-          </div>
-
-          <div className="border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">Next step</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Stay close to delivery updates.</h2>
-            <p className="mt-3 text-sm leading-8 text-slate-500">
-              Use tracking for delivery movement, or open support if any medicine, payment, or delivery issue needs review.
-            </p>
-            <div className="mt-5 flex flex-col gap-3">
-              <Link to={`/orders/${order.id}/tracking`} className="flex items-center justify-between bg-slate-950 px-5 py-3 text-sm font-semibold text-white">
-                Open tracking
-                <FiArrowRight className="h-4 w-4" />
-              </Link>
-              <Link to="/support" className="flex items-center justify-between border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
-                Contact support
-                <FiArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
+          </SurfaceCard>
         </aside>
       </div>
     </>
   )
 }
 
-function StatusCard({ label, value, icon: Icon }) {
+function getPaymentOverview(status, isBangla) {
+  const settled = ['paid', 'refunded'].includes(status)
+
+  if (settled) {
+    return {
+      isSettled: true,
+      label: isBangla ? 'পরিশোধিত' : 'Paid',
+      panelClass: 'border-emerald-200 bg-emerald-50/70',
+      iconClass: 'border-emerald-200 bg-white text-emerald-700',
+      textClass: 'text-emerald-700',
+    }
+  }
+
+  return {
+    isSettled: false,
+    label: isBangla ? 'অপরিশোধিত' : 'Unpaid',
+    panelClass: 'border-rose-200 bg-rose-50/70',
+    iconClass: 'border-rose-200 bg-white text-rose-700',
+    textClass: 'text-rose-700',
+  }
+}
+
+function getPaymentMethodLabel(method, isBangla) {
+  const labels = {
+    COD: isBangla ? 'ক্যাশ অন ডেলিভারি' : 'Cash on delivery',
+    BKASH: 'bKash',
+    NAGAD: 'Nagad',
+  }
+
+  return labels[method] || method || '-'
+}
+
+function SurfaceCard({ children }) {
   return (
-    <div className="border border-slate-200 bg-white p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
-      <div className="inline-flex h-10 w-10 items-center justify-center border border-slate-200 bg-slate-50 text-slate-950">
+    <div className="border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
+      {children}
+    </div>
+  )
+}
+
+function SectionHeading({ eyebrow, title }) {
+  return (
+    <div>
+      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">{eyebrow}</p>
+      {title ? <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{title}</h2> : null}
+    </div>
+  )
+}
+
+function MetricCard({ label, value, icon: Icon, tone }) {
+  const tones = {
+    amber: 'border-amber-200 bg-amber-50/60 text-amber-700',
+    emerald: 'border-emerald-200 bg-emerald-50/60 text-emerald-700',
+    sky: 'border-sky-200 bg-sky-50/60 text-sky-700',
+    slate: 'border-slate-200 bg-slate-50 text-slate-700',
+  }
+
+  return (
+    <div className="border border-slate-200 bg-slate-50/40 p-4">
+      <div className={`inline-flex h-10 w-10 items-center justify-center border ${tones[tone] || tones.slate}`}>
         <Icon className="h-5 w-5" />
       </div>
-      <div className="mt-4 text-sm text-slate-500">{label}</div>
+      <div className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</div>
       <div className="mt-2 text-xl font-semibold text-slate-950">{value}</div>
+    </div>
+  )
+}
+
+function InlineInfo({ label, value }) {
+  return (
+    <div className="border border-slate-200 bg-slate-50/60 p-4">
+      <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{label}</div>
+      <div className="mt-2 text-sm font-semibold text-slate-950">{value}</div>
+    </div>
+  )
+}
+
+function MetaChip({ children }) {
+  return (
+    <span className="border border-slate-200 bg-slate-50 px-2 py-1 text-slate-700">
+      {children}
+    </span>
+  )
+}
+
+function DataRow({ label, value, emphasized = false }) {
+  return (
+    <div className={`flex items-start justify-between gap-4 ${emphasized ? 'border-t border-slate-200 pt-3 text-base font-semibold text-slate-950' : ''}`}>
+      <span>{label}</span>
+      <span className={`${emphasized ? 'text-slate-950' : 'text-slate-700'} text-right`}>{value}</span>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import api from './axios'
 
-const PRODUCT_CACHE_KEY = 'storefront_product_cache_v3'
+const PRODUCT_CACHE_KEY = 'storefront_product_cache_v4'
 const PRODUCT_CACHE_TTL = 1000 * 60 * 30
 const productCache = new Map()
 const listCache = new Map()
@@ -42,9 +42,11 @@ function clearCacheStorage() {
   window.sessionStorage.removeItem(PRODUCT_CACHE_KEY)
   window.sessionStorage.removeItem('storefront_product_cache_v1')
   window.sessionStorage.removeItem('storefront_product_cache_v2')
+  window.sessionStorage.removeItem('storefront_product_cache_v3')
   window.localStorage.removeItem(PRODUCT_CACHE_KEY)
   window.localStorage.removeItem('storefront_product_cache_v1')
   window.localStorage.removeItem('storefront_product_cache_v2')
+  window.localStorage.removeItem('storefront_product_cache_v3')
 }
 
 function writeCache() {
@@ -53,7 +55,7 @@ function writeCache() {
   try {
     const payload = {
       saved_at: Date.now(),
-      products: Array.from(productCache.entries()).slice(-36),
+      products: Array.from(productCache.entries()).slice(-72),
       lists: Array.from(listCache.entries()).slice(-12),
       categories: categoryCache,
       manufacturers: manufacturerCache,
@@ -90,11 +92,26 @@ function listKey(params = {}) {
   return JSON.stringify(normalizeParams(params))
 }
 
+function setProductCache(product) {
+  if (!product) return
+
+  if (product.id != null) {
+    productCache.set(`id:${product.id}`, product)
+  }
+
+  if (product.slug) {
+    productCache.set(`slug:${product.slug}`, product)
+  }
+}
+
+function getCachedProductByKey(idOrSlug) {
+  const key = String(idOrSlug)
+  return productCache.get(`slug:${key}`) || productCache.get(`id:${key}`) || null
+}
+
 function primeProducts(products) {
   products.forEach((product) => {
-    if (product?.id != null) {
-      productCache.set(String(product.id), product)
-    }
+    setProductCache(product)
   })
 }
 
@@ -126,16 +143,16 @@ function fetchList(params = {}) {
   return request
 }
 
-function fetchProduct(id) {
-  const key = String(id)
+function fetchProduct(idOrSlug) {
+  const key = String(idOrSlug)
 
   if (inflightProducts.has(key)) {
     return inflightProducts.get(key)
   }
 
-  const request = api.get(`/products/${id}`).then((response) => {
+  const request = api.get(`/products/${encodeURIComponent(key)}`).then((response) => {
     if (response.data?.data) {
-      productCache.set(key, response.data.data)
+      setProductCache(response.data.data)
       writeCache()
     }
 
@@ -182,29 +199,29 @@ function fetchManufacturers() {
 
 export const productApi = {
   list: (params = {}) => fetchList(params),
-  show: (id) => fetchProduct(id),
+  show: (idOrSlug) => fetchProduct(idOrSlug),
   categories: () => fetchCategories(),
   manufacturers: () => fetchManufacturers(),
   categoryProducts: (id, params) => api.get(`/categories/${id}/products`, { params }),
-  getCachedProduct: (id) => productCache.get(String(id)) || null,
+  getCachedProduct: (idOrSlug) => getCachedProductByKey(idOrSlug),
   getCachedList: (params = {}) => listCache.get(listKey(params)) || null,
   getCachedCategories: () => categoryCache || [],
   getCachedManufacturers: () => manufacturerCache || [],
   primeProduct: (product) => {
-    if (product?.id != null) {
-      productCache.set(String(product.id), product)
+    if (product?.id != null || product?.slug) {
+      setProductCache(product)
       writeCache()
     }
   },
   primeList: (params = {}, payload = null) => {
     storeList(listKey(params), payload)
   },
-  prefetch: async (id) => {
-    const cached = productCache.get(String(id))
+  prefetch: async (idOrSlug) => {
+    const cached = getCachedProductByKey(idOrSlug)
     if (cached) return cached
 
     try {
-      const response = await fetchProduct(id)
+      const response = await fetchProduct(idOrSlug)
       return response.data?.data || null
     } catch {
       return null

@@ -32,6 +32,9 @@ class CartController extends Controller
         $product = Product::with(['images', 'batches' => $catalog->validBatchConstraint()])->findOrFail($data['product_id']);
         abort_unless($product->is_active, 422, 'Product is not active.');
 
+        [$user] = $shopper->requireGuestOrUser($request);
+        abort_if($product->requires_prescription && ! $user, 403, 'Please login before ordering prescription medicines.');
+
         $product = $catalog->appendComputedFields($product);
         $purchaseUnit = $data['purchase_unit'] ?? $product->default_purchase_unit;
         $option = $catalog->purchaseOption($product, $purchaseUnit);

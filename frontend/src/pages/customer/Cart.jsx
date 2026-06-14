@@ -1,30 +1,126 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import Swal from 'sweetalert2'
 import { FiArrowRight, FiFileText, FiShield, FiShoppingCart, FiTruck } from 'react-icons/fi'
+import { FaFilePrescription } from "react-icons/fa";
+import { GrCheckboxSelected } from "react-icons/gr";
+import { orderApi } from '../../api/orderApi'
 import PageHeader from '../../components/common/PageHeader'
 import EmptyState from '../../components/common/EmptyState'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useStorefront } from '../../context/StorefrontContext'
 import { money } from '../../utils/formatters'
-
-const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://my_pharmecy.test/api').replace(/\/api\/?$/, '')
-
-function resolveImage(path) {
-  if (!path) return null
-  return path.startsWith('http') ? path : new URL(path, `${API_ORIGIN}/`).toString()
-}
+import { readCheckoutDraft, writeCheckoutDraft } from '../../utils/checkoutDraft'
+import { handleImageFallback, resolveImageUrl } from '../../utils/imageUrl'
 
 export default function Cart() {
   const { loading: authLoading } = useCustomerAuth()
   const { cart, cartLoading, updateCartItem, removeCartItem, clearCart } = useStorefront()
   const [updatingId, setUpdatingId] = useState(null)
+  const draft = useMemo(() => readCheckoutDraft(), [])
+  const [deliveryAreas, setDeliveryAreas] = useState([])
+  const [deliveryAreaId, setDeliveryAreaId] = useState(draft.deliveryAreaId)
+  const [couponInput, setCouponInput] = useState(draft.couponCode)
+  const [appliedCouponCode, setAppliedCouponCode] = useState(draft.couponCode)
+  const [pricing, setPricing] = useState(null)
+  const [pricingLoading, setPricingLoading] = useState(false)
 
   const items = useMemo(() => cart?.items || [], [cart])
   const hasPrescription = Boolean(cart?.requires_prescription)
   const warnings = cart?.warnings || []
+  const filteredWarnings = useMemo(
+    () => warnings.filter((warning) => warning !== 'This cart contains prescription medicines.'),
+    [warnings],
+  )
   const totalQuantity = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+  const selectedDeliveryArea = useMemo(
+    () => deliveryAreas.find((item) => String(item.id) === String(deliveryAreaId)) || null,
+    [deliveryAreaId, deliveryAreas],
+  )
+
+  const loadPricing = useCallback(async (nextAreaId, nextCouponCode, { silent = false } = {}) => {
+    if (!items.length) {
+      setPricing(null)
+      return null
+    }
+
+    if (!nextAreaId) {
+      setPricing({
+        subtotal_amount: Number(cart?.subtotal || 0),
+        delivery_charge: 0,
+        discount_amount: 0,
+        total_amount: Number(cart?.subtotal || 0),
+        coupon: null,
+      })
+      return null
+    }
+
+    setPricingLoading(true)
+
+    try {
+      const { data } = await orderApi.quote({
+        delivery_area_id: Number(nextAreaId),
+        coupon_code: nextCouponCode || undefined,
+      })
+
+      setPricing(data.data)
+      return data.data
+    } catch (error) {
+      if (nextCouponCode) {
+        setAppliedCouponCode('')
+        writeCheckoutDraft({ couponCode: '' })
+        const fallback = await loadPricing(nextAreaId, '', { silent: true })
+        if (!silent) {
+          toast.error(error.response?.data?.message || 'Coupon could not be applied.')
+        }
+        return fallback
+      }
+
+      if (!silent) {
+        toast.error(error.response?.data?.message || 'Cart summary could not be updated.')
+      }
+      return null
+    } finally {
+      setPricingLoading(false)
+    }
+  }, [cart?.subtotal, items.length])
+
+  useEffect(() => {
+    if (!items.length) return
+
+    orderApi.deliveryAreas()
+      .then(({ data }) => {
+        const nextAreas = data.data || []
+        setDeliveryAreas(nextAreas)
+
+        if (!nextAreas.length) {
+          setDeliveryAreaId('')
+          writeCheckoutDraft({ deliveryAreaId: '' })
+          return
+        }
+
+        const preferredAreaId = nextAreas.some((item) => String(item.id) === String(draft.deliveryAreaId))
+          ? String(draft.deliveryAreaId)
+          : String(nextAreas[0].id)
+
+        setDeliveryAreaId((current) => {
+          if (current && nextAreas.some((item) => String(item.id) === String(current))) {
+            return current
+          }
+
+          writeCheckoutDraft({ deliveryAreaId: preferredAreaId })
+          return preferredAreaId
+        })
+      })
+      .catch(() => toast.error('Delivery areas could not be loaded.'))
+  }, [draft.deliveryAreaId, items.length])
+
+  useEffect(() => {
+    if (!items.length || !deliveryAreaId) return
+
+    loadPricing(deliveryAreaId, appliedCouponCode, { silent: true })
+  }, [appliedCouponCode, deliveryAreaId, items.length, loadPricing, cart?.subtotal])
 
   const updateQuantity = async (item, quantity) => {
     if (quantity < 1) return
@@ -70,10 +166,45 @@ export default function Cart() {
   }
 
   const pageLoading = authLoading || (cartLoading && !cart)
+  const subtotal = Number(pricing?.subtotal_amount ?? cart?.subtotal ?? 0)
+  const deliveryCharge = Number(pricing?.delivery_charge ?? selectedDeliveryArea?.delivery_charge ?? 0)
+  const discountAmount = Number(pricing?.discount_amount ?? 0)
+  const total = Number(pricing?.total_amount ?? Math.max(0, subtotal + deliveryCharge - discountAmount))
+
+  const handleDeliveryAreaChange = async (value) => {
+    setDeliveryAreaId(value)
+    writeCheckoutDraft({ deliveryAreaId: value })
+    await loadPricing(value, appliedCouponCode, { silent: true })
+  }
+
+  const applyCoupon = async () => {
+    const nextCode = couponInput.trim().toUpperCase()
+
+    if (!nextCode) {
+      toast.error('Enter a coupon code first.')
+      return
+    }
+
+    const quote = await loadPricing(deliveryAreaId, nextCode)
+
+    if (!quote) return
+
+    setCouponInput(nextCode)
+    setAppliedCouponCode(nextCode)
+    writeCheckoutDraft({ couponCode: nextCode })
+    toast.success(`${nextCode} applied successfully.`)
+  }
+
+  const removeCoupon = async () => {
+    setCouponInput('')
+    setAppliedCouponCode('')
+    writeCheckoutDraft({ couponCode: '' })
+    await loadPricing(deliveryAreaId, '', { silent: true })
+  }
 
   return (
     <>
-      <PageHeader title="My cart" subtitle="Review medicines, purchase units, stock limits, and prescription requirements before confirming the pharmacy order." />
+      <PageHeader title="Cart" />
 
       {pageLoading ? <p className="text-slate-500">Loading cart...</p> : null}
       {!pageLoading && items.length === 0 ? <EmptyState title="Cart is empty" text="Add medicines and they will appear here." /> : null}
@@ -83,33 +214,33 @@ export default function Cart() {
           <section className="space-y-4">
             <div className="grid gap-4 md:grid-cols-3">
               <MiniStat label="Line items" value={items.length} icon={FiShoppingCart} />
-              <MiniStat label="Selected units" value={totalQuantity} icon={FiArrowRight} />
-              <MiniStat label="Prescription items" value={hasPrescription ? 'Yes' : 'No'} icon={FiShield} />
+              <MiniStat label="Selected units" value={totalQuantity} icon={GrCheckboxSelected} />
+              <MiniStat label="Prescription items" value={hasPrescription ? 'Yes' : 'No'} icon={FaFilePrescription} tone={hasPrescription ? 'danger' : 'default'} />
             </div>
 
             {hasPrescription ? (
-              <div className="border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-800">
-                This cart contains prescription medicines. Please upload or select an approved prescription before checkout.
+              <div className="border border-amber-200 bg-amber-50 p-3 text-sm leading-7 text-amber-800">
+                <span className="font-semibold">Note:</span> This cart contains prescription medicines. Please upload or select an approved prescription before checkout.
               </div>
             ) : null}
 
-            {warnings.length > 0 ? (
+            {filteredWarnings.length > 0 ? (
               <div className="border border-rose-200 bg-rose-50 p-4 text-sm leading-7 text-rose-800">
-                {warnings.map((warning) => <p key={warning}>{warning}</p>)}
+                {filteredWarnings.map((warning) => <p key={warning}>{warning}</p>)}
               </div>
             ) : null}
 
             <div className="border border-slate-200 bg-white shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
               {items.map((item) => {
-                const image = resolveImage(item.image_url)
+                const image = resolveImageUrl(item.image_url)
 
                 return (
                   <div key={item.cart_item_id} className="grid gap-5 border-b border-slate-200 p-5 last:border-b-0 lg:grid-cols-[84px_1fr_160px_140px] lg:items-center">
                     <div className="overflow-hidden border border-slate-200 bg-slate-50">
                       {image ? (
-                        <img className="h-[84px] w-full object-cover" src={image} alt={item.product_name} />
+                        <img className="h-21 w-full object-cover" src={image} alt={item.product_name} onError={handleImageFallback} />
                       ) : (
-                        <div className="flex h-[84px] items-center justify-center text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">Rx</div>
+                        <div className="flex h-21 items-center justify-center text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">Rx</div>
                       )}
                     </div>
 
@@ -166,16 +297,63 @@ export default function Cart() {
           <aside className="space-y-6">
             <div className="border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)] xl:sticky xl:top-24 xl:self-start">
               <div className="border-b border-slate-200 pb-4">
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">Cart summary</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Ready for checkout.</h2>
+                <p className="text-sm text-center font-semibold uppercase tracking-[0.18em] text-emerald-600">Cart summary</p>
+                {/* <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Ready for checkout.</h2> */}
               </div>
 
               <div className="mt-4 space-y-3 text-sm text-slate-600">
-                <div className="flex justify-between"><span>Items subtotal</span><span>{money(cart?.subtotal)}</span></div>
-                <div className="flex justify-between"><span>Estimated delivery</span><span>{money(60)}</span></div>
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Delivery area</label>
+                  <select
+                    value={deliveryAreaId}
+                    onChange={(event) => handleDeliveryAreaChange(event.target.value)}
+                    className="mt-2 w-full border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 outline-none"
+                  >
+                    <option value="">{deliveryAreas.length ? 'Select a delivery area' : 'Loading delivery areas...'}</option>
+                    {deliveryAreas.map((area) => (
+                      <option key={area.id} value={area.id}>
+                        {area.area_name}, {area.city} - {money(area.delivery_charge)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="py-5 border-y border-slate-200">
+                  <label className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Apply coupon</label>
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      value={couponInput}
+                      onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
+                      placeholder="Enter coupon code"
+                      className="min-w-0 flex-1 border border-slate-300 px-3 py-3 text-sm text-slate-900 outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={applyCoupon}
+                      disabled={!deliveryAreaId || pricingLoading}
+                      className="border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                  {appliedCouponCode && pricing?.coupon ? (
+                    <div className="mt-2 flex items-center justify-between gap-3 border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+                      <span>{pricing.coupon.label} ({pricing.coupon.code})</span>
+                      <button type="button" onClick={removeCoupon} className="text-emerald-800 underline">
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-slate-500"></p>
+                  )}
+                </div>
+
+                <div className="flex justify-between"><span>Items subtotal</span><span>{money(subtotal)}</span></div>
+                <div className="flex justify-between"><span>Delivery charge</span><span>{money(deliveryCharge)}</span></div>
+                <div className="flex justify-between"><span>Coupon discount</span><span>-{money(discountAmount)}</span></div>
                 <div className="flex justify-between border-t border-slate-200 pt-3 text-base font-semibold text-slate-950">
                   <span>Estimated total</span>
-                  <span>{money(Number(cart?.subtotal || 0) + 60)}</span>
+                  <span>{money(total)}</span>
                 </div>
               </div>
 
@@ -187,12 +365,7 @@ export default function Cart() {
                 <button className="border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700" onClick={clear}>
                   Clear full cart
                 </button>
-              </div>
-
-              <div className="mt-5 grid gap-3">
-                <SupportNote icon={FiFileText} title="Prescription workflow" body="Upload a prescription before checkout if the cart contains restricted medicines." />
-                <SupportNote icon={FiTruck} title="Delivery flow" body="Delivery status becomes visible from your order details after confirmation and processing." />
-              </div>
+              </div>              
             </div>
           </aside>
         </div>
@@ -201,17 +374,26 @@ export default function Cart() {
   )
 }
 
-function MiniStat({ label, value, icon: Icon }) {
+function MiniStat({ label, value, icon: Icon, tone = 'default' }) {
+  const danger = tone === 'danger'
+
   return (
-    <div className="border border-slate-200 bg-white p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
-      <div className="inline-flex h-10 w-10 items-center justify-center border border-slate-200 bg-slate-50 text-slate-950">
-        <Icon className="h-5 w-5" />
+    <div className={`border p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)] ${danger ? 'border-rose-200 bg-rose-50' : 'border-slate-200 bg-white'}`}>
+      <div className="flex items-center gap-2">
+        <div className={`inline-flex h-6 w-6 items-center justify-center text-slate-950`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className={`text-sm `}>
+          {label}
+        </div>
       </div>
-      <div className="mt-4 text-sm text-slate-500">{label}</div>
-      <div className="mt-2 text-2xl font-semibold text-slate-950">{value}</div>
+
+      <div className={`mt-3 ml-2 text-2xl font-semibold ${danger ? 'text-rose-700' : 'text-slate-950'}`}>
+        {value}
+      </div>
     </div>
-  )
-}
+      )
+    }
 
 function SupportNote({ icon: Icon, title, body }) {
   return (

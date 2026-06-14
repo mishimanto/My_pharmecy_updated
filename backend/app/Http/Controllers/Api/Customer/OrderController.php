@@ -17,7 +17,7 @@ class OrderController extends Controller
     {
         return $this->ok(
             $request->user()->hasMany(Order::class)
-                ->with('user', 'address', 'items.product', 'items.batches.batch', 'payment', 'delivery')
+                ->with('user', 'address', 'deliveryArea', 'items.product', 'items.batches.batch', 'payment', 'delivery')
                 ->latest()
                 ->paginate(10),
             'Orders loaded successfully.'
@@ -28,7 +28,7 @@ class OrderController extends Controller
     {
         return $this->ok(
             $this->orderQuery($request, $shopper)
-                ->with('user', 'address', 'items.product', 'items.batches.batch', 'payment', 'delivery')
+                ->with('user', 'address', 'deliveryArea', 'items.product', 'items.batches.batch', 'payment', 'delivery')
                 ->findOrFail($id),
             'Order details loaded successfully.'
         );

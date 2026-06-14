@@ -20,6 +20,7 @@ export const adminApi = {
   uploadProductImages: (id, formData) => api.post(`/admin/products/${id}/images`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   deleteProductImage: (id) => api.delete(`/admin/product-images/${id}`),
   reviewPrescription: (id, payload) => api.post(`/admin/prescriptions/${id}/review`, payload),
+  reviewOrderPrescriptionMatch: (id, payload) => api.patch(`/admin/orders/${id}/prescription-match`, payload),
   createOrderDelivery: (id) => api.post(`/admin/orders/${id}/delivery`),
   replySupportTicket: (id, formData) => api.post(`/admin/support-tickets/${id}/replies`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   permissions: () => api.get('/admin/permissions'),

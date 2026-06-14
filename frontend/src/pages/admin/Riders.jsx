@@ -1,2 +1,2 @@
 import ResourcePage from './ResourcePage'
-export default function Riders() { return <ResourcePage title="রাইডার" resource="riders" /> }
+export default function Riders() { return <ResourcePage title="Riders" resource="riders" /> }

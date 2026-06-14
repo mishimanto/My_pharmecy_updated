@@ -1,100 +1,119 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+﻿import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { FiArrowRight, FiClock, FiFileText, FiMapPin, FiPackage, FiPhoneCall, FiSearch, FiShield, FiTruck } from 'react-icons/fi'
-import ProductCard, { ProductCardSkeleton } from '../../components/customer/ProductCard'
+import {
+  FiCheckCircle,
+  FiClock,
+  FiCreditCard,
+  FiFileText,
+  FiPhoneCall,
+  FiSearch,
+  FiShield,
+  FiTruck,
+} from 'react-icons/fi'
 import { productApi } from '../../api/productApi'
+import HomeCategoriesSection from '../../components/customer/home/HomeCategoriesSection'
+import HomeFeaturedProductsSection from '../../components/customer/home/HomeFeaturedProductsSection'
+import HomeHeroSection from '../../components/customer/home/HomeHeroSection'
+import HomeProductPanelsSection from '../../components/customer/home/HomeProductPanelsSection'
+// import HomeQuickPathsSection from '../../components/customer/home/HomeQuickPathsSection'
+import HomeSupportCtaSection from '../../components/customer/home/HomeSupportCtaSection'
+import HomeTrustStrip from '../../components/customer/home/HomeTrustStrip'
+import HomeWorkflowSpotlightSection from '../../components/customer/home/HomeWorkflowSpotlightSection'
+import { getHeroSlides } from '../../components/customer/home/homeUtils'
+import { useCustomerAuth } from '../../context/CustomerAuthContext'
+import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
-import { money } from '../../utils/formatters'
 import { getDefaultPurchaseOption } from '../../utils/purchaseUnits'
-
-const heroSlides = [
-  {
-    id: 1,
-    title: 'Order medicines online with a clearer pharmacy-first shopping flow.',
-    body: 'Browse prescription medicines, OTC essentials, and healthcare products with faster search, cleaner product discovery, and direct prescription upload.',
-    image: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1600&q=80',
-  },
-  {
-    id: 2,
-    title: 'Prescription upload, trusted support, and doorstep delivery in one place.',
-    body: 'A modern online pharmacy experience designed around medicine ordering, prescription review, and practical support actions.',
-    image: 'https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=1600&q=80',
-  },
-  {
-    id: 3,
-    title: 'Find medicines, compare units, and place orders with less friction.',
-    body: 'Product-first browsing, category-led discovery, and a cleaner route from search to checkout.',
-    image: 'https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&w=1600&q=80',
-  },
-]
-
-const serviceItems = [
-  {
-    icon: FiShield,
-    title: 'Prescription-sensitive ordering',
-    body: 'Products that require review stay clearly marked and close to upload actions.',
-  },
-  {
-    icon: FiTruck,
-    title: 'Delivery-friendly workflow',
-    body: 'Search, cart, checkout, and tracking routes stay close together for faster completion.',
-  },
-  {
-    icon: FiClock,
-    title: 'Practical customer support',
-    body: 'Prescription, order, and support flows are easy to reach from one storefront shell.',
-  },
-]
-
-const workflowItems = [
-  {
-    icon: FiSearch,
-    title: 'Search and filter',
-    body: 'Find medicine by product name, generic name, category, or manufacturer.',
-  },
-  {
-    icon: FiFileText,
-    title: 'Upload prescription',
-    body: 'Submit prescription files for review when restricted products are needed.',
-  },
-  {
-    icon: FiPackage,
-    title: 'Checkout and track',
-    body: 'Place medicine orders and follow delivery progress from your account flow.',
-  },
-]
-
-const categoryTints = [
-  'from-emerald-50 to-white',
-  'from-sky-50 to-white',
-  'from-amber-50 to-white',
-  'from-rose-50 to-white',
-  'from-cyan-50 to-white',
-  'from-teal-50 to-white',
-]
-
-const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://my_pharmecy.test/api').replace(/\/api\/?$/, '')
-
-function resolveImage(path) {
-  if (!path) return null
-  return path.startsWith('http') ? path : new URL(path, `${API_ORIGIN}/`).toString()
-}
-
-function getProductImage(product) {
-  return resolveImage(product?.primary_image?.image_url || product?.images?.[0]?.image_url)
-}
+import { isPrescriptionLoginRequiredError, requiresPrescriptionLogin, showPrescriptionLoginRequiredAlert } from '../../utils/prescriptionCartAlert'
 
 export default function Home() {
   const { addToCart } = useStorefront()
-  const navigate = useNavigate()
+  const { customer } = useCustomerAuth()
+  const { isBangla } = useLanguage()
+  const heroSlides = useMemo(() => getHeroSlides(isBangla), [isBangla])
+  const trustItems = useMemo(() => ([
+    { icon: FiShield, label: isBangla ? 'লাইসেন্সপ্রাপ্ত ফার্মেসি সেবা' : 'Licensed pharmacy service', detail: isBangla ? 'প্রেসক্রিপশন রিভিউসহ' : 'With prescription review' },
+    { icon: FiTruck, label: isBangla ? 'ঢাকাজুড়ে হোম ডেলিভারি' : 'Doorstep delivery in Dhaka', detail: isBangla ? 'অর্ডারের প্রতিটি ধাপ ট্র্যাক করুন' : 'Track every order step' },
+    { icon: FiCreditCard, label: isBangla ? 'ক্যাশ অন ডেলিভারি' : 'Cash on delivery', detail: isBangla ? 'পণ্য হাতে পেয়ে পেমেন্ট করুন' : 'Pay when you receive' },
+    { icon: FiPhoneCall, label: '09610-001122', detail: isBangla ? 'সকাল ৮টা - রাত ১১টা সহায়তা' : '8AM - 11PM support' },
+  ]), [isBangla])
+  // const quickPaths = useMemo(() => ([
+  //   {
+  //     to: '/upload-prescription',
+  //     icon: FiFileText,
+  //     label: isBangla ? 'প্রেসক্রিপশন' : 'Prescription',
+  //     title: isBangla ? 'প্রেসক্রিপশন অর্ডার' : 'Prescription orders',
+  //     body: isBangla ? 'চেকআউটের আগে রিভিউর জন্য ছবি বা PDF আপলোড করুন।' : 'Submit image or PDF for pharmacist review before checkout.',
+  //     accent: 'bg-amber-50 text-amber-700 ring-amber-100',
+  //   },
+  //   {
+  //     to: '/products',
+  //     icon: FiShoppingBag,
+  //     label: isBangla ? 'ক্যাটালগ' : 'Catalog',
+  //     title: isBangla ? 'সব ওষুধ দেখুন' : 'Browse all medicines',
+  //     body: isBangla ? 'ক্যাটাগরি, নির্মাতা ও প্রেসক্রিপশন অনুযায়ী ফিল্টার করুন।' : 'Filter by category, manufacturer, and prescription requirement.',
+  //     accent: 'bg-teal-50 text-teal-700 ring-teal-100',
+  //   },
+  //   {
+  //     to: '/cart',
+  //     icon: FiPackage,
+  //     label: isBangla ? 'চেকআউট' : 'Checkout',
+  //     title: isBangla ? 'অর্ডার সম্পন্ন করুন' : 'Complete your order',
+  //     body: isBangla ? 'কার্ট দেখুন, ঠিকানা দিন, আর COD দিয়ে নিশ্চিত করুন।' : 'Review cart, add delivery address, and confirm with COD.',
+  //     accent: 'bg-sky-50 text-sky-700 ring-sky-100',
+  //   },
+  //   {
+  //     to: '/orders',
+  //     icon: FiTruck,
+  //     label: isBangla ? 'ট্র্যাকিং' : 'Tracking',
+  //     title: isBangla ? 'ডেলিভারি দেখুন' : 'Monitor deliveries',
+  //     body: isBangla ? 'রিয়েল টাইমে অর্ডারের অবস্থা ও ডেলিভারির অগ্রগতি দেখুন।' : 'Follow status updates and delivery progress in real time.',
+  //     accent: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
+  //   },
+  // ]), [isBangla])
+  const workflowSteps = useMemo(() => ([
+    {
+      step: '01',
+      icon: FiSearch,
+      title: isBangla ? 'খুঁজুন ও বেছে নিন' : 'Search and discover',
+      body: isBangla ? 'পণ্যের নাম, জেনেরিক, ক্যাটাগরি বা নির্মাতা দিয়ে ওষুধ খুঁজুন।' : 'Find medicine by product name, generic name, category, or manufacturer.',
+    },
+    {
+      step: '02',
+      icon: FiFileText,
+      title: isBangla ? 'প্রেসক্রিপশন আপলোড' : 'Upload prescription',
+      body: isBangla ? 'যে পণ্যে প্রেসক্রিপশন লাগে সেখানে প্রয়োজনীয় ফাইল জমা দিন।' : 'Submit prescription files when restricted products are required.',
+    },
+    {
+      step: '03',
+      icon: FiCheckCircle,
+      title: isBangla ? 'চেকআউট ও ট্র্যাক' : 'Checkout and track',
+      body: isBangla ? 'COD দিয়ে অর্ডার করুন এবং আপনার অ্যাকাউন্ট থেকে ডেলিভারি ট্র্যাক করুন।' : 'Place your order with COD and follow delivery from your account.',
+    },
+  ]), [isBangla])
+  const serviceItems = useMemo(() => ([
+    {
+      icon: FiShield,
+      title: isBangla ? 'প্রেসক্রিপশনভিত্তিক অর্ডার' : 'Prescription-sensitive ordering',
+      body: isBangla ? 'যে পণ্যে প্রেসক্রিপশন লাগে সেগুলো স্পষ্টভাবে দেখানো আছে।' : 'Rx-required products are clearly marked and linked to upload actions.',
+    },
+    {
+      icon: FiTruck,
+      title: isBangla ? 'ডেলিভারি প্রস্তুত ব্যবস্থা' : 'Delivery-ready workflow',
+      body: isBangla ? 'সার্চ, কার্ট, চেকআউট ও ট্র্যাকিং একসাথে থাকায় অর্ডার দ্রুত সম্পন্ন হয়।' : 'Search, cart, checkout, and tracking stay connected for faster completion.',
+    },
+    {
+      icon: FiClock,
+      title: isBangla ? 'দ্রুত সহায়তা' : 'Responsive support',
+      body: isBangla ? 'অর্ডার, প্রেসক্রিপশন বা ডেলিভারি নিয়ে যেকোনো সময়ে সহায়তা নিন।' : 'Reach support for order, prescription, or delivery questions anytime.',
+    },
+  ]), [isBangla])
   const cachedFeatured = productApi.getCachedList({ per_page: 12 })
   const [products, setProducts] = useState(cachedFeatured?.data || [])
   const [categories, setCategories] = useState(() => productApi.getCachedCategories())
   const [manufacturers, setManufacturers] = useState(() => productApi.getCachedManufacturers())
   const [loading, setLoading] = useState(!cachedFeatured)
   const [currentSlide, setCurrentSlide] = useState(0)
-  const [search, setSearch] = useState('')
 
   useEffect(() => {
     Promise.all([productApi.list({ per_page: 12 }), productApi.categories(), productApi.manufacturers()])
@@ -103,37 +122,33 @@ export default function Home() {
         setCategories(categoryRes.data.data || [])
         setManufacturers(manufacturerRes.data.data || [])
       })
-      .catch(() => toast.error('Unable to load the storefront right now.'))
+      .catch(() => toast.error(isBangla ? 'এই মুহূর্তে স্টোরফ্রন্ট লোড করা যাচ্ছে না।' : 'Unable to load the storefront right now.'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [isBangla])
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length)
-    }, 6500)
+    }, 7000)
 
     return () => clearInterval(timer)
-  }, [])
+  }, [heroSlides.length])
 
   const slide = heroSlides[currentSlide]
-
-  const featuredProducts = useMemo(() => products.slice(0, 6), [products])
+  const featuredProducts = useMemo(() => products.slice(0, 8), [products])
   const otcProducts = useMemo(() => products.filter((product) => !product.requires_prescription).slice(0, 4), [products])
   const prescriptionProducts = useMemo(() => products.filter((product) => product.requires_prescription).slice(0, 4), [products])
   const categoryHighlights = useMemo(() => categories.slice(0, 8), [categories])
   const manufacturerHighlights = useMemo(() => manufacturers.slice(0, 6), [manufacturers])
-
   const spotlightProduct = featuredProducts[0]
-  const spotlightImage = getProductImage(spotlightProduct) || heroSlides[1].image
-
-  const handleSearch = (event) => {
-    event.preventDefault()
-    const query = search.trim()
-    navigate(query ? `/products?search=${encodeURIComponent(query)}` : '/products')
-  }
 
   const add = async (product) => {
     const option = getDefaultPurchaseOption(product)
+
+    if (requiresPrescriptionLogin(product, customer)) {
+      await showPrescriptionLoginRequiredAlert(isBangla)
+      return
+    }
 
     try {
       await addToCart({
@@ -141,363 +156,36 @@ export default function Home() {
         purchase_unit: option?.code || 'piece',
         quantity: 1,
       })
-      toast.success(`Added 1 ${option?.label || 'Piece'} to cart.`)
-    } catch {
-      toast.error('Could not add this item to the cart.')
+      toast.success(isBangla ? `১ ${option?.label || 'পিস'} কার্টে যোগ করা হয়েছে।` : `Added 1 ${option?.label || 'Piece'} to cart.`)
+    } catch (error) {
+      if (isPrescriptionLoginRequiredError(error)) {
+        await showPrescriptionLoginRequiredAlert(isBangla)
+        return
+      }
+
+      toast.error(isBangla ? 'এই পণ্যটি কার্টে যোগ করা যায়নি।' : 'Could not add this item to the cart.')
     }
   }
 
   return (
     <div className="bg-[#f4f6f8] text-slate-900">
-      <section className="relative overflow-hidden bg-slate-950">
-        <div className="absolute inset-0">
-          <img src={slide.image} alt={slide.title} className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,23,0.88),rgba(2,6,23,0.70),rgba(2,6,23,0.46))]" />
-        </div>
-
-        <div className="relative mx-auto grid min-h-[76vh] max-w-7xl gap-10 px-4 py-16 sm:px-6 xl:grid-cols-[1.15fr_0.85fr] xl:items-center lg:px-8">
-          <div className="text-white">
-            <div className="inline-flex border border-white/20 bg-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-200 backdrop-blur-sm">
-              Trusted online pharmacy in Bangladesh
-            </div>
-            <h1 className="mt-6 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">{slide.title}</h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-200">{slide.body}</p>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link to="/products" className="bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100">
-                Shop medicines
-              </Link>
-              <Link to="/upload-prescription" className="border border-white/25 bg-white/10 px-5 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/15">
-                Upload prescription
-              </Link>
-            </div>
-
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
-              <div className="border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Support line</div>
-                <div className="mt-3 flex items-center gap-2 text-lg font-semibold">
-                  <FiPhoneCall className="h-4 w-4" />
-                  09610-001122
-                </div>
-              </div>
-              <div className="border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Delivery area</div>
-                <div className="mt-3 flex items-center gap-2 text-lg font-semibold">
-                  <FiMapPin className="h-4 w-4" />
-                  Dhaka city coverage
-                </div>
-              </div>
-              <div className="border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Order type</div>
-                <div className="mt-3 flex items-center gap-2 text-lg font-semibold">
-                  <FiShield className="h-4 w-4" />
-                  OTC and prescription
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="border border-slate-200 bg-white p-6 shadow-[0_28px_80px_-45px_rgba(15,23,42,0.6)] sm:p-7">
-            <div className="border-b border-slate-200 pb-5">
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">Start an order</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Search, upload, or browse.</h2>
-              <p className="mt-3 text-sm leading-7 text-slate-500">
-                Choose the fastest route for medicine ordering based on whether you already know the product or need prescription review.
-              </p>
-            </div>
-
-            <form onSubmit={handleSearch} className="mt-5 border border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-center gap-3 border border-slate-300 bg-white px-4 py-3 text-slate-500">
-                <FiSearch className="h-5 w-5" />
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
-                  placeholder="Search medicine, generic, brand, wellness"
-                />
-              </div>
-              <button type="submit" className="mt-3 w-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
-                Find products
-              </button>
-            </form>
-
-            <div className="mt-5 grid gap-3">
-              <Link to="/upload-prescription" className="flex items-start justify-between border border-slate-200 bg-white p-4 transition hover:border-slate-400">
-                <div>
-                  <div className="text-sm font-semibold text-slate-950">Upload prescription</div>
-                  <div className="mt-1 text-sm leading-6 text-slate-500">Submit image or PDF and continue medicine ordering after review.</div>
-                </div>
-                <FiArrowRight className="mt-1 h-4 w-4 text-slate-500" />
-              </Link>
-              <Link to="/products?requires_prescription=0" className="flex items-start justify-between border border-slate-200 bg-white p-4 transition hover:border-slate-400">
-                <div>
-                  <div className="text-sm font-semibold text-slate-950">Browse OTC medicines</div>
-                  <div className="mt-1 text-sm leading-6 text-slate-500">Shop non-prescription products, wellness, and everyday care items.</div>
-                </div>
-                <FiArrowRight className="mt-1 h-4 w-4 text-slate-500" />
-              </Link>
-              <Link to="/support" className="flex items-start justify-between border border-slate-200 bg-white p-4 transition hover:border-slate-400">
-                <div>
-                  <div className="text-sm font-semibold text-slate-950">Need pharmacy support?</div>
-                  <div className="mt-1 text-sm leading-6 text-slate-500">Reach support for order, prescription, or delivery-related help.</div>
-                </div>
-                <FiArrowRight className="mt-1 h-4 w-4 text-slate-500" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <HomeHeroSection heroSlides={heroSlides} currentSlide={currentSlide} setCurrentSlide={setCurrentSlide} slide={slide} isBangla={isBangla} />
+      <HomeTrustStrip trustItems={trustItems} />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <section className="grid gap-4 py-10 md:grid-cols-2 xl:grid-cols-4">
-          <Link to="/upload-prescription" className="border border-slate-200 bg-white p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">Prescription</div>
-            <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-950">Upload and order</h3>
-            <p className="mt-2 text-sm leading-7 text-slate-500">Restricted medicines stay close to prescription review and ordering actions.</p>
-          </Link>
-          <Link to="/products" className="border border-slate-200 bg-white p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">Catalog</div>
-            <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-950">Browse all medicines</h3>
-            <p className="mt-2 text-sm leading-7 text-slate-500">Filter by category, manufacturer, and prescription requirement.</p>
-          </Link>
-          <Link to="/cart" className="border border-slate-200 bg-white p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">Checkout</div>
-            <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-950">Complete your order</h3>
-            <p className="mt-2 text-sm leading-7 text-slate-500">Move quickly from selected products to delivery details and payment.</p>
-          </Link>
-          <Link to="/orders" className="border border-slate-200 bg-white p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">Tracking</div>
-            <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-950">Monitor your orders</h3>
-            <p className="mt-2 text-sm leading-7 text-slate-500">Follow status changes, delivery progress, and prescription-linked orders.</p>
-          </Link>
-        </section>
-
-        <section className="pb-16">
-          <div className="flex items-end justify-between gap-6">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">Shop by category</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Department-first medicine browsing.</h2>
-            </div>
-            <Link to="/products" className="hidden text-sm font-semibold text-slate-600 hover:text-slate-950 sm:inline-flex">
-              Browse all products
-            </Link>
-          </div>
-
-          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {categoryHighlights.map((category, index) => (
-              <Link
-                key={category.id}
-                to={`/products?category_id=${category.id}`}
-                className={`border border-slate-200 bg-gradient-to-br ${categoryTints[index % categoryTints.length]} p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5`}
-              >
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Category</div>
-                <h3 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">{category.category_name}</h3>
-                <p className="mt-2 text-sm leading-7 text-slate-500">Open this department and continue with category-led medicine search.</p>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section className="grid gap-6 pb-16 xl:grid-cols-2">
-          <div className="border border-slate-200 bg-white shadow-[0_24px_70px_-46px_rgba(15,23,42,0.36)]">
-            <div className="border-b border-slate-200 p-6">
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">Prescription medicines</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Products that need review.</h2>
-              <p className="mt-3 text-sm leading-7 text-slate-500">Keep prescription-required medicines in a separate, clearer pathway.</p>
-            </div>
-            <div className="space-y-px bg-slate-200">
-              {prescriptionProducts.length > 0 ? prescriptionProducts.map((product) => (
-                <MiniProductRow key={product.id} product={product} />
-              )) : (
-                <div className="bg-white p-6 text-sm text-slate-500">Prescription products will appear here as catalog data expands.</div>
-              )}
-            </div>
-            <div className="border-t border-slate-200 p-6">
-              <Link to="/upload-prescription" className="inline-flex items-center gap-2 bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
-                Upload prescription
-                <FiArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-
-          <div className="border border-slate-200 bg-white shadow-[0_24px_70px_-46px_rgba(15,23,42,0.36)]">
-            <div className="border-b border-slate-200 p-6">
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">OTC and healthcare products</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Everyday products with faster entry.</h2>
-              <p className="mt-3 text-sm leading-7 text-slate-500">Browse direct-purchase items with fewer steps and clearer discovery.</p>
-            </div>
-            <div className="space-y-px bg-slate-200">
-              {otcProducts.length > 0 ? otcProducts.map((product) => (
-                <MiniProductRow key={product.id} product={product} />
-              )) : (
-                <div className="bg-white p-6 text-sm text-slate-500">OTC and wellness products will appear here as catalog data expands.</div>
-              )}
-            </div>
-            <div className="border-t border-slate-200 p-6">
-              <Link to="/products?requires_prescription=0" className="inline-flex items-center gap-2 bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
-                Browse OTC products
-                <FiArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        <section className="pb-16">
-          <div className="flex items-end justify-between gap-6">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">Featured medicines</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Product-first cards for faster shopping.</h2>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {(loading ? Array.from({ length: 6 }, (_, index) => ({ id: `placeholder-${index}` })) : featuredProducts).map((product) => {
-              if (loading) {
-                return <ProductCardSkeleton key={product.id} />
-              }
-
-              return <ProductCard key={product.id} product={product} onAdd={add} />
-            })}
-          </div>
-        </section>
-
-        <section className="grid gap-6 pb-16 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="overflow-hidden border border-slate-200 bg-white shadow-[0_24px_70px_-46px_rgba(15,23,42,0.36)]">
-            <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
-              <div className="relative min-h-[320px]">
-                <img src={spotlightImage} alt={spotlightProduct?.product_name || 'Featured medicine'} className="absolute inset-0 h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.12),rgba(15,23,42,0.68))]" />
-                <div className="relative flex min-h-[320px] items-end p-6 text-white">
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-200">Storefront spotlight</div>
-                    <h3 className="mt-3 text-3xl font-semibold tracking-tight">{spotlightProduct?.product_name || 'Popular medicine display'}</h3>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6">
-                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">How the storefront works</p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Designed around medicine ordering.</h2>
-                <div className="mt-6 grid gap-4">
-                  {workflowItems.map((item) => {
-                    const Icon = item.icon
-                    return (
-                      <div key={item.title} className="border border-slate-200 bg-slate-50 p-5">
-                        <div className="inline-flex h-10 w-10 items-center justify-center border border-slate-200 bg-white text-slate-950">
-                          <Icon className="h-5 w-5" />
-                        </div>
-                        <h3 className="mt-4 text-lg font-semibold text-slate-950">{item.title}</h3>
-                        <p className="mt-2 text-sm leading-7 text-slate-500">{item.body}</p>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="border border-slate-200 bg-white p-6 shadow-[0_24px_70px_-46px_rgba(15,23,42,0.36)]">
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">Popular manufacturers</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Recognizable healthcare brands.</h2>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                {manufacturerHighlights.map((manufacturer) => (
-                  <div key={manufacturer.id} className="flex items-center gap-3 border border-slate-200 bg-slate-50 p-4">
-                    {manufacturer.logo_url ? (
-                      <img src={resolveImage(manufacturer.logo_url)} alt={manufacturer.manufacturer_name} className="h-12 w-12 border border-slate-200 object-cover" />
-                    ) : (
-                      <div className="flex h-12 w-12 items-center justify-center border border-slate-200 bg-white text-xs font-semibold text-slate-500">
-                        {manufacturer.manufacturer_name?.slice(0, 2)?.toUpperCase() || 'NA'}
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-slate-950">{manufacturer.manufacturer_name}</div>
-                      <div className="text-xs uppercase tracking-[0.14em] text-slate-400">Manufacturer</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="border border-slate-200 bg-white p-6 shadow-[0_24px_70px_-46px_rgba(15,23,42,0.36)]">
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-600">Why this feels better</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Clearer than a generic ecommerce site.</h2>
-              <div className="mt-6 grid gap-4">
-                {serviceItems.map((item) => {
-                  const Icon = item.icon
-                  return (
-                    <div key={item.title} className="border border-slate-200 bg-slate-50 p-5">
-                      <div className="inline-flex h-10 w-10 items-center justify-center border border-slate-200 bg-white text-slate-950">
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <h3 className="mt-4 text-lg font-semibold text-slate-950">{item.title}</h3>
-                      <p className="mt-2 text-sm leading-7 text-slate-500">{item.body}</p>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="pb-20">
-          <div className="border border-slate-200 bg-slate-950 p-8 text-white shadow-[0_24px_70px_-46px_rgba(15,23,42,0.44)] sm:p-10">
-            <div className="grid gap-8 xl:grid-cols-[1.15fr_0.85fr] xl:items-center">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-300">Need help ordering?</p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Prescription, support, and delivery actions stay close.</h2>
-                <p className="mt-4 max-w-2xl text-sm leading-8 text-slate-300">
-                  Build your order directly from the catalog, submit prescription files when needed, and keep order-related support visible throughout the storefront.
-                </p>
-              </div>
-
-              <div className="grid gap-3">
-                <Link to="/upload-prescription" className="flex items-center justify-between border border-white/15 bg-white/10 px-5 py-4 text-sm font-semibold text-white transition hover:bg-white/15">
-                  Upload prescription
-                  <FiArrowRight className="h-4 w-4" />
-                </Link>
-                <Link to="/products" className="flex items-center justify-between border border-white/15 bg-white/10 px-5 py-4 text-sm font-semibold text-white transition hover:bg-white/15">
-                  Browse all medicines
-                  <FiArrowRight className="h-4 w-4" />
-                </Link>
-                <Link to="/support" className="flex items-center justify-between border border-white/15 bg-white/10 px-5 py-4 text-sm font-semibold text-white transition hover:bg-white/15">
-                  Contact support
-                  <FiArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* <HomeQuickPathsSection quickPaths={quickPaths} /> */}
+        <HomeCategoriesSection isBangla={isBangla} categories={categoryHighlights} />
+        <HomeProductPanelsSection isBangla={isBangla} prescriptionProducts={prescriptionProducts} otcProducts={otcProducts} />
+        <HomeFeaturedProductsSection isBangla={isBangla} loading={loading} featuredProducts={featuredProducts} onAdd={add} />
+        <HomeWorkflowSpotlightSection
+          isBangla={isBangla}
+          spotlightProduct={spotlightProduct}
+          workflowSteps={workflowSteps}
+          manufacturerHighlights={manufacturerHighlights}
+          serviceItems={serviceItems}
+        />
+        <HomeSupportCtaSection isBangla={isBangla} />
       </div>
     </div>
-  )
-}
-
-function MiniProductRow({ product }) {
-  const image = getProductImage(product)
-
-  return (
-    <Link to={`/products/${product.id}`} state={{ product }} className="grid gap-4 bg-white p-5 transition hover:bg-slate-50 sm:grid-cols-[72px_minmax(0,1fr)_auto] sm:items-center">
-      <div className="overflow-hidden border border-slate-200 bg-slate-50">
-        {image ? (
-          <img src={image} alt={product.product_name} className="h-[72px] w-full object-cover" />
-        ) : (
-          <div className="flex h-[72px] items-center justify-center text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Rx</div>
-        )}
-      </div>
-      <div className="min-w-0">
-        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-          {product.manufacturer?.manufacturer_name || product.category?.category_name || 'Healthcare'}
-        </div>
-        <h3 className="mt-1 line-clamp-2 text-lg font-semibold tracking-tight text-slate-950">{product.product_name}</h3>
-        <p className="mt-1 text-sm text-slate-500">
-          {product.requires_prescription ? 'Prescription required' : 'Direct purchase'}
-        </p>
-      </div>
-      <div className="text-left sm:text-right">
-        <div className="text-lg font-semibold text-slate-950">{money(product.display_price)}</div>
-        <div className="mt-1 text-xs text-slate-500">Starting price</div>
-      </div>
-    </Link>
   )
 }

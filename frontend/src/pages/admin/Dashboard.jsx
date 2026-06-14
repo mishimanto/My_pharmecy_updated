@@ -3,18 +3,19 @@ import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
 import PageHeader from '../../components/common/PageHeader'
 import { date, money } from '../../utils/formatters'
+import { getOrderStatusLabel } from '../../utils/statusLabels'
 
 const labels = {
-  total_users: 'মোট কাস্টমার',
-  total_orders: 'মোট অর্ডার',
-  today_orders: 'আজকের অর্ডার',
-  total_revenue: 'মোট আয়',
-  pending_prescription_reviews: 'পেন্ডিং প্রেসক্রিপশন',
-  pending_deliveries: 'পেন্ডিং ডেলিভারি',
-  low_stock_batches: 'লো স্টক ব্যাচ',
-  near_expiry_batches: 'নিয়ার এক্সপায়ারি',
-  open_support_tickets: 'ওপেন সাপোর্ট',
-  pending_return_requests: 'পেন্ডিং রিটার্ন',
+  total_users: 'Total Customers',
+  total_orders: 'Total Orders',
+  today_orders: 'Today\'s Orders',
+  total_revenue: 'Total Revenue',
+  pending_prescription_reviews: 'Pending Prescriptions',
+  pending_deliveries: 'Pending Deliveries',
+  low_stock_batches: 'Low-Stock Batches',
+  near_expiry_batches: 'Near-Expiry Batches',
+  open_support_tickets: 'Open Support Tickets',
+  pending_return_requests: 'Pending Returns',
 }
 
 export default function Dashboard() {
@@ -38,13 +39,13 @@ export default function Dashboard() {
       setPrescriptions(prescriptionRes.data.data || [])
       setLowStock(lowStockRes.data.data || [])
       setNearExpiry(nearExpiryRes.data.data || [])
-    }).catch(() => toast.error('ড্যাশবোর্ড লোড করা যায়নি।')).finally(() => setLoading(false))
+    }).catch(() => toast.error('Unable to load dashboard data.')).finally(() => setLoading(false))
   }, [])
 
   return (
     <>
-      <PageHeader title="ড্যাশবোর্ড" subtitle="অপারেশনাল সারাংশ, পেন্ডিং কাজ এবং স্টক সতর্কতা।" />
-      {loading ? <p className="text-sm text-slate-600">লোড হচ্ছে...</p> : null}
+      <PageHeader title="Dashboard" subtitle="Operational summary, pending work, and stock alerts." />
+      {loading ? <p className="text-sm text-slate-600">Loading...</p> : null}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {Object.entries(labels).map(([key, label]) => (
           <div key={key} className="rounded-lg border border-slate-200 bg-white p-4">
@@ -54,17 +55,17 @@ export default function Dashboard() {
         ))}
       </div>
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <Panel title="সাম্প্রতিক অর্ডার">
-          {orders.map((order) => <Row key={order.id} title={order.order_number} meta={`${order.customer_name || order.user?.full_name || '-'} - ${order.order_status}`} value={money(order.total_amount)} />)}
+        <Panel title="Recent Orders">
+          {orders.map((order) => <Row key={order.id} title={order.order_number} meta={`${order.customer_name || order.user?.full_name || '-'} - ${getOrderStatusLabel(order.order_status)}`} value={money(order.total_amount)} />)}
         </Panel>
-        <Panel title="পেন্ডিং প্রেসক্রিপশন">
-          {prescriptions.map((item) => <Row key={item.id} title={`প্রেসক্রিপশন #${item.id}`} meta={item.user?.full_name || '-'} value={date(item.uploaded_at)} />)}
+        <Panel title="Pending Prescriptions">
+          {prescriptions.map((item) => <Row key={item.id} title={`Prescription #${item.id}`} meta={item.user?.full_name || '-'} value={date(item.uploaded_at, 'en-US')} />)}
         </Panel>
-        <Panel title="লো স্টক">
+        <Panel title="Low Stock">
           {lowStock.map((item) => <Row key={item.id} title={item.product_name} meta={item.batch_number} value={item.available_stock} />)}
         </Panel>
-        <Panel title="নিয়ার এক্সপায়ারি">
-          {nearExpiry.map((item) => <Row key={item.id} title={item.product_name} meta={item.batch_number} value={date(item.expiry_date)} />)}
+        <Panel title="Near Expiry">
+          {nearExpiry.map((item) => <Row key={item.id} title={item.product_name} meta={item.batch_number} value={date(item.expiry_date, 'en-US')} />)}
         </Panel>
       </div>
     </>
@@ -72,7 +73,7 @@ export default function Dashboard() {
 }
 
 function Panel({ title, children }) {
-  return <section className="rounded-lg border border-slate-200 bg-white p-4"><h2 className="mb-3 text-lg font-semibold text-slate-950">{title}</h2><div className="space-y-2">{children || <p className="text-sm text-slate-500">ডাটা নেই।</p>}</div></section>
+  return <section className="rounded-lg border border-slate-200 bg-white p-4"><h2 className="mb-3 text-lg font-semibold text-slate-950">{title}</h2><div className="space-y-2">{children || <p className="text-sm text-slate-500">No data found.</p>}</div></section>
 }
 
 function Row({ title, meta, value }) {

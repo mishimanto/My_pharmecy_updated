@@ -14,7 +14,7 @@ export default function Returns() {
   const load = () => {
     adminApi.list('returns')
       .then((res) => setReturns(res.data.data?.data || []))
-      .catch(() => toast.error('রিটার্ন তালিকা লোড করা যায়নি।'))
+      .catch(() => toast.error('Unable to load returns.'))
       .finally(() => setLoading(false))
   }
 
@@ -22,54 +22,54 @@ export default function Returns() {
 
   const updateStatus = async (item, status) => {
     if (item.status === status) return
-    const result = await Swal.fire({ title: 'রিটার্ন স্ট্যাটাস আপডেট করবেন?', text: `${item.status} থেকে ${status}`, icon: 'question', showCancelButton: true, confirmButtonText: 'আপডেট', cancelButtonText: 'বাতিল' })
+    const result = await Swal.fire({ title: 'Update return status?', text: `${item.status} to ${status}`, icon: 'question', showCancelButton: true, confirmButtonText: 'Update', cancelButtonText: 'Cancel' })
     if (!result.isConfirmed) return
     try {
       await adminApi.patch('returns', item.id, 'status', { status })
-      toast.success('রিটার্ন স্ট্যাটাস আপডেট হয়েছে।')
+      toast.success('Return status updated.')
       load()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'স্ট্যাটাস আপডেট করা যায়নি।')
+      toast.error(error.response?.data?.message || 'Unable to update return status.')
     }
   }
 
   const processRefund = async (item) => {
     const result = await Swal.fire({
-      title: 'রিফান্ড তৈরি করবেন?',
+      title: 'Create a refund?',
       html: '<input id="amount" class="swal2-input" placeholder="Amount"><input id="method" class="swal2-input" placeholder="Method" value="COD Refund">',
       showCancelButton: true,
-      confirmButtonText: 'রিফান্ড',
-      cancelButtonText: 'বাতিল',
+      confirmButtonText: 'Create Refund',
+      cancelButtonText: 'Cancel',
       preConfirm: () => ({ refund_amount: document.getElementById('amount').value, refund_method: document.getElementById('method').value, status: 'completed' }),
     })
     if (!result.isConfirmed) return
     try {
       await adminApi.create(`returns/${item.id}/refund`, result.value)
-      toast.success('রিফান্ড আপডেট হয়েছে।')
+      toast.success('Refund created.')
       load()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'রিফান্ড করা যায়নি।')
+      toast.error(error.response?.data?.message || 'Unable to create refund.')
     }
   }
 
   return (
     <>
-      <PageHeader title="রিটার্ন" subtitle="রিটার্ন অনুমোদন, বাতিল ও রিফান্ড প্রসেস করুন।" />
+      <PageHeader title="Returns" subtitle="Approve returns, reject them, and process refunds." />
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-slate-600">
             <tr>
-              <th className="px-4 py-3">অর্ডার</th>
-              <th className="px-4 py-3">গ্রাহক</th>
-              <th className="px-4 py-3">কারণ</th>
-              <th className="px-4 py-3">স্ট্যাটাস</th>
-              <th className="px-4 py-3">রিফান্ড</th>
-              <th className="px-4 py-3">তারিখ</th>
+              <th className="px-4 py-3">Order</th>
+              <th className="px-4 py-3">Customer</th>
+              <th className="px-4 py-3">Reason</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Refund</th>
+              <th className="px-4 py-3">Date</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {loading ? <tr><td colSpan="6" className="px-4 py-6 text-center text-slate-500">লোড হচ্ছে...</td></tr> : null}
-            {!loading && !returns.length ? <tr><td colSpan="6" className="px-4 py-6 text-center text-slate-500">কোনো রিটার্ন নেই।</td></tr> : null}
+            {loading ? <tr><td colSpan="6" className="px-4 py-6 text-center text-slate-500">Loading...</td></tr> : null}
+            {!loading && !returns.length ? <tr><td colSpan="6" className="px-4 py-6 text-center text-slate-500">No returns found.</td></tr> : null}
             {returns.map((item) => (
               <tr key={item.id}>
                 <td className="px-4 py-3 font-medium text-slate-950">{item.order?.order_number || '-'}</td>
@@ -81,9 +81,9 @@ export default function Returns() {
                   </select>
                 </td>
                 <td className="px-4 py-3">
-                  {item.refund ? `${item.refund.status} - ${money(item.refund.refund_amount)}` : <button onClick={() => processRefund(item)} className="rounded-md bg-emerald-600 px-3 py-1 text-sm font-semibold text-white">রিফান্ড</button>}
+                  {item.refund ? `${item.refund.status} - ${money(item.refund.refund_amount)}` : <button onClick={() => processRefund(item)} className="rounded-md bg-emerald-600 px-3 py-1 text-sm font-semibold text-white">Refund</button>}
                 </td>
-                <td className="px-4 py-3 text-slate-600">{date(item.created_at)}</td>
+                <td className="px-4 py-3 text-slate-600">{date(item.created_at, 'en-US')}</td>
               </tr>
             ))}
           </tbody>

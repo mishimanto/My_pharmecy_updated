@@ -12,15 +12,18 @@ class DeliveryTrackingController extends Controller
 {
     use ApiResponse;
 
-    public function show(Request $request, int $orderId, ShopperContextService $shopper)
+    public function show(Request $request, string $orderId, ShopperContextService $shopper)
     {
         [$user, $guestToken] = $shopper->requireGuestOrUser($request);
 
-        $order = Order::query()
+        $orderQuery = Order::query()
             ->with('delivery.rider')
             ->when($user, fn ($query) => $query->where('user_id', $user->id))
-            ->when(! $user, fn ($query) => $query->where('guest_token', $guestToken))
-            ->findOrFail($orderId);
+            ->when(! $user, fn ($query) => $query->where('guest_token', $guestToken));
+
+        $order = ctype_digit($orderId)
+            ? (clone $orderQuery)->whereKey((int) $orderId)->firstOrFail()
+            : (clone $orderQuery)->where('order_number', $orderId)->firstOrFail();
 
         return $this->ok([
             'order_number' => $order->order_number,

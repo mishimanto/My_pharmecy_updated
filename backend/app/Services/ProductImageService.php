@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Encoders\WebpEncoder;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 
@@ -14,7 +15,7 @@ class ProductImageService
         $path = $file->store('products/originals', 'public');
         $webpPath = 'products/webp/' . pathinfo($path, PATHINFO_FILENAME) . '.webp';
 
-        $image = (new ImageManager(new Driver()))->read($file->getRealPath())->toWebp(82);
+        $image = (new ImageManager(new Driver()))->decodePath($file->getRealPath())->encode(new WebpEncoder(82));
         Storage::disk('public')->put($webpPath, (string) $image);
 
         return [
@@ -24,4 +25,3 @@ class ProductImageService
         ];
     }
 }
-

@@ -36,34 +36,33 @@ export default function StaffForm() {
     try {
       if (editing) await adminApi.update('staff', id, payload)
       else await adminApi.create('staff', payload)
-      toast.success(editing ? 'স্টাফ আপডেট হয়েছে' : 'স্টাফ তৈরি হয়েছে')
+      toast.success(editing ? 'Staff member updated.' : 'Staff member created.')
       navigate('/admin/staff')
     } catch (error) {
-      toast.error(error.response?.data?.message || 'সেভ করা যায়নি')
+      toast.error(error.response?.data?.message || 'Unable to save staff member.')
     }
   }
 
   return (
     <>
-      <PageHeader title={editing ? 'স্টাফ এডিট' : 'নতুন স্টাফ'} subtitle="স্টাফ তথ্য, প্রাইমারি রোল এবং স্ট্যাটাস দিন।" />
+      <PageHeader title={editing ? 'Edit Staff Member' : 'New Staff Member'} subtitle="Enter staff details, a primary role, and account status." />
       <form className="grid gap-4 rounded border bg-white p-5 md:grid-cols-2" onSubmit={submit}>
-        <input className="rounded border px-3 py-2" placeholder="পূর্ণ নাম" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
-        <input className="rounded border px-3 py-2" placeholder="ইমেইল" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        <input className="rounded border px-3 py-2" placeholder="ফোন" value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-        <input className="rounded border px-3 py-2" placeholder={editing ? 'নতুন পাসওয়ার্ড (ঐচ্ছিক)' : 'পাসওয়ার্ড'} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+        <input className="rounded border px-3 py-2" placeholder="Full name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+        <input className="rounded border px-3 py-2" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+        <input className="rounded border px-3 py-2" placeholder="Phone" value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+        <input className="rounded border px-3 py-2" placeholder={editing ? 'New password (optional)' : 'Password'} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
         <select className="rounded border px-3 py-2" value={form.role_id} onChange={(e) => setForm({ ...form, role_id: e.target.value })}>
-          <option value="">রোল নির্বাচন করুন</option>
+          <option value="">Select a role</option>
           {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
         </select>
         <select className="rounded border px-3 py-2" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-          <option value="active">সক্রিয়</option>
-          <option value="inactive">নিষ্ক্রিয়</option>
-          <option value="suspended">সাসপেন্ড</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="suspended">Suspended</option>
         </select>
-        <input className="rounded border px-3 py-2 md:col-span-2" placeholder="লাইসেন্স নম্বর" value={form.license_no || ''} onChange={(e) => setForm({ ...form, license_no: e.target.value })} />
-        <button className="rounded bg-slate-950 px-4 py-2 text-white md:col-span-2">সেভ করুন</button>
+        <input className="rounded border px-3 py-2 md:col-span-2" placeholder="License number" value={form.license_no || ''} onChange={(e) => setForm({ ...form, license_no: e.target.value })} />
+        <button className="rounded bg-slate-950 px-4 py-2 text-white md:col-span-2">Save</button>
       </form>
     </>
   )
 }
-

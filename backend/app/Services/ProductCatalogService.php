@@ -32,6 +32,7 @@ class ProductCatalogService
         return Product::query()
             ->select([
                 'id',
+                'slug',
                 'category_id',
                 'manufacturer_id',
                 'product_name',

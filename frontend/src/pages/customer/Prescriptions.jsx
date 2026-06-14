@@ -5,21 +5,27 @@ import PageHeader from '../../components/common/PageHeader'
 import EmptyState from '../../components/common/EmptyState'
 import { prescriptionApi } from '../../api/prescriptionApi'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
+import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
 import { date } from '../../utils/formatters'
 
 const labels = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', need_clarification: 'Needs clarification' }
+const PRESCRIPTIONS_CACHE_KEY = 'prescriptions_list'
 
 export default function Prescriptions() {
   const { loading: authLoading, ensureGuestToken } = useCustomerAuth()
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [items, setItems] = useState(() => readCustomerCache(PRESCRIPTIONS_CACHE_KEY, []))
+  const [loading, setLoading] = useState(() => readCustomerCache(PRESCRIPTIONS_CACHE_KEY, null) === null)
 
   useEffect(() => {
     if (authLoading) return
 
     ensureGuestToken()
     prescriptionApi.list()
-      .then(({ data }) => setItems(data.data.data || []))
+      .then(({ data }) => {
+        const nextItems = data.data.data || []
+        setItems(nextItems)
+        writeCustomerCache(PRESCRIPTIONS_CACHE_KEY, nextItems)
+      })
       .catch(() => toast.error('Prescriptions could not be loaded.'))
       .finally(() => setLoading(false))
   }, [authLoading, ensureGuestToken])

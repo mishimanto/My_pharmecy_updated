@@ -74,7 +74,7 @@ export default function ProductForm() {
       setCachedItem('products', id, product)
       setForm(formFromProduct(product))
       setImages(product.images || [])
-    }).catch(() => active && toast.error('প্রোডাক্ট তথ্য লোড করা যায়নি'))
+    }).catch(() => active && toast.error('Unable to load product details.'))
       .finally(() => active && setLoading(false))
 
     return () => {
@@ -109,38 +109,38 @@ export default function ProductForm() {
         await adminApi.uploadProductImages(productId, body)
       }
 
-      toast.success(editing ? 'প্রোডাক্ট আপডেট হয়েছে' : 'প্রোডাক্ট তৈরি হয়েছে')
+      toast.success(editing ? 'Product updated.' : 'Product created.')
       productApi.clearCache()
       navigate('/admin/products')
     } catch (error) {
-      toast.error(error.response?.data?.message || 'প্রোডাক্ট সেভ করা যায়নি')
+      toast.error(error.response?.data?.message || 'Unable to save product.')
     } finally {
       setSaving(false)
     }
   }
 
   const removeImage = async (image) => {
-    const result = await Swal.fire({ title: 'ছবি ডিলিট করবেন?', showCancelButton: true, confirmButtonText: 'ডিলিট', cancelButtonText: 'বাতিল', confirmButtonColor: '#dc2626' })
+    const result = await Swal.fire({ title: 'Delete this image?', showCancelButton: true, confirmButtonText: 'Delete', cancelButtonText: 'Cancel', confirmButtonColor: '#dc2626' })
     if (!result.isConfirmed) return
     await adminApi.deleteProductImage(image.id)
-    toast.success('ছবি ডিলিট হয়েছে')
+    toast.success('Image deleted.')
     setImages((current) => current.filter((item) => item.id !== image.id))
   }
 
   return (
     <>
-      <PageHeader title={editing ? 'প্রোডাক্ট এডিট' : 'নতুন প্রোডাক্ট'} subtitle="Piece price batch থেকে আসবে। Strip আর box conversion এবং bundle price এখানে সেট করুন।" />
+      <PageHeader title={editing ? 'Edit Product' : 'New Product'} subtitle="Piece price comes from the batch. Set strip and box conversions and bundle prices here." />
       {loading ? (
         <ProductFormSkeleton />
       ) : (
         <form className="grid gap-4 rounded-2xl border bg-white p-5 shadow-sm md:grid-cols-2" onSubmit={submit}>
-          <input className="rounded-xl border px-3 py-2 md:col-span-2" placeholder="প্রোডাক্ট নাম" value={form.product_name} onChange={(event) => setField('product_name', event.target.value)} />
-          <select className="rounded-xl border px-3 py-2" value={form.category_id} onChange={(event) => setField('category_id', event.target.value)}><option value="">ক্যাটাগরি</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.category_name}</option>)}</select>
-          <select className="rounded-xl border px-3 py-2" value={form.manufacturer_id} onChange={(event) => setField('manufacturer_id', event.target.value)}><option value="">ম্যানুফ্যাকচারার</option>{manufacturers.map((item) => <option key={item.id} value={item.id}>{item.manufacturer_name}</option>)}</select>
-          <input className="rounded-xl border px-3 py-2" placeholder="জেনেরিক নাম" value={form.generic_name || ''} onChange={(event) => setField('generic_name', event.target.value)} />
-          <input className="rounded-xl border px-3 py-2" placeholder="ব্র্যান্ড নাম" value={form.brand_name || ''} onChange={(event) => setField('brand_name', event.target.value)} />
-          <input className="rounded-xl border px-3 py-2" placeholder="স্ট্রেন্থ" value={form.strength || ''} onChange={(event) => setField('strength', event.target.value)} />
-          <input className="rounded-xl border px-3 py-2" placeholder="ডোজেজ ফর্ম" value={form.dosage_form || ''} onChange={(event) => setField('dosage_form', event.target.value)} />
+          <input className="rounded-xl border px-3 py-2 md:col-span-2" placeholder="Product name" value={form.product_name} onChange={(event) => setField('product_name', event.target.value)} />
+          <select className="rounded-xl border px-3 py-2" value={form.category_id} onChange={(event) => setField('category_id', event.target.value)}><option value="">Category</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.category_name}</option>)}</select>
+          <select className="rounded-xl border px-3 py-2" value={form.manufacturer_id} onChange={(event) => setField('manufacturer_id', event.target.value)}><option value="">Manufacturer</option>{manufacturers.map((item) => <option key={item.id} value={item.id}>{item.manufacturer_name}</option>)}</select>
+          <input className="rounded-xl border px-3 py-2" placeholder="Generic name" value={form.generic_name || ''} onChange={(event) => setField('generic_name', event.target.value)} />
+          <input className="rounded-xl border px-3 py-2" placeholder="Brand name" value={form.brand_name || ''} onChange={(event) => setField('brand_name', event.target.value)} />
+          <input className="rounded-xl border px-3 py-2" placeholder="Strength" value={form.strength || ''} onChange={(event) => setField('strength', event.target.value)} />
+          <input className="rounded-xl border px-3 py-2" placeholder="Dosage form" value={form.dosage_form || ''} onChange={(event) => setField('dosage_form', event.target.value)} />
 
           <div className="rounded-2xl border p-4">
             <div className="text-sm font-semibold text-slate-900">Strip setup</div>
@@ -156,12 +156,12 @@ export default function ProductForm() {
             <input className="mt-3 w-full rounded-xl border px-3 py-2" type="number" min="0" step="0.01" placeholder="Box price (optional)" value={form.box_price} onChange={(event) => setField('box_price', event.target.value)} />
           </div>
 
-          <label className="flex items-center gap-2 rounded-xl border px-3 py-2"><input type="checkbox" checked={Boolean(form.requires_prescription)} onChange={(event) => setField('requires_prescription', event.target.checked)} /> প্রেসক্রিপশন প্রয়োজন</label>
-          <label className="flex items-center gap-2 rounded-xl border px-3 py-2"><input type="checkbox" checked={Boolean(form.is_active)} onChange={(event) => setField('is_active', event.target.checked)} /> সক্রিয়</label>
-          <textarea className="rounded-xl border px-3 py-2 md:col-span-2" placeholder="বর্ণনা" value={form.description || ''} onChange={(event) => setField('description', event.target.value)} />
+          <label className="flex items-center gap-2 rounded-xl border px-3 py-2"><input type="checkbox" checked={Boolean(form.requires_prescription)} onChange={(event) => setField('requires_prescription', event.target.checked)} /> Prescription required</label>
+          <label className="flex items-center gap-2 rounded-xl border px-3 py-2"><input type="checkbox" checked={Boolean(form.is_active)} onChange={(event) => setField('is_active', event.target.checked)} /> Active</label>
+          <textarea className="rounded-xl border px-3 py-2 md:col-span-2" placeholder="Description" value={form.description || ''} onChange={(event) => setField('description', event.target.value)} />
           <input className="rounded-xl border px-3 py-2 md:col-span-2" type="file" multiple accept="image/*" onChange={(event) => setFiles(Array.from(event.target.files || []))} />
-          {images.length > 0 && <div className="grid gap-2 md:col-span-2 sm:grid-cols-3">{images.map((image) => <div key={image.id} className="rounded-2xl border p-2 text-sm"><img className="mb-2 h-24 w-full rounded-xl object-cover" src={image.image_url} alt="" /><button type="button" className="text-rose-700" onClick={() => removeImage(image)}>ডিলিট</button></div>)}</div>}
-          <button disabled={saving} className="rounded-xl bg-slate-950 px-4 py-2 text-white md:col-span-2 disabled:opacity-60">{saving ? 'সেভ হচ্ছে...' : 'সেভ করুন'}</button>
+          {images.length > 0 && <div className="grid gap-2 md:col-span-2 sm:grid-cols-3">{images.map((image) => <div key={image.id} className="rounded-2xl border p-2 text-sm"><img className="mb-2 h-24 w-full rounded-xl object-cover" src={image.image_url} alt="" /><button type="button" className="text-rose-700" onClick={() => removeImage(image)}>Delete</button></div>)}</div>}
+          <button disabled={saving} className="rounded-xl bg-slate-950 px-4 py-2 text-white md:col-span-2 disabled:opacity-60">{saving ? 'Saving...' : 'Save'}</button>
         </form>
       )}
     </>

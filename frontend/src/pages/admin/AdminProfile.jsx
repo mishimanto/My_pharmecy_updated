@@ -5,10 +5,10 @@ import { hasPermission } from '../../utils/permissions'
 import { date } from '../../utils/formatters'
 
 const settingsLinks = [
-  { to: '/admin/staff', title: 'স্টাফ ম্যানেজমেন্ট', description: 'স্টাফ তালিকা, status, edit এবং team access দেখুন।', permission: 'staff.view' },
-  { to: '/admin/roles', title: 'রোল ও পারমিশন', description: 'কোন role কী access পাবে সেটা এখান থেকে নিয়ন্ত্রণ করুন।', permission: 'role.manage' },
-  { to: '/admin/reports', title: 'রিপোর্ট সেন্টার', description: 'Sales, orders, inventory, delivery আর refund report খুলুন।', permission: 'report.view' },
-  { to: '/admin/activity-logs', title: 'অ্যাক্টিভিটি লগ', description: 'Admin action history review করার জন্য shortcut।', permission: 'activity-log.view' },
+  { to: '/admin/staff', title: 'Staff Management', description: 'Review the staff list, statuses, edits, and team access.', permission: 'staff.view' },
+  { to: '/admin/roles', title: 'Roles & Permissions', description: 'Control which roles get access to which areas.', permission: 'role.manage' },
+  { to: '/admin/reports', title: 'Report Center', description: 'Open sales, orders, inventory, delivery, and refund reports.', permission: 'report.view' },
+  { to: '/admin/activity-logs', title: 'Activity Logs', description: 'Shortcut to review admin action history.', permission: 'activity-log.view' },
 ]
 
 const statusTone = {
@@ -27,7 +27,7 @@ export default function AdminProfile() {
 
   return (
     <>
-      <PageHeader title="আমার প্রোফাইল" subtitle="Admin account overview, assigned access এবং quick settings shortcuts." />
+      <PageHeader title="My Profile" subtitle="Admin account overview, assigned access, and quick settings shortcuts." />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
         <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
@@ -52,7 +52,7 @@ export default function AdminProfile() {
           <div className="grid gap-4 px-6 py-6 md:grid-cols-3">
             <MetricCard label="Assigned Roles" value={staff?.roles?.length || 0} note={roleNames} />
             <MetricCard label="Permissions" value={permissionCount} note="Current account access scope" />
-            <MetricCard label="Last Login" value={staff?.last_login_at ? date(staff.last_login_at) : 'N/A'} note="Most recent recorded session" />
+            <MetricCard label="Last Login" value={staff?.last_login_at ? date(staff.last_login_at, 'en-US') : 'N/A'} note="Most recent recorded session" />
           </div>
 
           <div className="border-t border-slate-200 px-6 py-6">
@@ -72,7 +72,7 @@ export default function AdminProfile() {
           <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-950">Quick settings</h3>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Header dropdown থেকে যেসব admin settings খুলছেন, সেগুলোর shortcut এখানে একসাথে রাখা হলো।
+              These are shortcuts to the same admin settings available from the header dropdown.
             </p>
 
             <div className="mt-5 space-y-3">

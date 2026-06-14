@@ -3,9 +3,14 @@
 namespace App\Http\Controllers\Api\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Services\AuthService;
 use App\Support\ApiResponse;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
@@ -46,9 +51,67 @@ class AuthController extends Controller
         return $this->ok($result['data'], $result['message']);
     }
 
+    public function forgotPassword(Request $request)
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        $user = User::query()->where('email', $data['email'])->first();
+
+        if (! $user) {
+            return $this->fail('No customer account was found for that email address.', 404, [
+                'email' => ['No customer account was found for that email address.'],
+            ]);
+        }
+
+        $token = Password::broker('users')->createToken($user);
+        $user->sendPasswordResetNotification($token);
+
+        $payload = null;
+
+        if (app()->isLocal() || config('app.debug')) {
+            $payload = [
+                'email' => $user->email,
+                'reset_url' => $this->frontendResetUrl($token, $user->email),
+            ];
+        }
+
+        return $this->ok($payload, 'Password reset instructions have been sent to your email address.');
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $data = $request->validate([
+            'token' => ['required', 'string'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $status = Password::broker('users')->reset(
+            $data,
+            function (User $user, string $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+
+                event(new PasswordReset($user));
+            }
+        );
+
+        if ($status !== Password::PASSWORD_RESET) {
+            return $this->fail('The password reset link is invalid or has expired.', 422, [
+                'token' => ['The password reset link is invalid or has expired.'],
+            ]);
+        }
+
+        return $this->ok(null, 'Your password has been reset successfully.');
+    }
+
     public function profile(Request $request)
     {
-        return $this->ok($request->user()->load('addresses', 'defaultAddress'), 'প্রোফাইল তথ্য পাওয়া গেছে।');
+        return $this->ok($request->user()->load('addresses', 'defaultAddress'), 'Customer profile loaded successfully.');
     }
 
     public function updateProfile(Request $request, AuthService $auth)
@@ -60,9 +123,10 @@ class AuthController extends Controller
             'date_of_birth' => ['nullable', 'date'],
             'gender' => ['nullable', 'string', 'max:50'],
             'password' => ['nullable', 'string', 'min:8'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
-        return $this->ok($auth->updateProfile($request->user(), $data), 'প্রোফাইল আপডেট হয়েছে।');
+        return $this->ok($auth->updateProfile($request->user(), $data, $request->file('avatar')), 'Customer profile updated successfully.');
     }
 
     public function me(Request $request)
@@ -75,7 +139,7 @@ class AuthController extends Controller
         $request->user()->sessions()->whereNull('logout_at')->latest('id')->first()?->update(['logout_at' => now()]);
         $request->user()->currentAccessToken()?->delete();
 
-        return $this->ok(null, 'লগআউট সফল হয়েছে।');
+        return $this->ok(null, 'Customer logout completed successfully.');
     }
 
     public function redirect(string $provider)
@@ -89,5 +153,12 @@ class AuthController extends Controller
         $result = $auth->findOrCreateSocialCustomer($provider, $providerUser, $request);
 
         return $this->ok($result['data'], $result['message']);
+    }
+
+    protected function frontendResetUrl(string $token, string $email): string
+    {
+        $baseUrl = rtrim((string) env('FRONTEND_URL', 'http://127.0.0.1:5173'), '/');
+
+        return $baseUrl.'/reset-password?token='.urlencode($token).'&email='.urlencode($email);
     }
 }

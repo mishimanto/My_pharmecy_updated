@@ -4,7 +4,11 @@ import toast from 'react-hot-toast'
 import { FiArrowRight, FiGift, FiPackage, FiShield, FiTruck } from 'react-icons/fi'
 import PageHeader from '../../components/common/PageHeader'
 import { orderApi } from '../../api/orderApi'
+import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
 import { date, money } from '../../utils/formatters'
+import { getOrderStatusLabel } from '../../utils/statusLabels'
+
+const REWARDS_ORDERS_CACHE_KEY = 'orders_list'
 
 function tierFromPoints(points) {
   if (points >= 120) return { title: 'Gold member', next: null }
@@ -13,12 +17,16 @@ function tierFromPoints(points) {
 }
 
 export default function Rewards() {
-  const [orders, setOrders] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [orders, setOrders] = useState(() => readCustomerCache(REWARDS_ORDERS_CACHE_KEY, []))
+  const [loading, setLoading] = useState(() => readCustomerCache(REWARDS_ORDERS_CACHE_KEY, null) === null)
 
   useEffect(() => {
     orderApi.list()
-      .then((res) => setOrders(res.data.data?.data || []))
+      .then((res) => {
+        const nextOrders = res.data.data?.data || []
+        setOrders(nextOrders)
+        writeCustomerCache(REWARDS_ORDERS_CACHE_KEY, nextOrders)
+      })
       .catch(() => toast.error('Rewards summary could not be loaded.'))
       .finally(() => setLoading(false))
   }, [])
@@ -98,7 +106,7 @@ export default function Rewards() {
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-semibold text-slate-950">{order.order_number}</p>
-                      <p className="mt-1 text-sm text-slate-500">{date(order.order_date)} • {order.order_status}</p>
+                      <p className="mt-1 text-sm text-slate-500">{date(order.order_date)} • {getOrderStatusLabel(order.order_status)}</p>
                     </div>
                     <div className="text-sm font-semibold text-slate-950">{money(order.total_amount)}</div>
                   </div>

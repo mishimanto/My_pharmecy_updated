@@ -33,7 +33,7 @@ export default function Register() {
 
   return (
     <AuthLayout
-      title="Create your customer account"
+      title="Create new account"
       subtitle="Register once and keep your pharmacy orders, delivery addresses, prescriptions, and support threads together."
     >
       <form className="space-y-4" onSubmit={submit}>
@@ -41,7 +41,7 @@ export default function Register() {
           <div key={field}>
             <label className="text-sm font-medium text-slate-700">{label}</label>
             <input
-              className="mt-2 w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+              className="mt-1 w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
               type={type}
               placeholder={label}
               value={form[field]}
@@ -54,7 +54,7 @@ export default function Register() {
           {loading ? 'Creating account...' : 'Register account'}
         </button>
 
-        <div className="border-t border-slate-200 pt-4 text-sm text-slate-500">
+        <div className="border-t border-slate-200 pt-4 text-center text-sm text-slate-500">
           Already registered?{' '}
           <Link className="font-semibold text-emerald-700" to="/login">
             Login here

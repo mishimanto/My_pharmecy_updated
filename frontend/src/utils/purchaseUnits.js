@@ -13,18 +13,50 @@ export function getDefaultPurchaseOption(product) {
   return options.find((option) => option.is_available) || options[0] || null
 }
 
-export function getUnitLabel(code) {
-  return { piece: 'Piece', strip: 'Strip', box: 'Box' }[code] || 'Unit'
+const UNIT_COPY = {
+  piece: { bn: 'পিস', en: 'Piece', enPlural: 'Pieces' },
+  strip: { bn: 'স্ট্রিপ', en: 'Strip', enPlural: 'Strips' },
+  box: { bn: 'বক্স', en: 'Box', enPlural: 'Boxes' },
+  unit: { bn: 'ইউনিট', en: 'Unit', enPlural: 'Units' },
 }
 
-export function getUnitSummary(quantity, unitLabel) {
-  if (quantity === 1) {
-    return `${quantity} ${unitLabel}`
+function resolveUnitCopy(code) {
+  return UNIT_COPY[code] || UNIT_COPY.unit
+}
+
+export function getUnitLabel(code, isBangla = false) {
+  const copy = resolveUnitCopy(code)
+  return isBangla ? copy.bn : copy.en
+}
+
+export function getUnitPluralLabel(code, isBangla = false) {
+  const copy = resolveUnitCopy(code)
+  return isBangla ? copy.bn : copy.enPlural
+}
+
+export function getLocalizedConversionLabel(option, isBangla = false) {
+  if (!option) {
+    return ''
   }
 
-  if (unitLabel === 'Box') {
-    return `${quantity} Boxes`
+  const piecesPerUnit = Number(option.pieces_per_unit || 0)
+  const unitLabel = getUnitLabel(option.code, isBangla)
+
+  if (!piecesPerUnit) {
+    return isBangla ? `১ ${unitLabel}` : `1 ${unitLabel}`
   }
 
-  return `${quantity} ${unitLabel}s`
+  if (isBangla) {
+    return `১ ${unitLabel} = ${piecesPerUnit.toLocaleString('bn-BD')} পিস`
+  }
+
+  return `1 ${unitLabel} = ${piecesPerUnit} ${piecesPerUnit === 1 ? 'piece' : 'pieces'}`
+}
+
+export function getUnitSummary(quantity, unitCode, isBangla = false) {
+  const count = Number(quantity || 0)
+  const label = count === 1 ? getUnitLabel(unitCode, isBangla) : getUnitPluralLabel(unitCode, isBangla)
+  const formattedCount = count.toLocaleString(isBangla ? 'bn-BD' : 'en-US')
+
+  return `${formattedCount} ${label}`
 }

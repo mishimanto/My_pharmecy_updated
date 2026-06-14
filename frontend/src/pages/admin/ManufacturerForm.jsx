@@ -37,7 +37,7 @@ export default function ManufacturerForm() {
       setCachedItem('manufacturers', id, manufacturer)
       setForm(formFromManufacturer(manufacturer))
       setPreview(manufacturer.logo_url || '')
-    }).catch(() => active && toast.error('ম্যানুফ্যাকচারার তথ্য লোড করা যায়নি।'))
+    }).catch(() => active && toast.error('Unable to load manufacturer details.'))
       .finally(() => active && setLoading(false))
 
     return () => {
@@ -84,10 +84,10 @@ export default function ManufacturerForm() {
 
       productApi.clearCache()
 
-      toast.success(editing ? 'ম্যানুফ্যাকচারার আপডেট হয়েছে।' : 'ম্যানুফ্যাকচারার তৈরি হয়েছে।')
+      toast.success(editing ? 'Manufacturer updated.' : 'Manufacturer created.')
       navigate('/admin/manufacturers')
     } catch (error) {
-      toast.error(error.response?.data?.message || 'সেভ করা যায়নি।')
+      toast.error(error.response?.data?.message || 'Unable to save manufacturer.')
     } finally {
       setSaving(false)
     }
@@ -96,8 +96,8 @@ export default function ManufacturerForm() {
   return (
     <>
       <PageHeader
-        title={editing ? 'ম্যানুফ্যাকচারার এডিট' : 'নতুন ম্যানুফ্যাকচারার'}
-        subtitle="Company name, logo, country এবং active status সেট করুন।"
+        title={editing ? 'Edit Manufacturer' : 'New Manufacturer'}
+        subtitle="Set the company name, logo, country, and active status."
       />
 
       {loading ? (
@@ -108,7 +108,7 @@ export default function ManufacturerForm() {
             <label className="text-sm font-medium text-slate-700">Company name</label>
             <input
               className="w-full rounded-xl border px-3 py-2.5"
-              placeholder="ম্যানুফ্যাকচারার নাম"
+              placeholder="Manufacturer name"
               value={form.manufacturer_name}
               onChange={(event) => setForm({ ...form, manufacturer_name: event.target.value })}
             />
@@ -118,7 +118,7 @@ export default function ManufacturerForm() {
             <label className="text-sm font-medium text-slate-700">Country</label>
             <input
               className="w-full rounded-xl border px-3 py-2.5"
-              placeholder="দেশ"
+              placeholder="Country"
               value={form.country}
               onChange={(event) => setForm({ ...form, country: event.target.value })}
             />
@@ -127,8 +127,8 @@ export default function ManufacturerForm() {
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700">Status</label>
             <select className="w-full rounded-xl border px-3 py-2.5" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
-              <option value="active">সক্রিয়</option>
-              <option value="inactive">নিষ্ক্রিয়</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
             </select>
           </div>
 
@@ -139,14 +139,14 @@ export default function ManufacturerForm() {
             {editing && preview ? (
               <label className="flex items-center gap-2 text-sm text-slate-600">
                 <input type="checkbox" checked={removeLogo} onChange={(event) => setRemoveLogo(event.target.checked)} />
-                বর্তমান logo সরিয়ে দিন
+                Remove current logo
               </label>
             ) : null}
           </div>
 
           <div className="md:col-span-2">
             <button disabled={saving} className="rounded-xl bg-slate-950 px-4 py-2.5 text-white disabled:opacity-60">
-              {saving ? 'সেভ হচ্ছে...' : 'সেভ করুন'}
+              {saving ? 'Saving...' : 'Save'}
             </button>
           </div>
         </form>

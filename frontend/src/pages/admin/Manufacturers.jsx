@@ -41,7 +41,7 @@ export default function Manufacturers() {
       setManufacturers(payload.data || [])
       setMeta(payload)
       setCachedList('manufacturers', currentParams, payload)
-    }).catch(() => active && toast.error('ম্যানুফ্যাকচারার লোড করা যায়নি।'))
+    }).catch(() => active && toast.error('Unable to load manufacturers.'))
       .finally(() => active && setLoading(false))
 
     return () => {
@@ -52,18 +52,18 @@ export default function Manufacturers() {
 
   const remove = async (manufacturer) => {
     const result = await Swal.fire({
-      title: 'ম্যানুফ্যাকচারার ডিলিট করবেন?',
+      title: 'Delete this manufacturer?',
       text: manufacturer.manufacturer_name,
       showCancelButton: true,
-      confirmButtonText: 'ডিলিট',
-      cancelButtonText: 'বাতিল',
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
       confirmButtonColor: '#dc2626',
     })
 
     if (!result.isConfirmed) return
 
     await adminApi.remove('manufacturers', manufacturer.id)
-    toast.success('ম্যানুফ্যাকচারার ডিলিট হয়েছে।')
+    toast.success('Manufacturer deleted.')
     const payload = await adminApi.list('manufacturers', currentParams).then(({ data }) => data.data)
     setManufacturers(payload.data || [])
     setMeta(payload)
@@ -73,30 +73,30 @@ export default function Manufacturers() {
   return (
     <>
       <PageHeader
-        title="ম্যানুফ্যাকচারার"
-        subtitle="Company details, logo, country এবং active status ম্যানেজ করুন।"
-        action={<Link className="rounded bg-slate-950 px-4 py-2 text-sm text-white" to="/admin/manufacturers/create">নতুন ম্যানুফ্যাকচারার</Link>}
+        title="Manufacturers"
+        subtitle="Manage company details, logos, countries, and active status."
+        action={<Link className="rounded bg-slate-950 px-4 py-2 text-sm text-white" to="/admin/manufacturers/create">New Manufacturer</Link>}
       />
 
       <input
         className="mb-4 w-full rounded border px-3 py-2"
-        placeholder="নাম, দেশ বা স্ট্যাটাস দিয়ে খুঁজুন"
+        placeholder="Search by name, country, or status"
         value={search}
         onChange={(event) => { setSearch(event.target.value); setPage(1) }}
       />
 
       {loading && manufacturers.length === 0 && <ManufacturerListSkeleton />}
-      {!loading && manufacturers.length === 0 && <EmptyState title="কোনো ম্যানুফ্যাকচারার নেই" text="নতুন company যোগ করলে এখানে দেখা যাবে।" />}
+      {!loading && manufacturers.length === 0 && <EmptyState title="No manufacturers found" text="New manufacturers will appear here after you add them." />}
 
       {manufacturers.length > 0 ? (
         <div className="overflow-x-auto rounded border bg-white">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-100">
               <tr>
-                <th className="px-3 py-3">লোগো</th>
-                <th className="px-3 py-3">নাম</th>
-                <th className="px-3 py-3">দেশ</th>
-                <th className="px-3 py-3">স্ট্যাটাস</th>
+                <th className="px-3 py-3">Logo</th>
+                <th className="px-3 py-3">Name</th>
+                <th className="px-3 py-3">Country</th>
+                <th className="px-3 py-3">Status</th>
                 <th className="px-3 py-3" />
               </tr>
             </thead>
@@ -121,8 +121,8 @@ export default function Manufacturers() {
                   </td>
                   <td className="px-3 py-3 text-right">
                     <div className="flex justify-end gap-2">
-                      <Link className="rounded bg-slate-100 px-3 py-1.5" to={`/admin/manufacturers/${manufacturer.id}/edit`}>এডিট</Link>
-                      <button className="rounded bg-rose-50 px-3 py-1.5 text-rose-700" onClick={() => remove(manufacturer)}>ডিলিট</button>
+                      <Link className="rounded bg-slate-100 px-3 py-1.5" to={`/admin/manufacturers/${manufacturer.id}/edit`}>Edit</Link>
+                      <button className="rounded bg-rose-50 px-3 py-1.5 text-rose-700" onClick={() => remove(manufacturer)}>Delete</button>
                     </div>
                   </td>
                 </tr>
@@ -134,10 +134,10 @@ export default function Manufacturers() {
 
       {meta ? (
         <div className="mt-4 flex justify-between text-sm">
-          <span>পৃষ্ঠা {meta.current_page} / {meta.last_page}</span>
+          <span>Page {meta.current_page} / {meta.last_page}</span>
           <div className="flex gap-2">
-            <button className="rounded border px-3 py-1 disabled:opacity-40" disabled={page <= 1} onClick={() => setPage(page - 1)}>আগে</button>
-            <button className="rounded border px-3 py-1 disabled:opacity-40" disabled={meta.current_page >= meta.last_page} onClick={() => setPage(page + 1)}>পরে</button>
+            <button className="rounded border px-3 py-1 disabled:opacity-40" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button>
+            <button className="rounded border px-3 py-1 disabled:opacity-40" disabled={meta.current_page >= meta.last_page} onClick={() => setPage(page + 1)}>Next</button>
           </div>
         </div>
       ) : null}

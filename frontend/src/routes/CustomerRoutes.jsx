@@ -12,6 +12,7 @@ import Account from '../pages/customer/Account'
 import Addresses from '../pages/customer/Addresses'
 import MyOrders from '../pages/customer/MyOrders'
 import OrderDetails from '../pages/customer/OrderDetails'
+import OrderPayment from '../pages/customer/OrderPayment'
 import Tracking from '../pages/customer/Tracking'
 import Prescriptions from '../pages/customer/Prescriptions'
 import Rewards from '../pages/customer/Rewards'
@@ -32,7 +33,7 @@ export default function CustomerRoutes() {
       <Route element={<CustomerLayout />}>
         <Route index element={<Home />} />
         <Route path="products" element={<Products />} />
-        <Route path="products/:id" element={<ProductDetails />} />
+        <Route path="products/:slug" element={<ProductDetails />} />
         <Route path="wishlist" element={<Wishlist />} />
         <Route path="cart" element={<Cart />} />
         <Route path="checkout" element={<Checkout />} />
@@ -41,10 +42,11 @@ export default function CustomerRoutes() {
         <Route path="addresses" element={<ProtectedCustomerRoute><Addresses /></ProtectedCustomerRoute>} />
         <Route path="orders" element={<ProtectedCustomerRoute><MyOrders /></ProtectedCustomerRoute>} />
         <Route path="orders/:id" element={<OrderDetails />} />
+        <Route path="orders/:id/payment" element={<OrderPayment />} />
         <Route path="orders/:id/tracking" element={<Tracking />} />
-        <Route path="prescriptions" element={<Prescriptions />} />
+        <Route path="prescriptions" element={<ProtectedCustomerRoute><Prescriptions /></ProtectedCustomerRoute>} />
         <Route path="rewards" element={<ProtectedCustomerRoute><Rewards /></ProtectedCustomerRoute>} />
-        <Route path="upload-prescription" element={<UploadPrescription />} />
+        <Route path="upload-prescription" element={<ProtectedCustomerRoute><UploadPrescription /></ProtectedCustomerRoute>} />
         <Route path="support" element={<ProtectedCustomerRoute><Support /></ProtectedCustomerRoute>} />
         <Route path="support/:id" element={<ProtectedCustomerRoute><SupportDetails /></ProtectedCustomerRoute>} />
         <Route path="returns" element={<ProtectedCustomerRoute><Returns /></ProtectedCustomerRoute>} />

@@ -43,9 +43,19 @@ use Illuminate\Support\Facades\Route;
 Route::get('/health', fn () => ['success' => true, 'message' => 'ফার্মেসি API চলছে।', 'data' => null, 'errors' => null]);
 
 Route::get('/products', [ProductBrowseController::class, 'index']);
-Route::get('/products/{id}', [ProductBrowseController::class, 'show']);
+Route::get('/products/{slug}', [ProductBrowseController::class, 'show']);
 Route::get('/categories', [CategoryBrowseController::class, 'index']);
 Route::get('/categories/{id}/products', [CategoryBrowseController::class, 'products']);
+Route::get('/delivery-areas', fn () => [
+    'success' => true,
+    'message' => 'Delivery areas loaded successfully.',
+    'data' => \App\Models\DeliveryArea::query()
+        ->where('status', 'active')
+        ->orderBy('city')
+        ->orderBy('area_name')
+        ->get(),
+    'errors' => null,
+]);
 Route::get('/manufacturers', fn () => [
     'success' => true,
     'message' => 'ম্যানুফ্যাকচারার তালিকা পাওয়া গেছে।',
@@ -56,8 +66,10 @@ Route::get('/manufacturers', fn () => [
 Route::prefix('customer')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
     Route::get('/products', [ProductBrowseController::class, 'index']);
-    Route::get('/products/{id}', [ProductBrowseController::class, 'show']);
+    Route::get('/products/{slug}', [ProductBrowseController::class, 'show']);
     Route::get('/auth/{provider}/redirect', [AuthController::class, 'redirect']);
     Route::get('/auth/{provider}/callback', [AuthController::class, 'callback']);
     Route::get('/cart', [CartController::class, 'index']);
@@ -65,15 +77,13 @@ Route::prefix('customer')->group(function () {
     Route::put('/cart/items/{itemId}', [CartController::class, 'update']);
     Route::delete('/cart/items/{itemId}', [CartController::class, 'destroy']);
     Route::delete('/cart/clear', [CartController::class, 'clear']);
+    Route::post('/checkout/quote', [CheckoutController::class, 'quote']);
     Route::post('/checkout', [CheckoutController::class, 'store']);
     Route::get('/orders/{id}/tracking', [DeliveryTrackingController::class, 'show']);
     Route::post('/orders/{id}/payment/cod', [PaymentController::class, 'cod']);
+    Route::post('/orders/{id}/payment-proof', [PaymentController::class, 'submitProof']);
     Route::get('/orders/{id}', [OrderController::class, 'show']);
     Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);
-    Route::get('/prescriptions', [PrescriptionController::class, 'index']);
-    Route::post('/prescriptions', [PrescriptionController::class, 'store']);
-    Route::get('/prescriptions/{id}', [PrescriptionController::class, 'show']);
-
     Route::middleware(['auth:sanctum', 'customer.auth'])->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::get('/profile', [AuthController::class, 'profile']);
@@ -92,6 +102,9 @@ Route::prefix('customer')->group(function () {
         Route::get('/returns/{id}', [ReturnRequestController::class, 'show']);
         Route::get('/notifications', [NotificationController::class, 'index']);
         Route::patch('/notifications/{id}/read', [NotificationController::class, 'read']);
+        Route::get('/prescriptions', [PrescriptionController::class, 'index']);
+        Route::post('/prescriptions', [PrescriptionController::class, 'store']);
+        Route::get('/prescriptions/{id}', [PrescriptionController::class, 'show']);
 
     });
 });
@@ -177,6 +190,7 @@ Route::prefix('admin')->group(function () {
 
         Route::get('/orders', [OrderManagementController::class, 'index'])->middleware('permission:order.view');
         Route::get('/orders/{id}', [OrderManagementController::class, 'show'])->middleware('permission:order.view');
+        Route::patch('/orders/{id}/prescription-match', [OrderManagementController::class, 'prescriptionMatch'])->middleware('permission:prescription.review');
         Route::patch('/orders/{id}/status', [OrderManagementController::class, 'status'])->middleware('permission:order.update');
 
         Route::get('/payments', [PaymentManagementController::class, 'index'])->middleware('permission:payment.view');

@@ -30,7 +30,7 @@ export default function Products() {
       setCachedList('products', params, payload)
       return payload
     }).catch(() => {
-      toast.error('প্রোডাক্ট লোড করা যায়নি')
+      toast.error('Unable to load products.')
       throw new Error('Product load failed')
     }).finally(() => setLoading(false))
   }
@@ -54,7 +54,7 @@ export default function Products() {
       setProducts(payload.data || [])
       setMeta(payload)
       setCachedList('products', currentParams, payload)
-    }).catch(() => active && toast.error('প্রোডাক্ট লোড করা যায়নি'))
+    }).catch(() => active && toast.error('Unable to load products.'))
       .finally(() => active && setLoading(false))
 
     return () => {
@@ -64,31 +64,31 @@ export default function Products() {
   }, [currentParams])
 
   const toggleStatus = async (product) => {
-    const result = await Swal.fire({ title: 'প্রোডাক্ট স্ট্যাটাস বদলাবেন?', showCancelButton: true, confirmButtonText: 'হ্যাঁ', cancelButtonText: 'বাতিল' })
+    const result = await Swal.fire({ title: 'Change product status?', showCancelButton: true, confirmButtonText: 'Yes', cancelButtonText: 'Cancel' })
     if (!result.isConfirmed) return
     await adminApi.patch('products', product.id, 'status', { is_active: !product.is_active })
-    toast.success('স্ট্যাটাস আপডেট হয়েছে')
+    toast.success('Status updated.')
     load(currentParams, { silent: true })
   }
 
   const remove = async (product) => {
-    const result = await Swal.fire({ title: 'প্রোডাক্ট ডিলিট করবেন?', text: product.product_name, showCancelButton: true, confirmButtonText: 'ডিলিট', cancelButtonText: 'বাতিল', confirmButtonColor: '#dc2626' })
+    const result = await Swal.fire({ title: 'Delete this product?', text: product.product_name, showCancelButton: true, confirmButtonText: 'Delete', cancelButtonText: 'Cancel', confirmButtonColor: '#dc2626' })
     if (!result.isConfirmed) return
     await adminApi.remove('products', product.id)
-    toast.success('প্রোডাক্ট ডিলিট হয়েছে')
+    toast.success('Product deleted.')
     load(currentParams, { silent: true })
   }
 
   return (
     <>
-      <PageHeader title="প্রোডাক্ট" subtitle="প্রোডাক্ট, প্রেসক্রিপশন ফ্ল্যাগ, batch price/stock এবং status দেখুন।" action={<Link className="rounded bg-slate-950 px-4 py-2 text-sm text-white" to="/admin/products/create">নতুন প্রোডাক্ট</Link>} />
-      <input className="mb-4 w-full rounded border px-3 py-2" placeholder="প্রোডাক্ট, জেনেরিক বা ব্র্যান্ড দিয়ে খুঁজুন" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1) }} />
+      <PageHeader title="Products" subtitle="Review products, prescription flags, batch price and stock, and status." action={<Link className="rounded bg-slate-950 px-4 py-2 text-sm text-white" to="/admin/products/create">New Product</Link>} />
+      <input className="mb-4 w-full rounded border px-3 py-2" placeholder="Search by product, generic, or brand" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1) }} />
       {loading && products.length === 0 && <ProductListSkeleton />}
       {!loading && products.length === 0 && <EmptyState />}
       {products.length > 0 && (
         <div className="overflow-x-auto rounded border bg-white">
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-100"><tr><th className="px-3 py-2">নাম</th><th className="px-3 py-2">ক্যাটাগরি</th><th className="px-3 py-2">ম্যানুফ্যাকচারার</th><th className="px-3 py-2">প্রেসক্রিপশন</th><th className="px-3 py-2">ব্যাচ মূল্য</th><th className="px-3 py-2">স্ট্যাটাস</th><th className="px-3 py-2" /></tr></thead>
+            <thead className="bg-slate-100"><tr><th className="px-3 py-2">Name</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Manufacturer</th><th className="px-3 py-2">Prescription</th><th className="px-3 py-2">Batch Price</th><th className="px-3 py-2">Status</th><th className="px-3 py-2" /></tr></thead>
             <tbody>
               {products.map((product) => {
                 const batch = product.batches?.[0]
@@ -97,10 +97,10 @@ export default function Products() {
                     <td className="px-3 py-2 font-medium">{product.product_name}</td>
                     <td className="px-3 py-2">{product.category?.category_name || '-'}</td>
                     <td className="px-3 py-2">{product.manufacturer?.manufacturer_name || '-'}</td>
-                    <td className="px-3 py-2">{product.requires_prescription ? 'হ্যাঁ' : 'না'}</td>
+                    <td className="px-3 py-2">{product.requires_prescription ? 'Yes' : 'No'}</td>
                     <td className="px-3 py-2">{batch ? money(batch.selling_price) : '-'}</td>
-                    <td className="px-3 py-2"><span className={`rounded px-2 py-1 text-xs ${product.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>{product.is_active ? 'সক্রিয়' : 'নিষ্ক্রিয়'}</span></td>
-                    <td className="px-3 py-2 text-right"><Link className="rounded bg-slate-100 px-2 py-1" to={`/admin/products/${product.id}/edit`}>এডিট</Link> <button className="rounded bg-amber-50 px-2 py-1 text-amber-700" onClick={() => toggleStatus(product)}>{product.is_active ? 'নিষ্ক্রিয়' : 'সক্রিয়'}</button> <button className="rounded bg-rose-50 px-2 py-1 text-rose-700" onClick={() => remove(product)}>ডিলিট</button></td>
+                    <td className="px-3 py-2"><span className={`rounded px-2 py-1 text-xs ${product.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>{product.is_active ? 'Active' : 'Inactive'}</span></td>
+                    <td className="px-3 py-2 text-right"><Link className="rounded bg-slate-100 px-2 py-1" to={`/admin/products/${product.id}/edit`}>Edit</Link> <button className="rounded bg-amber-50 px-2 py-1 text-amber-700" onClick={() => toggleStatus(product)}>{product.is_active ? 'Deactivate' : 'Activate'}</button> <button className="rounded bg-rose-50 px-2 py-1 text-rose-700" onClick={() => remove(product)}>Delete</button></td>
                   </tr>
                 )
               })}
@@ -108,7 +108,7 @@ export default function Products() {
           </table>
         </div>
       )}
-      {meta && <div className="mt-4 flex justify-between text-sm"><span>পৃষ্ঠা {meta.current_page} / {meta.last_page}</span><div className="flex gap-2"><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={page <= 1} onClick={() => setPage(page - 1)}>আগে</button><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={meta.current_page >= meta.last_page} onClick={() => setPage(page + 1)}>পরে</button></div></div>}
+      {meta && <div className="mt-4 flex justify-between text-sm"><span>Page {meta.current_page} / {meta.last_page}</span><div className="flex gap-2"><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button><button className="rounded border px-3 py-1 disabled:opacity-40" disabled={meta.current_page >= meta.last_page} onClick={() => setPage(page + 1)}>Next</button></div></div>}
     </>
   )
 }

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -10,6 +11,11 @@ use Laravel\Socialite\Contracts\User as SocialiteUser;
 
 class AuthService
 {
+    public function __construct(
+        private readonly CustomerAvatarService $customerAvatarService,
+    ) {
+    }
+
     public function register(array $data, Request $request): array
     {
         return DB::transaction(function () use ($data, $request) {
@@ -43,10 +49,14 @@ class AuthService
         return $this->issueToken($user, $request, 'কাস্টমার লগইন সফল হয়েছে।');
     }
 
-    public function updateProfile(User $user, array $data): User
+    public function updateProfile(User $user, array $data, ?UploadedFile $avatar = null): User
     {
         if (array_key_exists('password', $data) && blank($data['password'])) {
             unset($data['password']);
+        }
+
+        if ($avatar) {
+            $data['avatar'] = $this->customerAvatarService->store($avatar, $user->getRawOriginal('avatar'));
         }
 
         $user->update($data);

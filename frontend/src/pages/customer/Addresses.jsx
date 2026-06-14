@@ -3,6 +3,9 @@ import toast from 'react-hot-toast'
 import Swal from 'sweetalert2'
 import PageHeader from '../../components/common/PageHeader'
 import { addressApi } from '../../api/addressApi'
+import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
+
+const ADDRESSES_CACHE_KEY = 'addresses_list'
 
 function createForm() {
   return {
@@ -18,15 +21,19 @@ function createForm() {
 }
 
 export default function Addresses() {
-  const [addresses, setAddresses] = useState([])
+  const [addresses, setAddresses] = useState(() => readCustomerCache(ADDRESSES_CACHE_KEY, []))
   const [form, setForm] = useState(createForm())
   const [editingId, setEditingId] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => readCustomerCache(ADDRESSES_CACHE_KEY, null) === null)
   const [saving, setSaving] = useState(false)
 
   const load = () => {
     addressApi.list()
-      .then((res) => setAddresses(res.data.data?.data || res.data.data || []))
+      .then((res) => {
+        const nextAddresses = res.data.data?.data || res.data.data || []
+        setAddresses(nextAddresses)
+        writeCustomerCache(ADDRESSES_CACHE_KEY, nextAddresses)
+      })
       .catch(() => toast.error('Addresses could not be loaded.'))
       .finally(() => setLoading(false))
   }
@@ -107,14 +114,14 @@ export default function Addresses() {
 
   return (
     <>
-      <PageHeader title="Saved addresses" subtitle="Manage delivery addresses for faster checkout and keep one address marked as your default." />
+      <PageHeader title="Addresses" />
 
       <div className="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
         <form onSubmit={submit} className="border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
           <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">{editingId ? 'Edit address' : 'New address'}</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Delivery-ready customer address.</h2>
+              
             </div>
             {editingId ? (
               <button
@@ -138,7 +145,7 @@ export default function Addresses() {
             <AddressField label="City" value={form.city} onChange={(value) => setForm({ ...form, city: value })} />
             <AddressField label="Area" value={form.area} onChange={(value) => setForm({ ...form, area: value })} />
             <AddressField label="Postal code" value={form.postal_code} onChange={(value) => setForm({ ...form, postal_code: value })} />
-            <label className="flex items-center gap-3 border border-slate-300 px-4 py-3 text-sm text-slate-700">
+            <label className="flex items-center gap-2 text-md text-slate-700">
               <input
                 type="checkbox"
                 checked={form.is_default}
