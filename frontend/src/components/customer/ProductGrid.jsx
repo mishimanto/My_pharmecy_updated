@@ -78,7 +78,6 @@ export default function ProductGrid() {
         .then(({ data }) => {
           const payload = data.data
           setProducts(payload.data || [])
-          setProducts(payload.data || [])
           setMeta(payload)
         })
         .catch(() => toast.error(isBangla ? 'পণ্য লোড করা যাচ্ছে না।' : 'Could not load products.'))

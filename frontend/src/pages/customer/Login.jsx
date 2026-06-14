@@ -21,7 +21,6 @@ export default function Login() {
       navigate(returnTo)
     } catch (error) {
       toast.error(error.response?.data?.message || 'Login could not be completed.')
-      toast.error(error.response?.data?.message || 'Login could not be completed.')
     } finally {
       setLoading(false)
     }

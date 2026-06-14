@@ -25,10 +25,10 @@ export default function Register() {
   }
 
   const fields = [
-    ['full_name', 'পূর্ণ নাম', 'text'],
-    ['phone', 'ফোন নম্বর', 'text'],
-    ['email', 'ইমেইল', 'email'],
-    ['password', 'পাসওয়ার্ড', 'password'],
+    ['full_name', 'Full name', 'text'],
+    ['phone', 'Phone number', 'text'],
+    ['email', 'Email address', 'email'],
+    ['password', 'Password', 'password'],
   ]
 
   return (

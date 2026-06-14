@@ -29,6 +29,10 @@ export default function Cart() {
   const items = useMemo(() => cart?.items || [], [cart])
   const hasPrescription = Boolean(cart?.requires_prescription)
   const warnings = cart?.warnings || []
+  const filteredWarnings = useMemo(
+    () => warnings.filter((warning) => warning !== 'This cart contains prescription medicines.'),
+    [warnings],
+  )
   const totalQuantity = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
   const selectedDeliveryArea = useMemo(
     () => deliveryAreas.find((item) => String(item.id) === String(deliveryAreaId)) || null,
@@ -211,18 +215,18 @@ export default function Cart() {
             <div className="grid gap-4 md:grid-cols-3">
               <MiniStat label="Line items" value={items.length} icon={FiShoppingCart} />
               <MiniStat label="Selected units" value={totalQuantity} icon={GrCheckboxSelected} />
-              <MiniStat label="Prescription items" value={hasPrescription ? 'Yes' : 'No'} icon={FaFilePrescription} />
+              <MiniStat label="Prescription items" value={hasPrescription ? 'Yes' : 'No'} icon={FaFilePrescription} tone={hasPrescription ? 'danger' : 'default'} />
             </div>
 
             {hasPrescription ? (
-              <div className="border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-800">
-                This cart contains prescription medicines. Please upload or select an approved prescription before checkout.
+              <div className="border border-amber-200 bg-amber-50 p-3 text-sm leading-7 text-amber-800">
+                <span className="font-semibold">Note:</span> This cart contains prescription medicines. Please upload or select an approved prescription before checkout.
               </div>
             ) : null}
 
-            {warnings.length > 0 ? (
+            {filteredWarnings.length > 0 ? (
               <div className="border border-rose-200 bg-rose-50 p-4 text-sm leading-7 text-rose-800">
-                {warnings.map((warning) => <p key={warning}>{warning}</p>)}
+                {filteredWarnings.map((warning) => <p key={warning}>{warning}</p>)}
               </div>
             ) : null}
 
@@ -340,7 +344,7 @@ export default function Cart() {
                       </button>
                     </div>
                   ) : (
-                    <p className="mt-2 text-xs text-slate-500">Available demo codes: `SAVE50`, `SAVE10`, `FREESHIP`.</p>
+                    <p className="mt-2 text-xs text-slate-500"></p>
                   )}
                 </div>
 
@@ -361,9 +365,7 @@ export default function Cart() {
                 <button className="border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700" onClick={clear}>
                   Clear full cart
                 </button>
-              </div>
-
-              
+              </div>              
             </div>
           </aside>
         </div>
@@ -372,16 +374,35 @@ export default function Cart() {
   )
 }
 
-function MiniStat({ label, value, icon: Icon }) {
+function MiniStat({ label, value, icon: Icon, tone = 'default' }) {
+  const danger = tone === 'danger'
+
   return (
-    <div className="border border-slate-200 bg-white p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
-      <div className="inline-flex h-10 w-10 items-center justify-center border border-slate-200 bg-slate-50 text-slate-950">
-        <Icon className="h-5 w-5" />
-        <div className="mt-4 text-sm text-slate-500">{label}</div>
+    <div className={`border p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)] ${danger ? 'border-rose-200 bg-rose-50' : 'border-slate-200 bg-white'}`}>
+      <div className="flex items-center gap-2">
+        <div className={`inline-flex h-6 w-6 items-center justify-center text-slate-950`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className={`text-sm `}>
+          {label}
+        </div>
       </div>
-      <div className="mt-4 text-sm text-slate-500">{label}</div>
-      <div className="mt-2 text-2xl font-semibold text-slate-950">{value}</div>
+
+      <div className={`mt-3 ml-2 text-2xl font-semibold ${danger ? 'text-rose-700' : 'text-slate-950'}`}>
+        {value}
+      </div>
+    </div>
+      )
+    }
+
+function SupportNote({ icon: Icon, title, body }) {
+  return (
+    <div className="border border-slate-200 bg-slate-50 p-4">
+      <div className="inline-flex h-9 w-9 items-center justify-center border border-slate-200 bg-white text-slate-950">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="mt-3 text-sm font-semibold text-slate-950">{title}</div>
+      <div className="mt-2 text-sm leading-7 text-slate-500">{body}</div>
     </div>
   )
 }
-

@@ -9,7 +9,6 @@ use App\Models\Product;
 use App\Services\InventoryService;
 use App\Services\ProductCatalogService;
 use App\Services\ShopperContextService;
-use App\Services\ShopperContextService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 
@@ -18,9 +17,7 @@ class CartController extends Controller
     use ApiResponse;
 
     public function index(Request $request, InventoryService $inventory, ProductCatalogService $catalog, ShopperContextService $shopper)
-    public function index(Request $request, InventoryService $inventory, ProductCatalogService $catalog, ShopperContextService $shopper)
     {
-        return $this->ok($this->cartPayload($this->cart($request, $shopper), $inventory, $catalog), 'Cart data loaded successfully.');
         return $this->ok($this->cartPayload($this->cart($request, $shopper), $inventory, $catalog), 'Cart data loaded successfully.');
     }
 
@@ -29,7 +26,6 @@ class CartController extends Controller
         $data = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
             'quantity' => ['required', 'integer', 'min:1'],
-            'purchase_unit' => ['nullable', 'in:piece,strip,box'],
             'purchase_unit' => ['nullable', 'in:piece,strip,box'],
         ]);
 
@@ -62,12 +58,8 @@ class CartController extends Controller
             'item' => $this->cartItemPayload($item->load('product.images'), $inventory, $catalog),
             'cart' => $this->cartPayload($this->cart($request, $shopper), $inventory, $catalog),
         ], 'Cart updated successfully.', 201);
-            'item' => $this->cartItemPayload($item->load('product.images'), $inventory, $catalog),
-            'cart' => $this->cartPayload($this->cart($request, $shopper), $inventory, $catalog),
-        ], 'Cart updated successfully.', 201);
     }
 
-    public function update(Request $request, int $itemId, InventoryService $inventory, ProductCatalogService $catalog, ShopperContextService $shopper)
     public function update(Request $request, int $itemId, InventoryService $inventory, ProductCatalogService $catalog, ShopperContextService $shopper)
     {
         $data = $request->validate(['quantity' => ['required', 'integer', 'min:1']]);
@@ -78,23 +70,7 @@ class CartController extends Controller
         $option = $catalog->purchaseOption($product, $item->purchase_unit);
 
         abort_if(! $option, 422, 'Selected unit is not available.');
-        $item = $this->cart($request, $shopper)->items()->with('product.images')->findOrFail($itemId);
 
-        $product = Product::with(['images', 'batches' => $catalog->validBatchConstraint()])->findOrFail($item->product_id);
-        $product = $catalog->appendComputedFields($product);
-        $option = $catalog->purchaseOption($product, $item->purchase_unit);
-
-        abort_if(! $option, 422, 'Selected unit is not available.');
-
-        $pieceQuantity = $data['quantity'] * $option['pieces_per_unit'];
-        abort_if($product->available_stock < $pieceQuantity, 422, 'Not enough stock is available.');
-
-        $item->update([
-            'quantity' => $data['quantity'],
-            'pieces_per_unit' => $option['pieces_per_unit'],
-            'piece_quantity' => $pieceQuantity,
-            'unit_price' => $option['unit_price'],
-        ]);
         $pieceQuantity = $data['quantity'] * $option['pieces_per_unit'];
         abort_if($product->available_stock < $pieceQuantity, 422, 'Not enough stock is available.');
 
@@ -109,48 +85,30 @@ class CartController extends Controller
             'item' => $this->cartItemPayload($item->refresh()->load('product.images'), $inventory, $catalog),
             'cart' => $this->cartPayload($this->cart($request, $shopper), $inventory, $catalog),
         ], 'Cart item updated successfully.');
-            'item' => $this->cartItemPayload($item->refresh()->load('product.images'), $inventory, $catalog),
-            'cart' => $this->cartPayload($this->cart($request, $shopper), $inventory, $catalog),
-        ], 'Cart item updated successfully.');
     }
 
     public function destroy(Request $request, int $itemId, InventoryService $inventory, ProductCatalogService $catalog, ShopperContextService $shopper)
-    public function destroy(Request $request, int $itemId, InventoryService $inventory, ProductCatalogService $catalog, ShopperContextService $shopper)
     {
         $this->cart($request, $shopper)->items()->whereKey($itemId)->delete();
-        $this->cart($request, $shopper)->items()->whereKey($itemId)->delete();
 
-        return $this->ok($this->cartPayload($this->cart($request, $shopper), $inventory, $catalog), 'Cart item removed successfully.');
         return $this->ok($this->cartPayload($this->cart($request, $shopper), $inventory, $catalog), 'Cart item removed successfully.');
     }
 
     public function clear(Request $request, ShopperContextService $shopper)
-    public function clear(Request $request, ShopperContextService $shopper)
     {
-        $this->cart($request, $shopper)->items()->delete();
         $this->cart($request, $shopper)->items()->delete();
 
         return $this->ok([
-            'cart_id' => $this->cart($request, $shopper)->id,
             'cart_id' => $this->cart($request, $shopper)->id,
             'items' => [],
             'subtotal' => 0,
             'requires_prescription' => false,
             'warnings' => [],
         ], 'Cart cleared successfully.');
-        ], 'Cart cleared successfully.');
     }
 
     private function cart(Request $request, ShopperContextService $shopper): Cart
-    private function cart(Request $request, ShopperContextService $shopper): Cart
     {
-        [$user, $guestToken] = $shopper->requireGuestOrUser($request);
-
-        if ($user) {
-            return Cart::firstOrCreate(['user_id' => $user->id]);
-        }
-
-        return Cart::firstOrCreate(['guest_token' => $guestToken]);
         [$user, $guestToken] = $shopper->requireGuestOrUser($request);
 
         if ($user) {
@@ -165,7 +123,6 @@ class CartController extends Controller
         $cart->load('items.product.images');
 
         $items = $cart->items->map(fn (CartItem $item) => $this->cartItemPayload($item, $inventory, $catalog))->values();
-        $items = $cart->items->map(fn (CartItem $item) => $this->cartItemPayload($item, $inventory, $catalog))->values();
         $requiresPrescription = $items->contains(fn ($item) => (bool) $item['requires_prescription']);
         $warnings = [];
 
@@ -173,13 +130,10 @@ class CartController extends Controller
             $available = $inventory->getAvailableStock($item->product_id);
             if ($available < $item->piece_quantity) {
                 $warnings[] = "{$item->product->product_name} does not have enough stock.";
-            if ($available < $item->piece_quantity) {
-                $warnings[] = "{$item->product->product_name} does not have enough stock.";
             }
         }
 
         if ($requiresPrescription) {
-            $warnings[] = 'This cart contains prescription medicines.';
             $warnings[] = 'This cart contains prescription medicines.';
         }
 
@@ -193,13 +147,10 @@ class CartController extends Controller
     }
 
     private function cartItemPayload(CartItem $item, InventoryService $inventory, ProductCatalogService $catalog): array
-    private function cartItemPayload(CartItem $item, InventoryService $inventory, ProductCatalogService $catalog): array
     {
         $product = $item->product;
         $availableStock = $inventory->getAvailableStock($product->id);
         $primaryImage = $product->images->firstWhere('is_primary', true) ?? $product->images->first();
-        $piecesPerUnit = max(1, (int) $item->pieces_per_unit);
-        $unitLabel = $catalog->unitLabel($item->purchase_unit);
         $piecesPerUnit = max(1, (int) $item->pieces_per_unit);
         $unitLabel = $catalog->unitLabel($item->purchase_unit);
 
@@ -220,16 +171,9 @@ class CartController extends Controller
             'pieces_per_unit' => $piecesPerUnit,
             'piece_quantity' => (int) $item->piece_quantity,
             'conversion_label' => "1 {$unitLabel} = {$piecesPerUnit} pieces",
-            'purchase_quantity' => (int) $item->quantity,
-            'purchase_unit' => $item->purchase_unit,
-            'purchase_unit_label' => $unitLabel,
-            'pieces_per_unit' => $piecesPerUnit,
-            'piece_quantity' => (int) $item->piece_quantity,
-            'conversion_label' => "1 {$unitLabel} = {$piecesPerUnit} pieces",
             'unit_price' => (float) $item->unit_price,
             'subtotal' => (float) ($item->quantity * $item->unit_price),
             'available_stock' => $availableStock,
-            'available_quantity' => intdiv($availableStock, $piecesPerUnit),
             'available_quantity' => intdiv($availableStock, $piecesPerUnit),
         ];
     }

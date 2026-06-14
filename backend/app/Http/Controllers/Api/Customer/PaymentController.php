@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\ShopperContextService;
-use App\Services\ShopperContextService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 
@@ -13,7 +12,6 @@ class PaymentController extends Controller
 {
     use ApiResponse;
 
-    public function cod(Request $request, int $id, ShopperContextService $shopper)
     public function cod(Request $request, int $id, ShopperContextService $shopper)
     {
         $order = $this->customerOrder($request, $id, $shopper);

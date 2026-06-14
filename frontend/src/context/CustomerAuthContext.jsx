@@ -15,13 +15,11 @@ function generateGuestToken() {
 }
 
 export function CustomerAuthProvider({ children }) {
-  const [customer, setCustomer] = useState(() =>
-    readCustomerCache(CUSTOMER_PROFILE_CACHE_KEY, null)
-  )
-
+  const [customer, setCustomer] = useState(() => readCustomerCache(CUSTOMER_PROFILE_CACHE_KEY, null))
   const [loading, setLoading] = useState(() => {
     const hasToken = Boolean(localStorage.getItem('customer_token'))
     const cachedCustomer = readCustomerCache(CUSTOMER_PROFILE_CACHE_KEY, null)
+
     return hasToken && !cachedCustomer
   })
 
@@ -108,18 +106,7 @@ export function CustomerAuthProvider({ children }) {
   }, [])
 
   return (
-    <CustomerAuthContext.Provider
-      value={{
-        customer,
-        loading,
-        login,
-        register,
-        updateProfile,
-        refreshProfile,
-        ensureGuestToken,
-        logout,
-      }}
-    >
+    <CustomerAuthContext.Provider value={{ customer, loading, login, register, updateProfile, refreshProfile, ensureGuestToken, logout }}>
       {children}
     </CustomerAuthContext.Provider>
   )
