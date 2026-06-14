@@ -46,7 +46,9 @@ export default function OrderDetails() {
       cancelButtonText: t('রেখে দিন', 'Keep order'),
     })
 
+
     if (!result.isConfirmed) return
+
 
     try {
       const res = await orderApi.cancel(id)

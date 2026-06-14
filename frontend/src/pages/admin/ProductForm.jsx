@@ -74,7 +74,9 @@ export default function ProductForm() {
       setCachedItem('products', id, product)
       setForm(formFromProduct(product))
       setImages(product.images || [])
+
     }).catch(() => active && toast.error('Unable to load product details.'))
+
       .finally(() => active && setLoading(false))
 
     return () => {
@@ -108,12 +110,12 @@ export default function ProductForm() {
         body.append('primary_index', '0')
         await adminApi.uploadProductImages(productId, body)
       }
-
       toast.success(editing ? 'Product updated.' : 'Product created.')
       productApi.clearCache()
       navigate('/admin/products')
     } catch (error) {
       toast.error(error.response?.data?.message || 'Unable to save product.')
+
     } finally {
       setSaving(false)
     }
@@ -130,10 +132,12 @@ export default function ProductForm() {
   return (
     <>
       <PageHeader title={editing ? 'Edit Product' : 'New Product'} subtitle="Piece price comes from the batch. Set strip and box conversions and bundle prices here." />
+
       {loading ? (
         <ProductFormSkeleton />
       ) : (
         <form className="grid gap-4 rounded-2xl border bg-white p-5 shadow-sm md:grid-cols-2" onSubmit={submit}>
+
           <input className="rounded-xl border px-3 py-2 md:col-span-2" placeholder="Product name" value={form.product_name} onChange={(event) => setField('product_name', event.target.value)} />
           <select className="rounded-xl border px-3 py-2" value={form.category_id} onChange={(event) => setField('category_id', event.target.value)}><option value="">Category</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.category_name}</option>)}</select>
           <select className="rounded-xl border px-3 py-2" value={form.manufacturer_id} onChange={(event) => setField('manufacturer_id', event.target.value)}><option value="">Manufacturer</option>{manufacturers.map((item) => <option key={item.id} value={item.id}>{item.manufacturer_name}</option>)}</select>
@@ -162,6 +166,7 @@ export default function ProductForm() {
           <input className="rounded-xl border px-3 py-2 md:col-span-2" type="file" multiple accept="image/*" onChange={(event) => setFiles(Array.from(event.target.files || []))} />
           {images.length > 0 && <div className="grid gap-2 md:col-span-2 sm:grid-cols-3">{images.map((image) => <div key={image.id} className="rounded-2xl border p-2 text-sm"><img className="mb-2 h-24 w-full rounded-xl object-cover" src={image.image_url} alt="" /><button type="button" className="text-rose-700" onClick={() => removeImage(image)}>Delete</button></div>)}</div>}
           <button disabled={saving} className="rounded-xl bg-slate-950 px-4 py-2 text-white md:col-span-2 disabled:opacity-60">{saving ? 'Saving...' : 'Save'}</button>
+
         </form>
       )}
     </>

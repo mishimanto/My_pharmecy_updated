@@ -27,6 +27,7 @@ import PrivacyPolicy from '../pages/customer/PrivacyPolicy'
 import TermsConditions from '../pages/customer/TermsConditions'
 import RefundPolicy from '../pages/customer/RefundPolicy'
 
+
 export default function CustomerRoutes() {
   return (
     <Routes>

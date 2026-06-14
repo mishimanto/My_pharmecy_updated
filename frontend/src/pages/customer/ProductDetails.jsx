@@ -330,6 +330,7 @@ export default function ProductDetails() {
               </div>
             ) : null}
           </div>
+        </section>
 
           <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
             <section className="border border-slate-200 bg-white">
@@ -655,7 +656,7 @@ export default function ProductDetails() {
               </div>
             </section>
           </div>
-        </section>
+       
       </div>
     </div>
   )

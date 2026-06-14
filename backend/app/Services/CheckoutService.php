@@ -38,12 +38,18 @@ class CheckoutService
 
             $orderItems = collect();
 
+
             foreach ($cart->items as $cartItem) {
                 abort_unless($cartItem->product->is_active, 422, "{$cartItem->product->product_name} is not active.");
 
                 $pieceQuantity = max(1, (int) ($cartItem->piece_quantity ?: ($cartItem->quantity * max(1, $cartItem->pieces_per_unit))));
                 $subtotal = round($cartItem->quantity * $cartItem->unit_price, 2);
+                abort_unless($cartItem->product->is_active, 422, "{$cartItem->product->product_name} is not active.");
 
+                $pieceQuantity = max(1, (int) ($cartItem->piece_quantity ?: ($cartItem->quantity * max(1, $cartItem->pieces_per_unit))));
+                $subtotal = round($cartItem->quantity * $cartItem->unit_price, 2);
+
+                $allocations = $this->inventory->selectBatchesByFEFO($cartItem->product_id, $pieceQuantity)
                 $allocations = $this->inventory->selectBatchesByFEFO($cartItem->product_id, $pieceQuantity)
                     ->map(fn ($allocation) => [
                         'batch' => $allocation['batch'],
@@ -60,10 +66,17 @@ class CheckoutService
                     'piece_quantity' => $pieceQuantity,
                     'unit_price' => (float) $cartItem->unit_price,
                     'subtotal' => $subtotal,
+                    'purchase_unit' => $cartItem->purchase_unit,
+                    'purchase_quantity' => $cartItem->quantity,
+                    'pieces_per_unit' => max(1, (int) $cartItem->pieces_per_unit),
+                    'piece_quantity' => $pieceQuantity,
+                    'unit_price' => (float) $cartItem->unit_price,
+                    'subtotal' => $subtotal,
                 ]);
             }
 
             $requiresPrescription = $cart->items->contains(fn ($item) => (bool) $item->product->requires_prescription);
+            $prescription = $this->resolvePrescription($cart->user_id, $guestToken, $requiresPrescription, $prescriptionId);
             $prescription = $this->resolvePrescription($cart->user_id, $guestToken, $requiresPrescription, $prescriptionId);
             $subtotal = $orderItems->sum('subtotal');
             $delivery = (float) $deliveryArea->delivery_charge;
@@ -98,6 +111,10 @@ class CheckoutService
             foreach ($orderItems as $item) {
                 $orderItem = $order->items()->create([
                     'product_id' => $item['product']->id,
+                    'purchase_unit' => $item['purchase_unit'],
+                    'quantity' => $item['purchase_quantity'],
+                    'pieces_per_unit' => $item['pieces_per_unit'],
+                    'piece_quantity' => $item['piece_quantity'],
                     'purchase_unit' => $item['purchase_unit'],
                     'quantity' => $item['purchase_quantity'],
                     'pieces_per_unit' => $item['pieces_per_unit'],
@@ -151,18 +168,25 @@ class CheckoutService
     }
 
     private function resolvePrescription(?int $userId, ?string $guestToken, bool $required, ?int $prescriptionId): ?Prescription
+    private function resolvePrescription(?int $userId, ?string $guestToken, bool $required, ?int $prescriptionId): ?Prescription
     {
+        if (! $required && ! $prescriptionId) {
         if (! $required && ! $prescriptionId) {
             return null;
         }
 
         abort_if($required && ! $prescriptionId, 422, 'A prescription is required for this order.');
+        abort_if($required && ! $prescriptionId, 422, 'A prescription is required for this order.');
 
         $prescription = Prescription::query()
             ->when($userId, fn ($query) => $query->where('user_id', $userId))
             ->when(! $userId, fn ($query) => $query->where('guest_token', $guestToken))
+            ->when($userId, fn ($query) => $query->where('user_id', $userId))
+            ->when(! $userId, fn ($query) => $query->where('guest_token', $guestToken))
             ->findOrFail($prescriptionId);
 
+        abort_if($prescription->status === 'rejected', 422, 'The selected prescription was rejected.');
+        abort_if($prescription->status === 'need_clarification', 422, 'The selected prescription needs clarification.');
         abort_if($prescription->status === 'rejected', 422, 'The selected prescription was rejected.');
         abort_if($prescription->status === 'need_clarification', 422, 'The selected prescription needs clarification.');
 

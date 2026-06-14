@@ -14,23 +14,17 @@ import AdminLogin from './pages/admin/AdminLogin'
 
 export default function App() {
   return (
-    <LanguageProvider>
-      <CustomerAuthProvider>
-        <StorefrontProvider>
-          <StaffAuthProvider>
-            <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin/*" element={<AdminRoutes />} />
-              <Route path="/*" element={<CustomerRoutes />} />
-            </Routes>
-            <Toaster position="top-right" toastOptions={{ duration: 2800 }} />
-          </StaffAuthProvider>
-        </StorefrontProvider>
-      </CustomerAuthProvider>
-    </LanguageProvider>
+    <CustomerAuthProvider>
+      <StaffAuthProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/*" element={<AdminRoutes />} />
+          <Route path="/*" element={<CustomerRoutes />} />
+        </Routes>
+        <Toaster position="top-right" toastOptions={{ duration: 2800 }} />
+      </StaffAuthProvider>
+    </CustomerAuthProvider>
   )
 }

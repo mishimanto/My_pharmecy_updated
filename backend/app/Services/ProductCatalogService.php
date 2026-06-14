@@ -13,6 +13,12 @@ class ProductCatalogService
         'box' => 'Box',
     ];
 
+    private const UNIT_LABELS = [
+        'piece' => 'Piece',
+        'strip' => 'Strip',
+        'box' => 'Box',
+    ];
+
     public function validBatchConstraint(): \Closure
     {
         return function ($query) {
@@ -25,8 +31,19 @@ class ProductCatalogService
                 $query->orderBy('expiry_date');
             }
         };
+        return function ($query) {
+            $query
+                ->where('status', 'active')
+                ->whereDate('expiry_date', '>', now())
+                ->whereRaw('(stock_quantity - reserved_quantity) > 0');
+
+            if (method_exists($query, 'orderBy')) {
+                $query->orderBy('expiry_date');
+            }
+        };
     }
 
+    public function customerQuery(Request $request): \Illuminate\Database\Eloquent\Builder
     public function customerQuery(Request $request): \Illuminate\Database\Eloquent\Builder
     {
         return Product::query()
@@ -49,6 +66,22 @@ class ProductCatalogService
                 'is_active',
             ])
             ->with([
+                'category:id,category_name',
+                'manufacturer:id,manufacturer_name,logo_url,logo_path',
+                'images:id,product_id,image_url,image_path,is_primary',
+                'batches' => function ($query) {
+                    ($this->validBatchConstraint())($query);
+                    $query->select([
+                        'id',
+                        'product_id',
+                        'batch_number',
+                        'selling_price',
+                        'stock_quantity',
+                        'reserved_quantity',
+                        'status',
+                        'expiry_date',
+                    ]);
+                },
                 'category:id,category_name',
                 'manufacturer:id,manufacturer_name,logo_url,logo_path',
                 'images:id,product_id,image_url,image_path,is_primary',
@@ -91,6 +124,9 @@ class ProductCatalogService
         $product->unit_config = $this->unitConfig($product);
         $product->purchase_options = $this->purchaseOptions($product);
         $product->default_purchase_unit = $this->defaultPurchaseUnit($product);
+        $product->unit_config = $this->unitConfig($product);
+        $product->purchase_options = $this->purchaseOptions($product);
+        $product->default_purchase_unit = $this->defaultPurchaseUnit($product);
 
         return $product;
     }
@@ -100,6 +136,102 @@ class ProductCatalogService
         $products->getCollection()->transform(fn (Product $product) => $this->appendComputedFields($product));
 
         return $products;
+    }
+
+    public function unitConfig(Product $product): array
+    {
+        $piecesPerStrip = max(1, (int) ($product->pieces_per_strip ?: 10));
+        $stripsPerBox = max(1, (int) ($product->strips_per_box ?: 10));
+
+        return [
+            'pieces_per_strip' => $piecesPerStrip,
+            'strips_per_box' => $stripsPerBox,
+            'pieces_per_box' => $piecesPerStrip * $stripsPerBox,
+        ];
+    }
+
+    public function purchaseOptions(Product $product): array
+    {
+        $piecePrice = round((float) ($product->display_price ?? 0), 2);
+        $availableStock = max(0, (int) ($product->available_stock ?? 0));
+        $config = $this->unitConfig($product);
+
+        $options = [
+            $this->buildOption('piece', 1, $piecePrice, $piecePrice, $availableStock),
+        ];
+
+        if ($config['pieces_per_strip'] > 1) {
+            $stripCompare = round($piecePrice * $config['pieces_per_strip'], 2);
+            $stripPrice = round((float) ($product->strip_price ?? $stripCompare), 2);
+            $options[] = $this->buildOption('strip', $config['pieces_per_strip'], $stripPrice, $stripCompare, $availableStock, true);
+        }
+
+        if ($config['pieces_per_box'] > 1) {
+            $boxCompare = round($piecePrice * $config['pieces_per_box'], 2);
+            $boxPrice = round((float) ($product->box_price ?? $boxCompare), 2);
+            $options[] = $this->buildOption('box', $config['pieces_per_box'], $boxPrice, $boxCompare, $availableStock);
+        }
+
+        return $options;
+    }
+
+    public function defaultPurchaseUnit(Product $product): string
+    {
+        $options = collect($this->purchaseOptions($product));
+        $strip = $options->first(fn (array $option) => $option['code'] === 'strip' && $option['is_available']);
+
+        if ($strip) {
+            return 'strip';
+        }
+
+        $firstAvailable = $options->firstWhere('is_available', true);
+
+        return $firstAvailable['code'] ?? 'piece';
+    }
+
+    public function purchaseOption(Product $product, string $unit): ?array
+    {
+        return collect($this->purchaseOptions($product))
+            ->first(fn (array $option) => $option['code'] === $unit);
+    }
+
+    public function unitLabel(string $unit): string
+    {
+        return self::UNIT_LABELS[$unit] ?? ucfirst($unit);
+    }
+
+    private function buildOption(
+        string $code,
+        int $piecesPerUnit,
+        float $unitPrice,
+        float $comparePrice,
+        int $availableStock,
+        bool $mostPopular = false
+    ): array {
+        $availableQuantity = intdiv($availableStock, max(1, $piecesPerUnit));
+        $savings = max(0, round($comparePrice - $unitPrice, 2));
+
+        return [
+            'code' => $code,
+            'label' => $this->unitLabel($code),
+            'pieces_per_unit' => $piecesPerUnit,
+            'unit_price' => round($unitPrice, 2),
+            'compare_price' => round($comparePrice, 2),
+            'savings' => $savings,
+            'available_quantity' => $availableQuantity,
+            'is_available' => $availableQuantity > 0,
+            'badge' => $mostPopular ? 'Most Popular' : null,
+            'conversion_label' => $this->conversionLabel($code, $piecesPerUnit),
+        ];
+    }
+
+    private function conversionLabel(string $code, int $piecesPerUnit): string
+    {
+        if ($code === 'piece') {
+            return '1 piece';
+        }
+
+        return "1 {$this->unitLabel($code)} = {$piecesPerUnit} pieces";
     }
 
     public function unitConfig(Product $product): array

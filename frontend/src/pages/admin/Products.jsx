@@ -15,7 +15,6 @@ export default function Products() {
   const [products, setProducts] = useState(initialCache?.data || [])
   const [meta, setMeta] = useState(initialCache || null)
   const [loading, setLoading] = useState(!initialCache)
-
   const currentParams = useMemo(() => ({ search, page }), [page, search])
 
   const load = (params = currentParams, { silent = false } = {}) => {
