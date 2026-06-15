@@ -56,7 +56,7 @@ export default function HomeWorkflowSpotlightSection({
     <section className="grid gap-6 pb-16 xl:grid-cols-[1.08fr_0.92fr]">
       <div className="overflow-hidden border border-slate-200/80 bg-white shadow-sm">
         <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="relative min-h-[300px] lg:min-h-[380px]">
+          <div className="relative min-h-75 lg:min-h-95">
             <img
               src={spotlightImage}
               alt={spotlightProduct?.product_name || (isBangla ? 'নির্বাচিত ওষুধ' : 'Featured medicine')}
@@ -64,7 +64,7 @@ export default function HomeWorkflowSpotlightSection({
               onError={handleImageFallback}
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.05),rgba(15,23,42,0.75))]" />
-            <div className="relative flex min-h-[300px] flex-col justify-end p-6 text-white lg:min-h-[380px]">
+            <div className="relative flex min-h-75 flex-col justify-end p-6 text-white lg:min-h-95">
               <div className={`transition-opacity duration-500 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
                 <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">
                   {spotlightProduct?.product_name || (isBangla ? 'জনপ্রিয় ওষুধ' : 'Popular medicine display')}
@@ -128,8 +128,7 @@ export default function HomeWorkflowSpotlightSection({
                   onError={handleImageFallback}
                 />
                 <div className="min-w-0">
-                  <div className="truncate text-md font-semibold text-slate-950">{manufacturer.manufacturer_name}</div>
-                  
+                  <div className="truncate text-md font-semibold text-slate-950">{manufacturer.manufacturer_name}</div>                  
                 </div>
               </div>
             ))}

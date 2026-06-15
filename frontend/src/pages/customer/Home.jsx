@@ -139,7 +139,7 @@ export default function Home() {
   const otcProducts = useMemo(() => products.filter((product) => !product.requires_prescription).slice(0, 4), [products])
   const prescriptionProducts = useMemo(() => products.filter((product) => product.requires_prescription).slice(0, 4), [products])
   const categoryHighlights = useMemo(() => categories.slice(0, 8), [categories])
-  const manufacturerHighlights = useMemo(() => manufacturers.slice(0, 6), [manufacturers])
+  const manufacturerHighlights = useMemo(() => manufacturers.slice(0, 8), [manufacturers])
   const spotlightProduct = featuredProducts[0]
 
   const add = async (product) => {
