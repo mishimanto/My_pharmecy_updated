@@ -12,7 +12,7 @@ class PaymentController extends Controller
 {
     use ApiResponse;
 
-    public function cod(Request $request, int $id, ShopperContextService $shopper)
+    public function cod(Request $request, string $id, ShopperContextService $shopper)
     {
         $order = $this->customerOrder($request, $id, $shopper);
 
@@ -30,7 +30,7 @@ class PaymentController extends Controller
         ], 'COD payment remains pending until delivery.');
     }
 
-    public function submitProof(Request $request, int $id, ShopperContextService $shopper)
+    public function submitProof(Request $request, string $id, ShopperContextService $shopper)
     {
         $order = $this->customerOrder($request, $id, $shopper);
 
@@ -69,7 +69,7 @@ class PaymentController extends Controller
         );
     }
 
-    private function customerOrder(Request $request, int $id, ShopperContextService $shopper): Order
+    private function customerOrder(Request $request, string $id, ShopperContextService $shopper): Order
     {
         [$user, $guestToken] = $shopper->requireGuestOrUser($request);
 
@@ -77,6 +77,9 @@ class PaymentController extends Controller
             ->with('payment')
             ->when($user, fn ($query) => $query->where('user_id', $user->id))
             ->when(! $user, fn ($query) => $query->where('guest_token', $guestToken))
-            ->findOrFail($id);
+            ->where(fn ($query) => ctype_digit($id)
+                ? $query->whereKey((int) $id)->orWhere('order_number', $id)
+                : $query->where('order_number', $id))
+            ->firstOrFail();
     }
 }

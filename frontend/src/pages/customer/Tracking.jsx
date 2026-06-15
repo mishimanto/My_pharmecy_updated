@@ -5,6 +5,7 @@ import { FiArrowRight, FiClock, FiPackage, FiTruck, FiUser } from 'react-icons/f
 import { orderApi } from '../../api/orderApi'
 import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
+import { getOrderPath } from '../../utils/orderRouting'
 import { getDeliveryStatusLabel, getOrderStatusLabel } from '../../utils/statusLabels'
 import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
 
@@ -95,7 +96,7 @@ export default function Tracking() {
                 {t('সাপোর্ট সেন্টার খুলুন', 'Open support center')}
                 <FiArrowRight className="h-4 w-4" />
               </Link>
-              <Link to={`/orders/${id}`} className="flex items-center justify-between border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
+              <Link to={getOrderPath(id)} className="flex items-center justify-between border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
                 {t('অর্ডার ডিটেইলসে ফিরে যান', 'Back to order details')}
                 <FiArrowRight className="h-4 w-4" />
               </Link>

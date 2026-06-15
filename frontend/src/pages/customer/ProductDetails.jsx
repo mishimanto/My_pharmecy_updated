@@ -7,7 +7,6 @@ import { prescriptionApi } from '../../api/prescriptionApi'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
-import { money } from '../../utils/formatters'
 import { handleImageFallback, MEDICINE_PLACEHOLDER_SRC, resolveImageUrl } from '../../utils/imageUrl'
 import { isPrescriptionLoginRequiredError, requiresPrescriptionLogin as requiresPrescriptionLoginForProduct, showPrescriptionLoginRequiredAlert } from '../../utils/prescriptionCartAlert'
 import { readPreferredPrescriptionId, writePreferredPrescriptionId } from '../../utils/prescriptionSelection'
@@ -19,6 +18,16 @@ const selectablePrescriptionStatuses = ['approved', 'pending']
 const prescriptionStatusLabels = {
   approved: { bn: 'Approved', en: 'Approved' },
   pending: { bn: 'Pending review', en: 'Pending review' },
+}
+
+function roundedMoney(value, locale = 'en-US') {
+  const amount = Number(value || 0)
+  const rounded = Math.round(Number.isNaN(amount) ? 0 : amount)
+
+  return `৳${new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(rounded)}`
 }
 
 export default function ProductDetails() {
@@ -368,7 +377,7 @@ export default function ProductDetails() {
                 <div className="mt-6 grid gap-px border border-slate-200 bg-slate-200 sm:grid-cols-3">
                   <FactTile
                     label={t('শুরু মূল্য', 'Starts at')}
-                    value={money(product.display_price || batch?.selling_price, locale)}
+                    value={roundedMoney(product.display_price || batch?.selling_price, locale)}
                     meta={t('প্রতি পিস', 'Per piece')}
                   />
                   <FactTile
@@ -523,7 +532,7 @@ export default function ProductDetails() {
                               <span className="text-lg font-semibold text-slate-950">{getUnitLabel(option.code, isBangla)}</span>
                               {option.savings > 0 ? (
                                 <span className="border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">
-                                  {t('সাশ্রয়', 'Save')} {money(option.savings, locale)}
+                                  {t('সাশ্রয়', 'Save')} {roundedMoney(option.savings, locale)}
                                 </span>
                               ) : null}
                             </div>
@@ -534,7 +543,7 @@ export default function ProductDetails() {
                           </div>
 
                           <div className="border-t border-slate-200 pt-4 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 sm:text-right">
-                            <div className="text-xl font-semibold text-slate-950">{money(option.unit_price, locale)}</div>
+                            <div className="text-xl font-semibold text-slate-950">{roundedMoney(option.unit_price, locale)}</div>
                             <div className="mt-1 text-xs text-slate-500">
                               {option.savings > 0 ? t('পিসের তুলনায় কম', 'Better than piece price') : t('স্ট্যান্ডার্ড মূল্য', 'Standard price')}
                             </div>
@@ -586,8 +595,8 @@ export default function ProductDetails() {
                         />
                         <FactTile
                           label={t('মোট মূল্য', 'Total')}
-                          value={money(totalPrice, locale)}
-                          meta={totalSavings > 0 ? `${t('সাশ্রয়', 'Save')} ${money(totalSavings, locale)}` : t('স্ট্যান্ডার্ড মূল্য', 'Standard price')}
+                          value={roundedMoney(totalPrice, locale)}
+                          meta={totalSavings > 0 ? `${t('সাশ্রয়', 'Save')} ${roundedMoney(totalSavings, locale)}` : t('স্ট্যান্ডার্ড মূল্য', 'Standard price')}
                         />
                       </div>
                     </div>
@@ -595,7 +604,7 @@ export default function ProductDetails() {
                     <aside className="">
                       {/* <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0e6574]">{t('অর্ডার', 'Order')}</div>
-                        <div className="text-2xl font-semibold tracking-tight text-slate-950">{money(totalPrice)}</div>
+                        <div className="text-2xl font-semibold tracking-tight text-slate-950">{roundedMoney(totalPrice)}</div>
                       </div>
                       <p className="mt-2 text-sm text-slate-500">
                         {activeOption

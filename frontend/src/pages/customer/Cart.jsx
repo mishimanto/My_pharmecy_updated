@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import Swal from 'sweetalert2'
-import { FiArrowRight, FiShoppingCart } from 'react-icons/fi'
+import { FiArrowRight, FiPlus, FiMinus, FiShoppingCart } from 'react-icons/fi'
 import { FaFilePrescription } from 'react-icons/fa'
 import { GrCheckboxSelected } from 'react-icons/gr'
 import { orderApi } from '../../api/orderApi'
@@ -22,10 +22,7 @@ export default function Cart() {
   const draft = useMemo(() => readCheckoutDraft(), [])
   const [deliveryAreas, setDeliveryAreas] = useState([])
   const [deliveryAreaId, setDeliveryAreaId] = useState(draft.deliveryAreaId)
-  const [couponInput, setCouponInput] = useState(draft.couponCode)
-  const [appliedCouponCode, setAppliedCouponCode] = useState(draft.couponCode)
   const [pricing, setPricing] = useState(null)
-  const [pricingLoading, setPricingLoading] = useState(false)
 
   const items = useMemo(() => cart?.items || [], [cart])
   const hasPrescription = Boolean(cart?.requires_prescription)
@@ -76,7 +73,7 @@ export default function Cart() {
   const cartItemProductName = useCallback((item) => (isBangla ? item.product_name_bn || item.product_name : item.product_name), [isBangla])
   const cartItemGenericName = useCallback((item) => (isBangla ? item.generic_name_bn || item.generic_name : item.generic_name), [isBangla])
 
-  const loadPricing = useCallback(async function loadPricing(nextAreaId, nextCouponCode, { silent = false } = {}) {
+  const loadPricing = useCallback(async function loadPricing(nextAreaId, { silent = false } = {}) {
     if (!items.length) {
       setPricing(null)
       return null
@@ -88,38 +85,22 @@ export default function Cart() {
         delivery_charge: 0,
         discount_amount: 0,
         total_amount: Number(cart?.subtotal || 0),
-        coupon: null,
       })
       return null
     }
 
-    setPricingLoading(true)
-
     try {
       const { data } = await orderApi.quote({
         delivery_area_id: Number(nextAreaId),
-        coupon_code: nextCouponCode || undefined,
       })
 
       setPricing(data.data)
       return data.data
     } catch (error) {
-      if (nextCouponCode) {
-        setAppliedCouponCode('')
-        writeCheckoutDraft({ couponCode: '' })
-        const fallback = await loadPricing(nextAreaId, '', { silent: true })
-        if (!silent) {
-          toast.error(error.response?.data?.message || t('কুপন প্রয়োগ করা যায়নি।', 'Coupon could not be applied.'))
-        }
-        return fallback
-      }
-
       if (!silent) {
         toast.error(error.response?.data?.message || t('কার্ট সংক্ষিপ্তাংশ আপডেট করা যায়নি।', 'Cart summary could not be updated.'))
       }
       return null
-    } finally {
-      setPricingLoading(false)
     }
   }, [cart?.subtotal, items.length, t])
 
@@ -154,10 +135,10 @@ export default function Cart() {
   }, [draft.deliveryAreaId, items.length, t])
 
   useEffect(() => {
-    if (!items.length || !deliveryAreaId) return
+    if (!items.length || !selectedDeliveryArea) return
 
-    loadPricing(deliveryAreaId, appliedCouponCode, { silent: true })
-  }, [appliedCouponCode, deliveryAreaId, items.length, loadPricing, cart?.subtotal])
+    loadPricing(selectedDeliveryArea.id, { silent: true })
+  }, [items.length, loadPricing, cart?.subtotal, selectedDeliveryArea])
 
   const updateQuantity = async (item, quantity) => {
     if (quantity < 1) return
@@ -205,38 +186,12 @@ export default function Cart() {
   const pageLoading = authLoading || (cartLoading && !cart)
   const subtotal = Number(pricing?.subtotal_amount ?? cart?.subtotal ?? 0)
   const deliveryCharge = Number(pricing?.delivery_charge ?? selectedDeliveryArea?.delivery_charge ?? 0)
-  const discountAmount = Number(pricing?.discount_amount ?? 0)
-  const total = Number(pricing?.total_amount ?? Math.max(0, subtotal + deliveryCharge - discountAmount))
+  const total = Number(pricing?.total_amount ?? Math.max(0, subtotal + deliveryCharge))
 
   const handleDeliveryAreaChange = async (value) => {
     setDeliveryAreaId(value)
     writeCheckoutDraft({ deliveryAreaId: value })
-    await loadPricing(value, appliedCouponCode, { silent: true })
-  }
-
-  const applyCoupon = async () => {
-    const nextCode = couponInput.trim().toUpperCase()
-
-    if (!nextCode) {
-      toast.error(t('প্রথমে একটি কুপন কোড লিখুন।', 'Enter a coupon code first.'))
-      return
-    }
-
-    const quote = await loadPricing(deliveryAreaId, nextCode)
-
-    if (!quote) return
-
-    setCouponInput(nextCode)
-    setAppliedCouponCode(nextCode)
-    writeCheckoutDraft({ couponCode: nextCode })
-    toast.success(t('কুপন সফলভাবে প্রয়োগ হয়েছে।', 'Coupon applied successfully.'))
-  }
-
-  const removeCoupon = async () => {
-    setCouponInput('')
-    setAppliedCouponCode('')
-    writeCheckoutDraft({ couponCode: '' })
-    await loadPricing(deliveryAreaId, '', { silent: true })
+    await loadPricing(value, { silent: true })
   }
 
   return (
@@ -303,7 +258,7 @@ export default function Cart() {
                       <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('পরিমাণ', 'Quantity')}</div>
                       <div className="mt-3 flex items-center gap-2">
                         <button className="flex h-10 w-10 items-center justify-center border border-slate-300 text-lg text-slate-900" disabled={updatingId === item.cart_item_id} onClick={() => updateQuantity(item, item.quantity - 1)}>
-                          -
+                          <FiMinus />
                         </button>
                         <input
                           inputMode="numeric"
@@ -312,7 +267,7 @@ export default function Cart() {
                           onChange={(event) => updateQuantity(item, parseNumber(event.target.value))}
                         />
                         <button className="flex h-10 w-10 items-center justify-center border border-slate-300 text-lg text-slate-900" disabled={updatingId === item.cart_item_id || item.quantity >= item.available_quantity} onClick={() => updateQuantity(item, item.quantity + 1)}>
-                          +
+                          <FiPlus />
                         </button>
                       </div>
                     </div>
@@ -356,39 +311,8 @@ export default function Cart() {
                   </select>
                 </div>
 
-                <div className="py-5 border-y border-slate-200">
-                  <label className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('কুপন প্রয়োগ করুন', 'Apply coupon')}</label>
-                  <div className="mt-2 flex gap-2">
-                    <input
-                      value={couponInput}
-                      onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
-                      placeholder={t('কুপন কোড লিখুন', 'Enter coupon code')}
-                      className="min-w-0 flex-1 border border-slate-300 px-3 py-3 text-sm text-slate-900 outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={applyCoupon}
-                      disabled={!deliveryAreaId || pricingLoading}
-                      className="border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {t('প্রয়োগ করুন', 'Apply')}
-                    </button>
-                  </div>
-                  {appliedCouponCode && pricing?.coupon ? (
-                    <div className="mt-2 flex items-center justify-between gap-3 border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
-                      <span>{pricing.coupon.label} ({pricing.coupon.code})</span>
-                      <button type="button" onClick={removeCoupon} className="text-emerald-800 underline">
-                        {t('সরান', 'Remove')}
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-xs text-slate-500"></p>
-                  )}
-                </div>
-
                 <div className="flex justify-between"><span>{t('আইটেম সাবটোটাল', 'Items subtotal')}</span><span>{formatMoney(subtotal)}</span></div>
                 <div className="flex justify-between"><span>{t('ডেলিভারি চার্জ', 'Delivery charge')}</span><span>{formatMoney(deliveryCharge)}</span></div>
-                <div className="flex justify-between"><span>{t('কুপন ছাড়', 'Coupon discount')}</span><span>-{formatMoney(discountAmount)}</span></div>
                 <div className="flex justify-between border-t border-slate-200 pt-3 text-base font-semibold text-slate-950">
                   <span>{t('সর্বমোট (অনুমানিক)', 'Estimated total')}</span>
                   <span>{formatMoney(total)}</span>

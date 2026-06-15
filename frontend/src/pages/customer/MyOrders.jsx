@@ -7,6 +7,7 @@ import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
 import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
 import { date } from '../../utils/formatters'
+import { getOrderPath } from '../../utils/orderRouting'
 import { getDeliveryStatusLabel, getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
 
 const ORDERS_CACHE_KEY = 'orders_list'
@@ -113,7 +114,7 @@ export default function MyOrders() {
 
       <div className="mt-6 space-y-4">
         {visibleOrders.map((order) => (
-          <Link key={order.id} to={`/orders/${order.id}`} className="block border border-slate-200 bg-white p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)] transition hover:-translate-y-0.5">
+          <Link key={order.id} to={getOrderPath(order)} className="block border border-slate-200 bg-white p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)] transition hover:-translate-y-0.5">
             <div className="grid gap-4 xl:grid-cols-[1fr_160px_160px_140px_auto] xl:items-center">
               <div>
                 <div className="flex flex-wrap items-center gap-2">

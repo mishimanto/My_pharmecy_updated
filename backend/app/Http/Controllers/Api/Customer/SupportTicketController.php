@@ -28,19 +28,17 @@ class SupportTicketController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'order_id' => ['nullable', 'exists:orders,id'],
+            'order_id' => ['nullable', 'string', 'max:255'],
             'subject' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
             'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf,doc,docx', 'max:5120'],
         ]);
 
-        if (!empty($data['order_id'])) {
-            abort_unless(Order::where('user_id', $request->user()->id)->whereKey($data['order_id'])->exists(), 403);
-        }
+        $orderId = $this->resolveCustomerOrderId($request, $data['order_id'] ?? null);
 
-        return DB::transaction(function () use ($request, $data) {
+        return DB::transaction(function () use ($request, $data, $orderId) {
             $ticket = $request->user()->supportTickets()->create([
-                'order_id' => $data['order_id'] ?? null,
+                'order_id' => $orderId,
                 'subject' => $data['subject'],
                 'description' => $data['description'],
                 'status' => 'open',
@@ -58,22 +56,22 @@ class SupportTicketController extends Controller
         });
     }
 
-    public function show(Request $request, int $id)
+    public function show(Request $request, string $reference)
     {
         return $this->ok(
-            $request->user()->supportTickets()->with($this->relations())->findOrFail($id),
+            $this->resolveCustomerTicket($request, $reference)->load($this->relations()),
             'সাপোর্ট টিকিট বিস্তারিত পাওয়া গেছে।'
         );
     }
 
-    public function reply(Request $request, int $id)
+    public function reply(Request $request, string $reference)
     {
         $data = $request->validate([
             'message' => ['required', 'string'],
             'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf,doc,docx', 'max:5120'],
         ]);
 
-        $ticket = $request->user()->supportTickets()->findOrFail($id);
+        $ticket = $this->resolveCustomerTicket($request, $reference);
         abort_if(in_array($ticket->status, ['resolved', 'closed'], true), 422, 'এই টিকিটে আর রিপ্লাই করা যাবে না।');
 
         $ticket->replies()->create([
@@ -93,5 +91,54 @@ class SupportTicketController extends Controller
     private function relations(): array
     {
         return ['order', 'assignedStaff', 'replies.customer', 'replies.staff'];
+    }
+
+    private function resolveCustomerTicket(Request $request, string $reference): SupportTicket
+    {
+        $ticketId = $this->ticketIdFromReference($reference);
+
+        return $request->user()
+            ->supportTickets()
+            ->whereKey($ticketId)
+            ->firstOrFail();
+    }
+
+    private function ticketIdFromReference(string $reference): int
+    {
+        $reference = trim($reference);
+
+        if (ctype_digit($reference)) {
+            return (int) $reference;
+        }
+
+        if (preg_match('/^ticket-([a-z0-9]+)/i', $reference, $matches)) {
+            return (int) base_convert(strtolower($matches[1]), 36, 10);
+        }
+
+        abort(404);
+    }
+
+    private function resolveCustomerOrderId(Request $request, ?string $reference): ?int
+    {
+        $reference = trim((string) $reference);
+
+        if ($reference === '') {
+            return null;
+        }
+
+        $order = Order::query()
+            ->where('user_id', $request->user()->id)
+            ->where(function ($query) use ($reference) {
+                if (ctype_digit($reference)) {
+                    $query->whereKey((int) $reference);
+                }
+
+                $query->orWhere('order_number', strtoupper($reference));
+            })
+            ->first();
+
+        abort_unless($order, 422, 'The selected order could not be found in your account.');
+
+        return (int) $order->id;
     }
 }

@@ -1,27 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { FiArrowRight, FiCamera, FiFileText, FiHeart, FiMapPin, FiMessageSquare, FiPackage } from 'react-icons/fi'
-import PageHeader from '../../components/common/PageHeader'
+import { FiArrowRight, FiCamera, FiFileText, FiHeart, FiMapPin, FiMessageSquare } from 'react-icons/fi'
 import { notificationApi } from '../../api/notificationApi'
 import { orderApi } from '../../api/orderApi'
 import { prescriptionApi } from '../../api/prescriptionApi'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
+import { useLanguage } from '../../context/LanguageContext'
 import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
 import { date } from '../../utils/formatters'
+import { getOrderPath } from '../../utils/orderRouting'
 import { getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
 
 const ACCOUNT_ORDERS_CACHE_KEY = 'orders_list'
 const ACCOUNT_NOTIFICATIONS_CACHE_KEY = 'notifications_list'
 const ACCOUNT_PRESCRIPTIONS_CACHE_KEY = 'prescriptions_list'
-
-const quickLinks = [
-  // { to: '/orders', title: 'My orders', body: 'Review order progress, delivery, and payment status.', icon: FiPackage, tone: 'sky' },
-  { to: '/addresses', title: 'Saved addresses', body: 'Manage default delivery addresses for quicker checkout.', icon: FiMapPin, tone: 'emerald' },
-  { to: '/prescriptions', title: 'Prescriptions', body: 'Track uploaded prescription files and pharmacist review.', icon: FiFileText, tone: 'amber' },
-  { to: '/support', title: 'Support tickets', body: 'Open complaints, ask questions, and continue support threads.', icon: FiMessageSquare, tone: 'violet' },
-  { to: '/rewards', title: 'Rewards center', body: 'View your member points summary from order activity.', icon: FiHeart, tone: 'rose' },
-]
 
 function formFromCustomer(customer) {
   return {
@@ -35,6 +28,10 @@ function formFromCustomer(customer) {
 
 export default function Account() {
   const { customer, updateProfile } = useCustomerAuth()
+  const { isBangla } = useLanguage()
+  const t = (bn, en) => (isBangla ? bn : en)
+  const locale = isBangla ? 'bn-BD' : 'en-US'
+  const banglaFontClass = isBangla ? "[font-family:'Hind_Siliguri','Noto_Sans_Bengali','SolaimanLipi','Vrinda',sans-serif]" : ''
   const fileInputRef = useRef(null)
   const previewUrlRef = useRef('')
   const [form, setForm] = useState(() => formFromCustomer(customer))
@@ -44,6 +41,12 @@ export default function Account() {
   const [orders, setOrders] = useState(() => readCustomerCache(ACCOUNT_ORDERS_CACHE_KEY, []))
   const [notifications, setNotifications] = useState(() => readCustomerCache(ACCOUNT_NOTIFICATIONS_CACHE_KEY, []))
   const [prescriptions, setPrescriptions] = useState(() => readCustomerCache(ACCOUNT_PRESCRIPTIONS_CACHE_KEY, []))
+  const quickLinks = useMemo(() => ([
+    { to: '/addresses', title: t('সেভ করা ঠিকানা', 'Saved addresses'), body: t('দ্রুত চেকআউটের জন্য ডিফল্ট ডেলিভারি ঠিকানা ম্যানেজ করুন।', 'Manage default delivery addresses for quicker checkout.'), icon: FiMapPin, tone: 'emerald' },
+    { to: '/prescriptions', title: t('প্রেসক্রিপশন', 'Prescriptions'), body: t('আপলোড করা প্রেসক্রিপশন ও ফার্মাসিস্ট রিভিউ ট্র্যাক করুন।', 'Track uploaded prescription files and pharmacist review.'), icon: FiFileText, tone: 'amber' },
+    { to: '/support', title: t('সাপোর্ট টিকিট', 'Support tickets'), body: t('সমস্যা জানান, প্রশ্ন করুন, এবং সাপোর্ট থ্রেড চালিয়ে যান।', 'Open complaints, ask questions, and continue support threads.'), icon: FiMessageSquare, tone: 'violet' },
+    { to: '/rewards', title: t('রিওয়ার্ড সেন্টার', 'Rewards center'), body: t('অর্ডার অ্যাক্টিভিটি থেকে আপনার মেম্বার পয়েন্ট সামারি দেখুন।', 'View your member points summary from order activity.'), icon: FiHeart, tone: 'rose' },
+  ]), [isBangla])
 
   useEffect(() => {
     setForm(formFromCustomer(customer))
@@ -115,13 +118,13 @@ export default function Account() {
     }
 
     if (!file.type.startsWith('image/')) {
-      toast.error('Please choose a valid image file.')
+      toast.error(t('একটি সঠিক ছবি ফাইল নির্বাচন করুন।', 'Please choose a valid image file.'))
       event.target.value = ''
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size must be 5 MB or less.')
+      toast.error(t('ছবির সাইজ ৫ MB বা কম হতে হবে।', 'Image size must be 5 MB or less.'))
       event.target.value = ''
       return
     }
@@ -161,16 +164,16 @@ export default function Account() {
         fileInputRef.current.value = ''
       }
 
-      toast.success('Profile updated successfully.')
+      toast.success(t('প্রোফাইল সফলভাবে আপডেট হয়েছে।', 'Profile updated successfully.'))
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Profile could not be updated.')
+      toast.error(error.response?.data?.message || t('প্রোফাইল আপডেট করা যায়নি।', 'Profile could not be updated.'))
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <>
+    <div className={banglaFontClass}>
       <div className="grid gap-4 sm:gap-5 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="relative isolate overflow-hidden border border-sky-200 bg-[linear-gradient(180deg,#fdfefe_0%,#eef8ff_100%)] shadow-[0_24px_60px_-42px_rgba(14,116,144,0.28)]">
           <BubbleBackdrop tone="sky" />
@@ -180,10 +183,10 @@ export default function Account() {
                 type="button"
                 onClick={openAvatarPicker}
                 className="group relative block h-12 w-12 overflow-hidden rounded-full border border-sky-200 bg-white/90 shadow-[0_18px_30px_-24px_rgba(14,116,144,0.5)] focus:outline-none focus:ring-2 focus:ring-sky-300/40"
-                aria-label="Upload profile photo"
+                aria-label={t('প্রোফাইল ছবি আপলোড করুন', 'Upload profile photo')}
               >
                 {avatarPreview ? (
-                  <img src={avatarPreview} alt={form.full_name || customer?.full_name || 'Customer avatar'} className="h-full w-full object-cover" />
+                  <img src={avatarPreview} alt={form.full_name || customer?.full_name || t('কাস্টমার অ্যাভাটার', 'Customer avatar')} className="h-full w-full object-cover" />
                 ) : (
                   <span className="flex h-full w-full items-center justify-center bg-slate-100 text-xl font-semibold uppercase text-slate-700">
                     {initials(form.full_name || customer?.full_name || 'Customer')}
@@ -204,33 +207,33 @@ export default function Account() {
             </div>
 
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">Account center</p>
-              <h2 className="truncate text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl lg:text-3xl">{form.full_name || customer?.full_name || 'Customer account'}</h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">{t('অ্যাকাউন্ট সেন্টার', 'Account center')}</p>
+              <h2 className="truncate text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl lg:text-3xl">{form.full_name || customer?.full_name || t('কাস্টমার অ্যাকাউন্ট', 'Customer account')}</h2>
               
             </div>
           </div>
 
           <form onSubmit={submit} className="relative grid gap-4 p-4 sm:p-6 md:grid-cols-2">
-            <Field label="Full name" value={form.full_name} onChange={(value) => setForm({ ...form, full_name: value })} />
-            <Field label="Phone number" value={form.phone} onChange={(value) => setForm({ ...form, phone: value })} />
-            <Field label="Email address" value={form.email} onChange={(value) => setForm({ ...form, email: value })} type="email" />
-            <Field label="Date of birth" value={form.date_of_birth} onChange={(value) => setForm({ ...form, date_of_birth: value })} type="date" />
+            <Field label={t('পুরো নাম', 'Full name')} value={form.full_name} onChange={(value) => setForm({ ...form, full_name: value })} />
+            <Field label={t('ফোন নম্বর', 'Phone number')} value={form.phone} onChange={(value) => setForm({ ...form, phone: value })} />
+            <Field label={t('ইমেইল ঠিকানা', 'Email address')} value={form.email} onChange={(value) => setForm({ ...form, email: value })} type="email" />
+            <Field label={t('জন্ম তারিখ', 'Date of birth')} value={form.date_of_birth} onChange={(value) => setForm({ ...form, date_of_birth: value })} type="date" />
             <div>
-              <label className="text-sm font-medium text-slate-700">Gender</label>
+              <label className="text-sm font-medium text-slate-700">{t('লিঙ্গ', 'Gender')}</label>
               <select
                 value={form.gender}
                 onChange={(event) => setForm({ ...form, gender: event.target.value })}
                 className="mt-2 w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none"
               >
-                <option value="">Select gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
+                <option value="">{t('লিঙ্গ নির্বাচন করুন', 'Select gender')}</option>
+                <option value="male">{t('পুরুষ', 'Male')}</option>
+                <option value="female">{t('নারী', 'Female')}</option>
+                <option value="other">{t('অন্যান্য', 'Other')}</option>
               </select>
             </div>
             <div className="md:col-span-2">
               <button disabled={saving} className="bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60">
-                {saving ? 'Saving profile...' : 'Update profile'}
+                {saving ? t('প্রোফাইল সেভ হচ্ছে...', 'Saving profile...') : t('প্রোফাইল আপডেট করুন', 'Update profile')}
               </button>
             </div>
           </form>
@@ -238,10 +241,10 @@ export default function Account() {
 
         <section className="grid gap-6">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Active orders" value={stats.activeOrders} tone="sky" />
-            <StatCard label="Saved addresses" value={stats.addressCount} tone="emerald" />
-            <StatCard label="Approved prescriptions" value={stats.approvedPrescriptions} tone="amber" />
-            <StatCard label="Unread updates" value={stats.unreadNotifications} tone="violet" />
+            <StatCard label={t('চলমান অর্ডার', 'Active orders')} value={stats.activeOrders.toLocaleString(locale)} tone="sky" />
+            <StatCard label={t('সেভ করা ঠিকানা', 'Saved addresses')} value={stats.addressCount.toLocaleString(locale)} tone="emerald" />
+            <StatCard label={t('অনুমোদিত প্রেসক্রিপশন', 'Approved prescriptions')} value={stats.approvedPrescriptions.toLocaleString(locale)} tone="amber" />
+            <StatCard label={t('অপঠিত আপডেট', 'Unread updates')} value={stats.unreadNotifications.toLocaleString(locale)} tone="violet" />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
@@ -262,7 +265,7 @@ export default function Account() {
                   </div>
 
                   <div className="relative mt-4 inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
-                    Open
+                    {t('খুলুন', 'Open')}
                     <FiArrowRight className="h-4 w-4" />
                   </div>
                 </Link>
@@ -277,26 +280,26 @@ export default function Account() {
           <BubbleBackdrop tone="emerald" />
           <div className="relative flex flex-col items-start justify-between gap-3 border-b border-emerald-100/80 pb-4 sm:flex-row sm:items-center sm:gap-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">Recent orders</p>
-              <h3 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">Latest account activity.</h3>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">{t('সাম্প্রতিক অর্ডার', 'Recent orders')}</p>
+              <h3 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">{t('সর্বশেষ অ্যাকাউন্ট অ্যাক্টিভিটি।', 'Latest account activity.')}</h3>
             </div>
             <Link to="/orders" className="text-sm font-semibold text-slate-600 hover:text-slate-950">
-              View all
+              {t('সব দেখুন', 'View all')}
             </Link>
           </div>
           <div className="relative mt-4 space-y-3">
             {orders.slice(0, 3).map((order) => (
-              <Link key={order.id} to={`/orders/${order.id}`} className="block border border-white/70 bg-white/80 p-3 shadow-[0_18px_35px_-30px_rgba(5,150,105,0.36)] transition hover:border-emerald-300 sm:p-4">
+              <Link key={order.id} to={getOrderPath(order)} className="block border border-white/70 bg-white/80 p-3 shadow-[0_18px_35px_-30px_rgba(5,150,105,0.36)] transition hover:border-emerald-300 sm:p-4">
                 <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center sm:gap-3">
                   <div className="min-w-0">
                     <p className="font-semibold text-slate-950">{order.order_number}</p>
-                    <p className="mt-1 text-sm text-slate-500">{date(order.order_date)} • {getOrderStatusLabel(order.order_status)}</p>
+                    <p className="mt-1 text-sm text-slate-500">{date(order.order_date, locale)} • {getOrderStatusLabel(order.order_status, isBangla)}</p>
                   </div>
-                  <div className="text-sm font-semibold text-slate-950">{getPaymentStatusLabel(order.payment_status)}</div>
+                  <div className="text-sm font-semibold text-slate-950">{getPaymentStatusLabel(order.payment_status, isBangla)}</div>
                 </div>
               </Link>
             ))}
-            {orders.length === 0 ? <p className="text-sm text-slate-500">No orders yet.</p> : null}
+            {orders.length === 0 ? <p className="text-sm text-slate-500">{t('এখনও কোনো অর্ডার নেই।', 'No orders yet.')}</p> : null}
           </div>
         </div>
 
@@ -304,11 +307,11 @@ export default function Account() {
           <BubbleBackdrop tone="violet" />
           <div className="relative flex flex-col items-start justify-between gap-3 border-b border-violet-100/80 pb-4 sm:flex-row sm:items-center sm:gap-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-600">Notifications</p>
-              <h3 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">Account and pharmacy updates.</h3>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-600">{t('নোটিফিকেশন', 'Notifications')}</p>
+              <h3 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">{t('অ্যাকাউন্ট ও ফার্মেসি আপডেট।', 'Account and pharmacy updates.')}</h3>
             </div>
             <Link to="/notifications" className="text-sm font-semibold text-slate-600 hover:text-slate-950">
-              View all
+              {t('সব দেখুন', 'View all')}
             </Link>
           </div>
           <div className="relative mt-4 space-y-3">
@@ -320,17 +323,26 @@ export default function Account() {
                     <p className="mt-1 text-sm text-slate-500">{item.message}</p>
                   </div>
                   <span className={`shrink-0 border px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${item.status === 'read' ? 'border-slate-200 bg-white text-slate-500' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
-                    {item.status}
+                    {notificationStatusLabel(item.status, isBangla)}
                   </span>
                 </div>
               </div>
             ))}
-            {notifications.length === 0 ? <p className="text-sm text-slate-500">No notifications yet.</p> : null}
+            {notifications.length === 0 ? <p className="text-sm text-slate-500">{t('এখনও কোনো নোটিফিকেশন নেই।', 'No notifications yet.')}</p> : null}
           </div>
         </div>
       </div>
-    </>
+    </div>
   )
+}
+
+function notificationStatusLabel(status, isBangla = false) {
+  const labels = {
+    read: isBangla ? 'পড়া হয়েছে' : 'Read',
+    unread: isBangla ? 'নতুন' : 'Unread',
+  }
+
+  return labels[status] || status || (isBangla ? 'নতুন' : 'Unread')
 }
 
 function Field({ label, value, onChange, type = 'text' }) {

@@ -48,7 +48,7 @@ export default function CustomerRoutes() {
         <Route path="rewards" element={<ProtectedCustomerRoute><Rewards /></ProtectedCustomerRoute>} />
         <Route path="upload-prescription" element={<ProtectedCustomerRoute><UploadPrescription /></ProtectedCustomerRoute>} />
         <Route path="support" element={<ProtectedCustomerRoute><Support /></ProtectedCustomerRoute>} />
-        <Route path="support/:id" element={<ProtectedCustomerRoute><SupportDetails /></ProtectedCustomerRoute>} />
+        <Route path="support/:reference" element={<ProtectedCustomerRoute><SupportDetails /></ProtectedCustomerRoute>} />
         <Route path="returns" element={<ProtectedCustomerRoute><Returns /></ProtectedCustomerRoute>} />
         <Route path="returns/:id" element={<ProtectedCustomerRoute><ReturnDetails /></ProtectedCustomerRoute>} />
         <Route path="notifications" element={<ProtectedCustomerRoute><Notifications /></ProtectedCustomerRoute>} />

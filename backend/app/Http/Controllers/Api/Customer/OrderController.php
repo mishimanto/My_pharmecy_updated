@@ -24,21 +24,33 @@ class OrderController extends Controller
         );
     }
 
-    public function show(Request $request, int $id, ShopperContextService $shopper)
+    public function show(Request $request, string $id, ShopperContextService $shopper)
     {
         return $this->ok(
             $this->orderQuery($request, $shopper)
                 ->with('user', 'address', 'deliveryArea', 'items.product', 'items.batches.batch', 'payment', 'delivery')
-                ->findOrFail($id),
+                ->where(fn ($query) => ctype_digit($id)
+                    ? $query->whereKey((int) $id)->orWhere('order_number', $id)
+                    : $query->where('order_number', $id))
+                ->firstOrFail(),
             'Order details loaded successfully.'
         );
     }
 
-    public function cancel(Request $request, int $id, OrderStatusService $orders, ShopperContextService $shopper)
+    public function cancel(Request $request, string $id, OrderStatusService $orders, ShopperContextService $shopper)
     {
-        $order = $this->orderQuery($request, $shopper)->findOrFail($id);
+        $order = $this->findCustomerOrder($request, $shopper, $id);
 
         return $this->ok($orders->cancelByCustomer($order), 'Order cancelled successfully.');
+    }
+
+    private function findCustomerOrder(Request $request, ShopperContextService $shopper, string $id): Order
+    {
+        return $this->orderQuery($request, $shopper)
+            ->where(fn ($query) => ctype_digit($id)
+                ? $query->whereKey((int) $id)->orWhere('order_number', $id)
+                : $query->where('order_number', $id))
+            ->firstOrFail();
     }
 
     private function orderQuery(Request $request, ShopperContextService $shopper)

@@ -11,6 +11,7 @@ use App\Services\ShopperContextService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CheckoutController extends Controller
 {
@@ -21,7 +22,7 @@ class CheckoutController extends Controller
         [$user, $guestToken] = $shopper->requireGuestOrUser($request);
 
         $data = $request->validate([
-            'delivery_area_id' => ['nullable', 'exists:delivery_areas,id'],
+            'delivery_area_id' => ['nullable', 'integer', 'min:1'],
             'coupon_code' => ['nullable', 'string', 'max:50'],
         ]);
 
@@ -33,18 +34,30 @@ class CheckoutController extends Controller
 
         $subtotal = (float) $cart->items->sum(fn ($item) => (float) $item->quantity * (float) $item->unit_price);
         $deliveryArea = ! empty($data['delivery_area_id'])
-            ? DeliveryArea::query()->where('status', 'active')->findOrFail($data['delivery_area_id'])
+            ? DeliveryArea::query()->where('status', 'active')->find($data['delivery_area_id'])
             : null;
 
-        $summary = $coupons->buildSummary(
-            $subtotal,
-            (float) ($deliveryArea?->delivery_charge ?? 0),
-            $data['coupon_code'] ?? null,
-        );
+        $couponError = null;
+
+        try {
+            $summary = $coupons->buildSummary(
+                $subtotal,
+                (float) ($deliveryArea?->delivery_charge ?? 0),
+                $data['coupon_code'] ?? null,
+            );
+        } catch (ValidationException $exception) {
+            $couponError = $exception->errors()['coupon_code'][0] ?? 'Coupon could not be applied.';
+
+            $summary = $coupons->buildSummary(
+                $subtotal,
+                (float) ($deliveryArea?->delivery_charge ?? 0),
+            );
+        }
 
         return $this->ok([
             ...$summary,
             'delivery_area_id' => $deliveryArea?->id,
+            'coupon_error' => $couponError,
         ], 'Checkout summary loaded successfully.');
     }
 

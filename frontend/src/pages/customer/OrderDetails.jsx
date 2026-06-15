@@ -16,6 +16,7 @@ import { orderApi } from '../../api/orderApi'
 import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
 import { date } from '../../utils/formatters'
+import { getOrderPath } from '../../utils/orderRouting'
 import { getDeliveryStatusLabel, getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
 import { getUnitLabel } from '../../utils/purchaseUnits'
 import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
@@ -114,7 +115,7 @@ export default function OrderDetails() {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => navigate(`/orders/${order.id}/tracking`)}
+              onClick={() => navigate(getOrderPath(order, 'tracking'))}
               className="inline-flex items-center gap-2 border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
             >
               <FiTruck className="h-4 w-4" />
@@ -258,7 +259,7 @@ export default function OrderDetails() {
                 {showMakePayment ? (
                   <button
                     type="button"
-                    onClick={() => navigate(`/orders/${order.id}/payment`)}
+                    onClick={() => navigate(getOrderPath(order, 'payment'))}
                     className="inline-flex items-center gap-2 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
                   >
                     {t('পেমেন্ট করুন', 'Payment')}

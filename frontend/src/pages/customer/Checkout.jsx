@@ -12,6 +12,7 @@ import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
 import { clearCheckoutDraft, readCheckoutDraft, writeCheckoutDraft } from '../../utils/checkoutDraft'
 import { money } from '../../utils/formatters'
+import { getOrderPath } from '../../utils/orderRouting'
 import { getUnitLabel } from '../../utils/purchaseUnits'
 import { clearPreferredPrescriptionId, readPreferredPrescriptionId, writePreferredPrescriptionId } from '../../utils/prescriptionSelection'
 
@@ -76,7 +77,7 @@ export default function Checkout() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [guestAddress, setGuestAddress] = useState(createGuestAddressForm())
   const [couponInput, setCouponInput] = useState(draft.couponCode)
-  const [appliedCouponCode, setAppliedCouponCode] = useState(draft.couponCode)
+  const [appliedCouponCode, setAppliedCouponCode] = useState('')
   const [pricing, setPricing] = useState(null)
   const [pricingLoading, setPricingLoading] = useState(false)
   const [form, setForm] = useState({
@@ -113,6 +114,15 @@ export default function Checkout() {
       })
 
       setPricing(data.data)
+      if (nextCouponCode && data.data?.coupon_error) {
+        setAppliedCouponCode('')
+        writeCheckoutDraft({ couponCode: '' })
+        if (!silent) {
+          toast.error(data.data.coupon_error)
+        }
+        return null
+      }
+
       return data.data
     } catch (error) {
       if (nextCouponCode) {
@@ -233,9 +243,9 @@ export default function Checkout() {
     )
 
   useEffect(() => {
-    if (!cart?.items?.length || !form.delivery_area_id) return
-    loadPricing(form.delivery_area_id, appliedCouponCode, { silent: true })
-  }, [appliedCouponCode, cart?.items?.length, cart?.subtotal, form.delivery_area_id, loadPricing])
+    if (!cart?.items?.length || !selectedDeliveryArea) return
+    loadPricing(selectedDeliveryArea.id, appliedCouponCode, { silent: true })
+  }, [appliedCouponCode, cart?.items?.length, cart?.subtotal, loadPricing, selectedDeliveryArea])
 
   const setGuestField = (key, value) => {
     setGuestAddress((current) => ({ ...current, [key]: value }))
@@ -281,7 +291,12 @@ export default function Checkout() {
       return
     }
 
-    const quote = await loadPricing(form.delivery_area_id, nextCode)
+    if (!selectedDeliveryArea) {
+      toast.error(t('আগে একটি ডেলিভারি এরিয়া নির্বাচন করুন।', 'Select a delivery area first.'))
+      return
+    }
+
+    const quote = await loadPricing(selectedDeliveryArea.id, nextCode)
 
     if (!quote) return
 
@@ -295,7 +310,9 @@ export default function Checkout() {
     setCouponInput('')
     setAppliedCouponCode('')
     writeCheckoutDraft({ couponCode: '' })
-    await loadPricing(form.delivery_area_id, '', { silent: true })
+    if (selectedDeliveryArea) {
+      await loadPricing(selectedDeliveryArea.id, '', { silent: true })
+    }
   }
 
   const handlePaymentModeSelect = (mode) => {
@@ -366,7 +383,7 @@ export default function Checkout() {
           : t(`অর্ডার ${data.data.order_number} সফলভাবে নেয়া হয়েছে।`, `Order ${data.data.order_number} placed successfully.`),
       )
 
-      navigate(paymentNeedsProof ? `/orders/${data.data.id}/payment` : `/orders/${data.data.id}`)
+      navigate(getOrderPath(data.data, paymentNeedsProof ? 'payment' : ''))
     } catch (error) {
       toast.error(error.response?.data?.message || t('অর্ডার করা যায়নি।', 'Order could not be placed.'))
     } finally {
@@ -675,7 +692,7 @@ export default function Checkout() {
                 <button
                   type="button"
                   onClick={applyCoupon}
-                  disabled={!form.delivery_area_id || pricingLoading}
+                  disabled={!selectedDeliveryArea || pricingLoading}
                   className="border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {t('অ্যাপ্লাই', 'Apply')}
@@ -702,7 +719,7 @@ export default function Checkout() {
             </div>
 
             <button
-              disabled={submitting || loading || pricingLoading || !isAddressReady || !form.delivery_area_id || requiresPrescriptionLogin}
+              disabled={submitting || loading || pricingLoading || !isAddressReady || !selectedDeliveryArea || requiresPrescriptionLogin}
               className="mt-5 w-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitting

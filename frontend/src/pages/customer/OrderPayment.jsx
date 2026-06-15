@@ -6,6 +6,7 @@ import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
 import { orderApi } from '../../api/orderApi'
 import { money } from '../../utils/formatters'
+import { getOrderPath } from '../../utils/orderRouting'
 import { getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
 import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
 
@@ -117,7 +118,7 @@ export default function OrderPayment() {
       const response = await orderApi.submitPaymentProof(id, formData)
       setOrder(response.data.data)
       toast.success(t('পেমেন্ট প্রুফ জমা হয়েছে। অ্যাডমিন রিভিউ করবে।', 'Payment proof submitted. The admin will review it.'))
-      navigate(`/orders/${id}`)
+      navigate(getOrderPath(order || id))
     } catch (error) {
       toast.error(error.response?.data?.message || t('পেমেন্ট প্রুফ জমা দেয়া যায়নি।', 'Payment proof could not be submitted.'))
     } finally {
@@ -147,7 +148,7 @@ export default function OrderPayment() {
           title={t('ক্যাশ অন ডেলিভারি', 'Cash on delivery')}
           subtitle={t('এই অর্ডারে আগাম পেমেন্ট লাগবে না। ডেলিভারির সময় ইনভয়েস দেয়া হবে।', 'No advance payment is required for this order. The invoice will be given during delivery.')}
         />
-        <Link to={`/orders/${order.id}`} className="inline-flex items-center gap-2 bg-slate-950 px-4 py-3 text-sm font-semibold text-white">
+        <Link to={getOrderPath(order)} className="inline-flex items-center gap-2 bg-slate-950 px-4 py-3 text-sm font-semibold text-white">
           {t('অর্ডার ডিটেইলে যান', 'Go to order details')}
           <FiArrowRight className="h-4 w-4" />
         </Link>
@@ -323,7 +324,7 @@ export default function OrderPayment() {
                 {submitting ? t('জমা হচ্ছে...', 'Submitting...') : t('পেমেন্টের তথ্য জমা দিন', 'Submit Payment Details')}
               </button>
 
-              <Link to={`/orders/${order.id}`} className="flex items-center justify-between border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
+              <Link to={getOrderPath(order)} className="flex items-center justify-between border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
                 {t('অর্ডার ডিটেইলসে ফিরে যান', 'Back to order details')}
                 <FiArrowRight className="h-4 w-4" />
               </Link>

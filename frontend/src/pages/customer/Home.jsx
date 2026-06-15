@@ -23,7 +23,7 @@ import { getHeroSlides } from '../../components/customer/home/homeUtils'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
-import { getDefaultPurchaseOption } from '../../utils/purchaseUnits'
+import { getDefaultPurchaseOption, getUnitLabel } from '../../utils/purchaseUnits'
 import { isPrescriptionLoginRequiredError, requiresPrescriptionLogin, showPrescriptionLoginRequiredAlert } from '../../utils/prescriptionCartAlert'
 
 export default function Home() {
@@ -144,6 +144,8 @@ export default function Home() {
 
   const add = async (product) => {
     const option = getDefaultPurchaseOption(product)
+    const unitCode = option?.code || 'piece'
+    const unitLabel = getUnitLabel(unitCode, isBangla)
 
     if (requiresPrescriptionLogin(product, customer)) {
       await showPrescriptionLoginRequiredAlert(isBangla)
@@ -153,10 +155,10 @@ export default function Home() {
     try {
       await addToCart({
         product_id: product.id,
-        purchase_unit: option?.code || 'piece',
+        purchase_unit: unitCode,
         quantity: 1,
       })
-      toast.success(isBangla ? `১ ${option?.label || 'পিস'} কার্টে যোগ করা হয়েছে।` : `Added 1 ${option?.label || 'Piece'} to cart.`)
+      toast.success(isBangla ? `১ ${unitLabel} কার্টে যোগ করা হয়েছে।` : `Added 1 ${unitLabel} to cart.`)
     } catch (error) {
       if (isPrescriptionLoginRequiredError(error)) {
         await showPrescriptionLoginRequiredAlert(isBangla)

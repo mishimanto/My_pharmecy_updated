@@ -6,6 +6,7 @@ import PageHeader from '../../components/common/PageHeader'
 import { orderApi } from '../../api/orderApi'
 import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
 import { date, money } from '../../utils/formatters'
+import { getOrderPath } from '../../utils/orderRouting'
 import { getOrderStatusLabel } from '../../utils/statusLabels'
 
 const REWARDS_ORDERS_CACHE_KEY = 'orders_list'
@@ -102,7 +103,7 @@ export default function Rewards() {
 
             <div className="mt-4 space-y-3">
               {summary.latestDelivered.map((order) => (
-                <Link key={order.id} to={`/orders/${order.id}`} className="block border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-400">
+                <Link key={order.id} to={getOrderPath(order)} className="block border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-400">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-semibold text-slate-950">{order.order_number}</p>
