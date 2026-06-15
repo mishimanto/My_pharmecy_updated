@@ -12,6 +12,7 @@ import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
 import { clearCheckoutDraft, readCheckoutDraft, writeCheckoutDraft } from '../../utils/checkoutDraft'
 import { money } from '../../utils/formatters'
+import { getUnitLabel } from '../../utils/purchaseUnits'
 import { clearPreferredPrescriptionId, readPreferredPrescriptionId, writePreferredPrescriptionId } from '../../utils/prescriptionSelection'
 
 function createGuestAddressForm() {
@@ -62,6 +63,8 @@ export default function Checkout() {
   const navigate = useNavigate()
   const loginPath = `/login?returnTo=${encodeURIComponent('/checkout')}`
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
+  const locale = isBangla ? 'bn-BD' : 'en-US'
+  const formatNumber = useCallback((value) => new Intl.NumberFormat(locale).format(Number(value || 0)), [locale])
   const draft = useMemo(() => readCheckoutDraft(), [])
 
   const [addresses, setAddresses] = useState([])
@@ -415,15 +418,15 @@ export default function Checkout() {
                 <option value="">{loading ? t('লোড হচ্ছে...', 'Loading...') : t('এরিয়া নির্বাচন করুন', 'Select an area')}</option>
                 {deliveryAreas.map((area) => (
                   <option key={area.id} value={area.id}>
-                    {area.area_name}, {area.city} - {money(area.delivery_charge)}
+                    {isBangla ? (area.area_name_bn || area.area_name) : area.area_name}, {isBangla ? (area.city_bn || area.city) : area.city} - {money(area.delivery_charge, locale)}
                   </option>
                 ))}
               </select>
               <p className="mt-3 text-sm leading-7 text-slate-500">
                 {selectedDeliveryArea
-                  ? t(
-                    `এই এরিয়ায় ডেলিভারি চার্জ ${money(selectedDeliveryArea.delivery_charge)}।`,
-                    `Delivery charge for this area is ${money(selectedDeliveryArea.delivery_charge)}.`,
+                    ? t(
+                    `এই এরিয়ায় ডেলিভারি চার্জ ${money(selectedDeliveryArea.delivery_charge, locale)}।`,
+                    `Delivery charge for this area is ${money(selectedDeliveryArea.delivery_charge, locale)}.`,
                   )
                   : t('চালু ডেলিভারি এরিয়া না থাকলে অর্ডার করা যাবে না।', 'Orders cannot proceed unless an active delivery area is available.')}
               </p>
@@ -466,7 +469,7 @@ export default function Checkout() {
                           {address.phone}<br />
                           {address.address_line_1}
                           {address.address_line_2 ? `, ${address.address_line_2}` : ''}<br />
-                          {address.area}, {address.city}
+                          {isBangla ? (address.area_bn || address.area) : address.area}, {isBangla ? (address.city_bn || address.city) : address.city}
                           {address.postal_code ? `, ${address.postal_code}` : ''}
                         </p>
                       </div>
@@ -481,7 +484,7 @@ export default function Checkout() {
                 <CheckoutField label={t('ইমেইল', 'Email')} type="email" value={guestAddress.email} onChange={(value) => setGuestField('email', value)} required />
                 <CheckoutField
                   label={t('সার্ভিস এরিয়া', 'Service area')}
-                  value={selectedDeliveryArea ? `${selectedDeliveryArea.area_name}, ${selectedDeliveryArea.city}` : t('এরিয়া বাছুন', 'Select an area')}
+                  value={selectedDeliveryArea ? (isBangla ? `${selectedDeliveryArea.area_name_bn || selectedDeliveryArea.area_name}, ${selectedDeliveryArea.city_bn || selectedDeliveryArea.city}` : `${selectedDeliveryArea.area_name}, ${selectedDeliveryArea.city}`) : t('এরিয়া বাছুন', 'Select an area')}
                   onChange={() => {}}
                   readOnly
                 />
@@ -646,7 +649,6 @@ export default function Checkout() {
           <div className="border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)] xl:sticky xl:top-24 xl:self-start">
             <div className="border-b border-slate-200 pb-4">
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">{t('অর্ডার সামারি', 'Order summary')}</p>
-              
             </div>
 
             <div className="mt-4 space-y-3">
@@ -654,9 +656,9 @@ export default function Checkout() {
                 <div key={item.cart_item_id} className="flex justify-between gap-3 border border-slate-200 bg-slate-50 p-4 text-sm">
                   <span className="text-slate-700">
                     {item.product_name}
-                    <span className="mt-1 block text-xs text-slate-500">{item.quantity} {item.purchase_unit_label} • {item.piece_quantity} {t('পিস', 'pieces')}</span>
+                    <span className="mt-1 block text-xs text-slate-500">{formatNumber(item.quantity)} {getUnitLabel(item.purchase_unit, isBangla)} • {formatNumber(item.piece_quantity)} {t('পিস', 'pieces')}</span>
                   </span>
-                  <span className="font-medium text-slate-950">{money(item.subtotal)}</span>
+                  <span className="font-medium text-slate-950">{money(item.subtotal, locale)}</span>
                 </div>
               ))}
             </div>
@@ -693,10 +695,10 @@ export default function Checkout() {
             </div>
 
             <div className="mt-4 space-y-2 border-t border-slate-200 pt-4 text-sm text-slate-600">
-              <div className="flex justify-between"><span>{t('সাবটোটাল', 'Subtotal')}</span><span>{money(subtotal)}</span></div>
-              <div className="flex justify-between"><span>{t('ডেলিভারি', 'Delivery')}</span><span>{money(deliveryCharge)}</span></div>
-              <div className="flex justify-between"><span>{t('কুপন ডিসকাউন্ট', 'Coupon discount')}</span><span>-{money(discountAmount)}</span></div>
-              <div className="flex justify-between pt-2 text-base font-semibold text-slate-950"><span>{t('মোট', 'Total')}</span><span>{money(total)}</span></div>
+                <div className="flex justify-between"><span>{t('সাবটোটাল', 'Subtotal')}</span><span>{money(subtotal, locale)}</span></div>
+              <div className="flex justify-between"><span>{t('ডেলিভারি', 'Delivery')}</span><span>{money(deliveryCharge, locale)}</span></div>
+              <div className="flex justify-between"><span>{t('কুপন ডিসকাউন্ট', 'Coupon discount')}</span><span>-{money(discountAmount, locale)}</span></div>
+              <div className="flex justify-between pt-2 text-base font-semibold text-slate-950"><span>{t('মোট', 'Total')}</span><span>{money(total, locale)}</span></div>
             </div>
 
             <button

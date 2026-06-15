@@ -88,7 +88,7 @@ export default function Home() {
       step: '03',
       icon: FiCheckCircle,
       title: isBangla ? 'চেকআউট ও ট্র্যাক' : 'Checkout and track',
-      body: isBangla ? 'COD দিয়ে অর্ডার করুন এবং আপনার অ্যাকাউন্ট থেকে ডেলিভারি ট্র্যাক করুন।' : 'Place your order with COD and follow delivery from your account.',
+      body: isBangla ? 'ক্যাশ অন ডেলিভারি দিয়ে অর্ডার করুন এবং আপনার অ্যাকাউন্ট থেকে ডেলিভারি ট্র্যাক করুন।' : 'Place your order with COD and follow delivery from your account.',
     },
   ]), [isBangla])
   const serviceItems = useMemo(() => ([
@@ -179,7 +179,7 @@ export default function Home() {
         <HomeFeaturedProductsSection isBangla={isBangla} loading={loading} featuredProducts={featuredProducts} onAdd={add} />
         <HomeWorkflowSpotlightSection
           isBangla={isBangla}
-          spotlightProduct={spotlightProduct}
+          spotlightProducts={featuredProducts}
           workflowSteps={workflowSteps}
           manufacturerHighlights={manufacturerHighlights}
           serviceItems={serviceItems}

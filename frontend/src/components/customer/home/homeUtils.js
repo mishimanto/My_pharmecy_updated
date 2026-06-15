@@ -43,7 +43,7 @@ export function getHeroSlides(isBangla) {
     },
     {
       id: 3,
-      eyebrow: isBangla ? 'দ্রুত ওষুধ খোঁজা' : 'Fast medicine discovery',
+      eyebrow: isBangla ? 'দ্রুত ওষুধ খুজুন' : 'Fast medicine discovery',
       title: isBangla ? 'নাম, জেনেরিক বা ক্যাটাগরি দিয়ে ওষুধ খুঁজুন।' : 'Find medicines by name, generic, or category.',
       titleBn: isBangla ? 'নাম, জেনেরিক, বা ক্যাটাগরি দিয়ে ওষুধ খুঁজুন' : 'Search by name, generic, or category',
       body: isBangla

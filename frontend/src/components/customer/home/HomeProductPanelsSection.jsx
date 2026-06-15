@@ -1,6 +1,7 @@
 import { FiArrowRight } from 'react-icons/fi'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../../../context/LanguageContext'
+import { getCategoryName } from '../../../utils/categoryNames'
 import { money } from '../../../utils/formatters'
 import { handleImageFallback } from '../../../utils/imageUrl'
 import { getProductPath } from '../../../utils/productRouting'
@@ -68,6 +69,7 @@ function ProductListPanel({ variant, title, products, emptyMessage, actionTo, ac
 
 function MiniProductRow({ product }) {
   const { isBangla } = useLanguage()
+  const locale = isBangla ? 'bn-BD' : 'en-US'
   const image = getProductImage(product)
 
   return (
@@ -87,7 +89,7 @@ function MiniProductRow({ product }) {
       </div>
       <div className="min-w-0">
         <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
-          {product.manufacturer?.manufacturer_name || product.category?.category_name || (isBangla ? 'স্বাস্থ্যসেবা' : 'Healthcare')}
+          {product.manufacturer?.manufacturer_name || getCategoryName(product.category, isBangla)}
         </div>
         <h3 className="mt-1 line-clamp-2 font-bold tracking-tight text-slate-950">{product.product_name}</h3>
         <p className="mt-1 text-xs text-slate-500">
@@ -95,7 +97,7 @@ function MiniProductRow({ product }) {
         </p>
       </div>
       <div className="text-left sm:text-right">
-        <div className="text-lg font-bold text-slate-950">{money(product.display_price)}</div>
+        <div className="text-lg font-bold text-slate-950">{money(product.display_price, locale)}</div>
         <div className="text-[11px] text-slate-500">{isBangla ? 'শুরুর মূল্য' : 'Starting price'}</div>
       </div>
     </Link>

@@ -17,6 +17,8 @@ import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
 import { date } from '../../utils/formatters'
 import { getDeliveryStatusLabel, getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
+import { getUnitLabel } from '../../utils/purchaseUnits'
+import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
 
 const cancellable = ['pending_confirmation', 'prescription_review']
 
@@ -26,15 +28,26 @@ export default function OrderDetails() {
   const { isBangla } = useLanguage()
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
   const locale = isBangla ? 'bn-BD' : 'en-US'
-  const [order, setOrder] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const cacheKey = `order_details_${id}`
+  const [order, setOrder] = useState(() => readCustomerCache(cacheKey, null))
+  const [loading, setLoading] = useState(() => readCustomerCache(cacheKey, null) === null)
 
   useEffect(() => {
+    let mounted = true
+    setLoading((prev) => (prev || readCustomerCache(cacheKey, null) === null))
+
     orderApi.show(id)
-      .then((res) => setOrder(res.data.data))
-      .catch(() => toast.error(t('অর্ডারের বিস্তারিত লোড করা যায়নি।', 'Order details could not be loaded.')))
-      .finally(() => setLoading(false))
-  }, [id, t])
+      .then((res) => {
+        if (!mounted) return
+        const orderData = res.data.data
+        setOrder(orderData)
+        writeCustomerCache(cacheKey, orderData)
+      })
+      .catch(() => mounted && toast.error(t('অর্ডারের বিস্তারিত লোড করা যায়নি।', 'Order details could not be loaded.')))
+      .finally(() => mounted && setLoading(false))
+
+    return () => { mounted = false }
+  }, [id, t, cacheKey])
 
   const cancelOrder = async () => {
     const result = await Swal.fire({
@@ -67,8 +80,17 @@ export default function OrderDetails() {
     maximumFractionDigits: 2,
   }).format(Number(value || 0))}`, [locale])
 
+  const formatNumber = useCallback((value) => new Intl.NumberFormat(locale).format(Number(value || 0)), [locale])
+
   if (loading) {
-    return <p className="text-sm text-slate-500">{t('অর্ডারের বিস্তারিত লোড হচ্ছে...', 'Loading order details...')}</p>
+    return (
+      <div className="flex min-h-70 items-center justify-center">
+        <div className="inline-flex items-center gap-3 px-4 py-3 text-md font-medium text-slate-700">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-950" />
+          {t('অনুগ্রহ করে অপেক্ষা করুন...', 'Please wait...')}
+        </div>
+      </div>
+    )
   }
 
   if (!order) {
@@ -197,8 +219,8 @@ export default function OrderDetails() {
                       </p>
 
                       <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                        <MetaChip>{item.quantity} {item.purchase_unit || 'piece'}</MetaChip>
-                        <MetaChip>{item.piece_quantity || item.quantity} {t('পিস মোট', 'pieces total')}</MetaChip>
+                        <MetaChip>{formatNumber(item.quantity)} {getUnitLabel(item.purchase_unit, isBangla)}</MetaChip>
+                        <MetaChip>{formatNumber(item.piece_quantity || item.quantity)} {t('পিস মোট', 'pieces total')}</MetaChip>
                         <MetaChip>{formatMoney(item.unit_price)} {t('প্রতি ইউনিট', 'each')}</MetaChip>
                       </div>
 
@@ -227,7 +249,7 @@ export default function OrderDetails() {
             <SectionHeading eyebrow={t('পেমেন্ট সারাংশ', 'Payment summary')} />
 
             <div className={`mt-3 border p-5 ${paymentOverview.panelClass}`}>
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className={`text-3xl font-semibold ${paymentOverview.textClass}`}>
                     {paymentOverview.label}
@@ -240,7 +262,7 @@ export default function OrderDetails() {
                     className="inline-flex items-center gap-2 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
                   >
                     {t('পেমেন্ট করুন', 'Payment')}
-                    <FiArrowRight className="h-4 w-4" />
+                    {/* <FiArrowRight className="h-4 w-4" /> */}
                   </button>
                 ) : (
                   <div className={`inline-flex h-11 w-11 items-center justify-center border ${paymentOverview.iconClass}`}>
@@ -251,7 +273,7 @@ export default function OrderDetails() {
 
               <div className="mt-5 space-y-3 border-t border-white/70 pt-4 text-sm text-slate-700">
                 <DataRow label={t('পেমেন্ট মেথড', 'Payment method')} value={paymentMethod} />
-                <DataRow label={t('রিভিউ স্টেট', 'Review state')} value={getPaymentStatusLabel(order.payment_status, isBangla)} />
+                <DataRow label={t('রিভিউ স্ট্যাটাস', 'Review status')} value={getPaymentStatusLabel(order.payment_status, isBangla)} />
                 <DataRow label={t('অর্ডার টোটাল', 'Order total')} value={formatMoney(order.total_amount)} emphasized />
               </div>
             </div>
@@ -316,7 +338,7 @@ function getPaymentOverview(status, isBangla) {
   if (settled) {
     return {
       isSettled: true,
-      label: isBangla ? 'পরিশোধিত' : 'Paid',
+      label: isBangla ? 'পেইড' : 'Paid',
       panelClass: 'border-emerald-200 bg-emerald-50/70',
       iconClass: 'border-emerald-200 bg-white text-emerald-700',
       textClass: 'text-emerald-700',
@@ -325,7 +347,7 @@ function getPaymentOverview(status, isBangla) {
 
   return {
     isSettled: false,
-    label: isBangla ? 'অপরিশোধিত' : 'Unpaid',
+    label: isBangla ? 'আনপেইড' : 'Unpaid',
     panelClass: 'border-rose-200 bg-rose-50/70',
     iconClass: 'border-rose-200 bg-white text-rose-700',
     textClass: 'text-rose-700',

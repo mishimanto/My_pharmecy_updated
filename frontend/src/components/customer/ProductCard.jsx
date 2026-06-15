@@ -4,6 +4,7 @@ import { productApi } from '../../api/productApi'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
 import { money } from '../../utils/formatters'
+import { getCategoryName } from '../../utils/categoryNames'
 import { getManufacturerImage, getProductImage, handleImageFallback } from '../../utils/imageUrl'
 import { getProductPath, getProductRouteKey } from '../../utils/productRouting'
 
@@ -78,7 +79,7 @@ export default function ProductCard({ product, onAdd }) {
 
       <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
         <span className="bg-slate-100 px-2.5 py-1 text-slate-600">
-          {product.category?.category_name || (isBangla ? 'সাধারণ যত্ন' : 'General care')}
+          {getCategoryName(product.category, isBangla, isBangla ? 'সাধারণ যত্ন' : 'General care')}
         </span>
         {product.requires_prescription ? (
           <span className="bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
@@ -106,7 +107,7 @@ export default function ProductCard({ product, onAdd }) {
         <div className="flex items-end justify-between gap-3 border-t border-slate-100 pt-3">
           <div className="min-w-0">
             <div className="text-xs text-slate-500">{isBangla ? 'শুরু' : 'Starts at'}</div>
-            <div className="text-lg font-semibold text-slate-950">{money(product.display_price)}</div>
+            <div className="text-lg font-semibold text-slate-950">{money(product.display_price, isBangla ? 'bn-BD' : 'en-US')}</div>
           </div>
         </div>
       </div>

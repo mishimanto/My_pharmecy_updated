@@ -6,22 +6,44 @@ import { orderApi } from '../../api/orderApi'
 import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
 import { getDeliveryStatusLabel, getOrderStatusLabel } from '../../utils/statusLabels'
+import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
 
 export default function Tracking() {
   const { id } = useParams()
   const { isBangla } = useLanguage()
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
-  const [tracking, setTracking] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const cacheKey = `tracking_${id}`
+  const [tracking, setTracking] = useState(() => readCustomerCache(cacheKey, null))
+  const [loading, setLoading] = useState(() => readCustomerCache(cacheKey, null) === null)
 
   useEffect(() => {
-    orderApi.tracking(id)
-      .then((res) => setTracking(res.data.data))
-      .catch(() => toast.error(t('ট্র্যাকিং তথ্য লোড করা যায়নি।', 'Tracking information could not be loaded.')))
-      .finally(() => setLoading(false))
-  }, [id, t])
+    let mounted = true
+    setLoading((prev) => (prev || readCustomerCache(cacheKey, null) === null))
 
-  if (loading) return <p className="text-sm text-slate-500">{t('ট্র্যাকিং লোড হচ্ছে...', 'Loading tracking...')}</p>
+    orderApi.tracking(id)
+      .then((res) => {
+        if (!mounted) return
+        const trackingData = res.data.data
+        setTracking(trackingData)
+        writeCustomerCache(cacheKey, trackingData)
+      })
+      .catch(() => mounted && toast.error(t('ট্র্যাকিং তথ্য লোড করা যায়নি।', 'Tracking information could not be loaded.')))
+      .finally(() => mounted && setLoading(false))
+
+    return () => { mounted = false }
+  }, [id, t, cacheKey])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-70 items-center justify-center">
+        <div className="inline-flex items-center gap-3 px-4 py-3 text-md font-medium text-slate-700">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-950" />
+          {t('অনুগ্রহ করে অপেক্ষা করুন...', 'Please wait...')}
+        </div>
+      </div>
+    )
+  }
+
   if (!tracking) return <p className="text-sm text-slate-500">{t('ট্র্যাকিং তথ্য পাওয়া যায়নি।', 'Tracking information not found.')}</p>
 
   const delivery = tracking.delivery

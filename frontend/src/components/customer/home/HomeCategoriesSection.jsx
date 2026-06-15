@@ -1,8 +1,12 @@
 import { Link } from 'react-router-dom'
 import HomeSectionHeader from './HomeSectionHeader'
+import { useLanguage } from '../../../context/LanguageContext'
+import { getCategoryName } from '../../../utils/categoryNames'
 import { categoryTints } from './homeUtils'
 
-export default function HomeCategoriesSection({ isBangla, categories }) {
+export default function HomeCategoriesSection({ categories }) {
+  const { isBangla } = useLanguage()
+
   return (
     <section className="py-16">
       <HomeSectionHeader        
@@ -16,15 +20,15 @@ export default function HomeCategoriesSection({ isBangla, categories }) {
           <Link
             key={category.id}
             to={`/products?category_id=${category.id}`}
-            className={`group border border-slate-200/80 bg-gradient-to-br ${categoryTints[index % categoryTints.length]} p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md`}
+            className={`group border border-slate-200/80 bg-linear-to-br ${categoryTints[index % categoryTints.length]} p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md`}
           >
             <div className="flex items-start justify-center gap-3">
               <div>
                 <h3 className="text-xl text-center font-bold tracking-tight text-slate-950 group-hover:text-[#0e6574]">
-                  {category.category_name}
+                  {getCategoryName(category, isBangla)}
                 </h3>
               </div>
-              
+
             </div>
           </Link>
         ))}

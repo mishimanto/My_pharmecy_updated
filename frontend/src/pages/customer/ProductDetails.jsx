@@ -12,6 +12,7 @@ import { handleImageFallback, MEDICINE_PLACEHOLDER_SRC, resolveImageUrl } from '
 import { isPrescriptionLoginRequiredError, requiresPrescriptionLogin as requiresPrescriptionLoginForProduct, showPrescriptionLoginRequiredAlert } from '../../utils/prescriptionCartAlert'
 import { readPreferredPrescriptionId, writePreferredPrescriptionId } from '../../utils/prescriptionSelection'
 import { getProductPath, getProductRouteKey } from '../../utils/productRouting'
+import { getCategoryName } from '../../utils/categoryNames'
 import { getDefaultPurchaseOption, getLocalizedConversionLabel, getPurchaseOptions, getUnitLabel, getUnitSummary } from '../../utils/purchaseUnits'
 
 const selectablePrescriptionStatuses = ['approved', 'pending']
@@ -28,6 +29,7 @@ export default function ProductDetails() {
   const location = useLocation()
   const navigate = useNavigate()
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
+  const locale = isBangla ? 'bn-BD' : 'en-US'
   const banglaFontClass = isBangla ? "[font-family:'Hind_Siliguri','Noto_Sans_Bengali','SolaimanLipi','Vrinda',sans-serif]" : ''
   const seededProduct = location.state?.product || productApi.getCachedProduct(slug)
   const [viewState, setViewState] = useState({
@@ -194,8 +196,10 @@ export default function ProductDetails() {
   const totalSavings = (activeOption?.savings || 0) * effectiveQuantity
   const saved = isWishlisted(product?.id)
   const productName = (isBangla ? product?.product_name_bn : null) || product?.product_name
-  const categoryName = (isBangla ? product?.category?.category_name_bn : null) || product?.category?.category_name
+  const categoryName = getCategoryName(product?.category, isBangla)
   const genericName = (isBangla ? product?.generic_name_bn : null) || product?.generic_name
+  const dosageForm = (isBangla ? product?.dosage_form_bn : null) || product?.dosage_form
+  const strength = (isBangla ? product?.strength_bn : null) || product?.strength
   const brandName = (isBangla ? product?.brand_name_bn : null) || product?.brand_name
   const manufacturerName = (isBangla ? product?.manufacturer?.manufacturer_name_bn : null) || product?.manufacturer?.manufacturer_name
   const description = ((isBangla ? product?.description_bn : null) || product?.description || '').trim()
@@ -206,10 +210,10 @@ export default function ProductDetails() {
   const detailsRows = [
     { label: t('ক্যাটাগরি', 'Category'), value: categoryName || t('স্বাস্থ্যসেবা', 'Healthcare') },
     { label: t('জেনেরিক', 'Generic'), value: genericName || t('উল্লেখ নেই', 'Not specified') },
-    { label: t('ডোজ ফর্ম', 'Dosage form'), value: product?.dosage_form || t('সাধারণ ফর্ম', 'General form') },
-    { label: t('শক্তি', 'Strength'), value: product?.strength || t('উল্লেখ নেই', 'Not specified') },
+    { label: t('ডোজ ফর্ম', 'Dosage form'), value: dosageForm || t('সাধারণ ফর্ম', 'General form') },
+    { label: t('শক্তিমাত্রা', 'Strength'), value: strength || t('উল্লেখ নেই', 'Not specified') },
     { label: t('ব্র্যান্ড', 'Brand'), value: brandName || manufacturerName || t('বিশ্বস্ত ব্র্যান্ড', 'Trusted brand') },
-    { label: t('ব্যাচ', 'Batch'), value: batch?.batch_number || t('সক্রিয়', 'Active') },
+    { label: t('ব্যাচ নম্বর', 'Batch Number'), value: batch?.batch_number || t('সক্রিয়', 'Active') },
   ]
 
   const add = async () => {
@@ -364,12 +368,12 @@ export default function ProductDetails() {
                 <div className="mt-6 grid gap-px border border-slate-200 bg-slate-200 sm:grid-cols-3">
                   <FactTile
                     label={t('শুরু মূল্য', 'Starts at')}
-                    value={money(product.display_price || batch?.selling_price)}
+                    value={money(product.display_price || batch?.selling_price, locale)}
                     meta={t('প্রতি পিস', 'Per piece')}
                   />
                   <FactTile
                     label={t('স্টক', 'Stock')}
-                    value={stockPieces.toLocaleString(isBangla ? 'bn-BD' : 'en-US')}
+                    value={stockPieces.toLocaleString(locale)}
                     meta={t('পিস উপলব্ধ', 'Pieces available')}
                   />
                   <FactTile
@@ -519,7 +523,7 @@ export default function ProductDetails() {
                               <span className="text-lg font-semibold text-slate-950">{getUnitLabel(option.code, isBangla)}</span>
                               {option.savings > 0 ? (
                                 <span className="border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">
-                                  {t('সাশ্রয়', 'Save')} {money(option.savings)}
+                                  {t('সাশ্রয়', 'Save')} {money(option.savings, locale)}
                                 </span>
                               ) : null}
                             </div>
@@ -530,7 +534,7 @@ export default function ProductDetails() {
                           </div>
 
                           <div className="border-t border-slate-200 pt-4 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 sm:text-right">
-                            <div className="text-xl font-semibold text-slate-950">{money(option.unit_price)}</div>
+                            <div className="text-xl font-semibold text-slate-950">{money(option.unit_price, locale)}</div>
                             <div className="mt-1 text-xs text-slate-500">
                               {option.savings > 0 ? t('পিসের তুলনায় কম', 'Better than piece price') : t('স্ট্যান্ডার্ড মূল্য', 'Standard price')}
                             </div>
@@ -556,7 +560,7 @@ export default function ProductDetails() {
                             <FiMinus className="h-4 w-4" />
                           </button>
                           <div className="flex h-11 min-w-21 items-center justify-center border border-slate-300 px-4 text-lg font-semibold text-slate-950">
-                            {effectiveQuantity}
+                            {effectiveQuantity.toLocaleString(locale)}
                           </div>
                           <button
                             type="button"
@@ -577,13 +581,13 @@ export default function ProductDetails() {
                         />
                         <FactTile
                           label={t('মোট পিস', 'Total pieces')}
-                          value={totalPieces.toLocaleString(isBangla ? 'bn-BD' : 'en-US')}
+                          value={totalPieces.toLocaleString(locale)}
                           meta={activeOption ? activeUnitSummary : t('ইউনিট বেছে নিন', 'Select a unit')}
                         />
                         <FactTile
                           label={t('মোট মূল্য', 'Total')}
-                          value={money(totalPrice)}
-                          meta={totalSavings > 0 ? `${t('সাশ্রয়', 'Save')} ${money(totalSavings)}` : t('স্ট্যান্ডার্ড মূল্য', 'Standard price')}
+                          value={money(totalPrice, locale)}
+                          meta={totalSavings > 0 ? `${t('সাশ্রয়', 'Save')} ${money(totalSavings, locale)}` : t('স্ট্যান্ডার্ড মূল্য', 'Standard price')}
                         />
                       </div>
                     </div>

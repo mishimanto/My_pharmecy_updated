@@ -6,6 +6,7 @@ import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
 import { getDefaultPurchaseOption } from '../../utils/purchaseUnits'
+import { getCategoryName } from '../../utils/categoryNames'
 import { isPrescriptionLoginRequiredError, requiresPrescriptionLogin, showPrescriptionLoginRequiredAlert } from '../../utils/prescriptionCartAlert'
 import EmptyState from '../common/EmptyState'
 import ProductCard, { ProductCardSkeleton } from './ProductCard'
@@ -154,7 +155,9 @@ export default function ProductGrid() {
           }}
         >
           <option value="">{t('সব ক্যাটাগরি', 'All categories')}</option>
-          {categories.map((item) => <option key={item.id} value={item.id}>{item.category_name}</option>)}
+          {categories.map((item) => (
+            <option key={item.id} value={item.id}>{getCategoryName(item, isBangla)}</option>
+          ))}
         </select>
         <select
           className="border border-slate-300 bg-white px-3 py-3 text-sm"
@@ -232,7 +235,7 @@ export default function ProductGrid() {
                 className="inline-flex min-w-[96px] items-center justify-center border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
                 onClick={() => setPage((value) => Math.max(1, value - 1))}
               >
-                {t('আগের', 'Previous')}
+                {t('পূর্ববর্তী', 'Previous')}
               </button>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -264,7 +267,7 @@ export default function ProductGrid() {
                 className="inline-flex min-w-[96px] items-center justify-center border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
                 onClick={() => setPage((value) => value + 1)}
               >
-                {t('পরের', 'Next')}
+                {t('পরবর্তী', 'Next')}
               </button>
             </div>
           </div>

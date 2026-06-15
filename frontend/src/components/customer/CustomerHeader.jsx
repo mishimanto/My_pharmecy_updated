@@ -18,6 +18,7 @@ import { productApi } from '../../api/productApi'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
+import { getCategoryName } from '../../utils/categoryNames'
 import { getProductImage, handleImageFallback } from '../../utils/imageUrl'
 import { getProductPath, getProductRouteKey } from '../../utils/productRouting'
 
@@ -293,7 +294,7 @@ export default function CustomerHeader() {
                             <div className="min-w-0 flex-1">
                               <div className="truncate text-sm font-semibold text-slate-950">{product.product_name}</div>
                               <div className="mt-1 truncate text-xs text-slate-500">
-                                {product.manufacturer?.manufacturer_name || product.category?.category_name || t('স্বাস্থ্যসেবা', 'Healthcare')}
+                                {product.manufacturer?.manufacturer_name || getCategoryName(product.category, isBangla, t('স্বাস্থ্যসেবা', 'Healthcare'))}
                               </div>
                             </div>
                             <div className="shrink-0 text-right">

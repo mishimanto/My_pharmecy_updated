@@ -1,0 +1,30 @@
+﻿      {items.length > 0 ? (
+        <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+          <section className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <MiniStat label={t('আইটেম সংখ্যা', 'Line items')} value={formatNumber(items.length)} icon={FiShoppingCart} />
+              <MiniStat label={t('নির্বাচিত ইউনিট', 'Selected units')} value={formatNumber(totalQuantity)} icon={GrCheckboxSelected} />
+              <MiniStat label={t('প্রেসক্রিপশন আইটেম', 'Prescription items')} value={hasPrescription ? t('হ্যাঁ', 'Yes') : t('না', 'No')} icon={FaFilePrescription} tone={hasPrescription ? 'danger' : 'default'} />
+            </div>
+---
+                  >
+                    <option value="">{deliveryAreas.length ? t('একটি ডেলিভারি এলাকা নির্বাচন করুন', 'Select a delivery area') : t('ডেলিভারি এলাকা লোড হচ্ছে...', 'Loading delivery areas...')}</option>
+                    {deliveryAreas.map((area) => (
+                      <option key={area.id} value={area.id}>
+                        {area.area_name}, {area.city} - {formatMoney(area.delivery_charge)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="py-5 border-y border-slate-200">
+                  <label className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('কুপন প্রয়োগ করুন', 'Apply coupon')}</label>
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      value={couponInput}
+                      onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
+                      placeholder={t('কুপন কোড লিখুন', 'Enter coupon code')}
+                      className="min-w-0 flex-1 border border-slate-300 px-3 py-3 text-sm text-slate-900 outline-none"
+                    />
+                    <button
+                      type="button"

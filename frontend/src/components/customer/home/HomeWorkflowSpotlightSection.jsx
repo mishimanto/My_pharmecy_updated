@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { FiArrowRight } from 'react-icons/fi'
 import { Link } from 'react-router-dom'
 import { money } from '../../../utils/formatters'
@@ -8,11 +9,48 @@ import { getProductImage, resolveImage } from './homeUtils'
 
 export default function HomeWorkflowSpotlightSection({
   isBangla,
-  spotlightProduct,
+  spotlightProducts = [],
   workflowSteps,
   manufacturerHighlights,
 }) {
+  const validSpotlightProducts = useMemo(
+    () => (Array.isArray(spotlightProducts) ? spotlightProducts : []),
+    [spotlightProducts],
+  )
+  const [currentSpotlightIndex, setCurrentSpotlightIndex] = useState(0)
+  const [isVisible, setIsVisible] = useState(true)
+  const transitionTimerRef = useRef(null)
+  const intervalRef = useRef(null)
+  const spotlightProduct = validSpotlightProducts[currentSpotlightIndex] || null
+
+  useEffect(() => {
+    if (!validSpotlightProducts.length) {
+      return undefined
+    }
+
+    intervalRef.current = window.setInterval(() => {
+      setIsVisible(false)
+      transitionTimerRef.current = window.setTimeout(() => {
+        setCurrentSpotlightIndex((prev) => (prev + 1) % validSpotlightProducts.length)
+        setIsVisible(true)
+      }, 350)
+    }, 7000)
+
+    return () => {
+      window.clearInterval(intervalRef.current)
+      window.clearTimeout(transitionTimerRef.current)
+    }
+  }, [validSpotlightProducts.length])
+
+  useEffect(() => {
+    if (currentSpotlightIndex >= validSpotlightProducts.length) {
+      setCurrentSpotlightIndex(0)
+    }
+  }, [currentSpotlightIndex, validSpotlightProducts.length])
+
   const spotlightImage = getProductImage(spotlightProduct)
+
+  const locale = isBangla ? 'bn-BD' : 'en-US'
 
   return (
     <section className="grid gap-6 pb-16 xl:grid-cols-[1.08fr_0.92fr]">
@@ -27,25 +65,26 @@ export default function HomeWorkflowSpotlightSection({
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.05),rgba(15,23,42,0.75))]" />
             <div className="relative flex min-h-[300px] flex-col justify-end p-6 text-white lg:min-h-[380px]">
-              
-              <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                {spotlightProduct?.product_name || (isBangla ? 'জনপ্রিয় ওষুধ' : 'Popular medicine display')}
-              </h3>
-              {spotlightProduct ? (
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <span className="rounded-full bg-white/15 px-3 py-1 text-sm font-semibold backdrop-blur-sm">
-                    {money(spotlightProduct.display_price)}
-                  </span>
-                  <Link
-                    to={getProductPath(spotlightProduct)}
-                    state={{ product: spotlightProduct }}
-                    className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-slate-100"
-                  >
-                    {isBangla ? 'পণ্য দেখুন' : 'View product'}
-                    <FiArrowRight className="h-4 w-4" />
-                  </Link>
-                </div>
-              ) : null}
+              <div className={`transition-opacity duration-500 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+                <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                  {spotlightProduct?.product_name || (isBangla ? 'জনপ্রিয় ওষুধ' : 'Popular medicine display')}
+                </h3>
+                {spotlightProduct ? (
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <span className="rounded-full bg-white/15 px-3 py-1 text-sm font-semibold backdrop-blur-sm">
+                      {money(spotlightProduct.display_price, locale)}
+                    </span>
+                    <Link
+                      to={getProductPath(spotlightProduct)}
+                      state={{ product: spotlightProduct }}
+                      className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-slate-100"
+                    >
+                      {isBangla ? 'পণ্য দেখুন' : 'View product'}
+                      <FiArrowRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
 
@@ -78,10 +117,10 @@ export default function HomeWorkflowSpotlightSection({
 
       <div className="space-y-6">
         <div className="border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
-          <HomeSectionHeader title={isBangla ? 'জনপ্রিয় নির্মাতা' : 'Popular manufacturers'} />
+          <HomeSectionHeader title={isBangla ? 'জনপ্রিয় প্রস্তুতকারক প্রতিষ্ঠান' : 'Popular manufacturers'} />
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             {manufacturerHighlights.map((manufacturer) => (
-              <div key={manufacturer.id} className="flex items-center gap-3 rounded-[14px] border border-slate-100 bg-slate-50/80 p-3.5">
+              <div key={manufacturer.id} className="flex items-center gap-3 border border-slate-100 bg-slate-50/80 p-3">
                 <img
                   src={resolveImage(manufacturer.logo_url)}
                   alt={manufacturer.manufacturer_name}
@@ -89,8 +128,8 @@ export default function HomeWorkflowSpotlightSection({
                   onError={handleImageFallback}
                 />
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-950">{manufacturer.manufacturer_name}</div>
-                  <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">{isBangla ? 'নির্মাতা' : 'Manufacturer'}</div>
+                  <div className="truncate text-md font-semibold text-slate-950">{manufacturer.manufacturer_name}</div>
+                  
                 </div>
               </div>
             ))}

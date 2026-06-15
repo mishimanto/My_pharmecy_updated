@@ -7,24 +7,50 @@ import { useLanguage } from '../../context/LanguageContext'
 import { orderApi } from '../../api/orderApi'
 import { money } from '../../utils/formatters'
 import { getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
+import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
 
 export default function OrderPayment() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { isBangla } = useLanguage()
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
-  const [order, setOrder] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const locale = isBangla ? 'bn-BD' : 'en-US'
+  const cacheKey = `order_payment_${id}`
+  const [order, setOrder] = useState(() => readCustomerCache(cacheKey, null))
+  const [loading, setLoading] = useState(() => readCustomerCache(cacheKey, null) === null)
   const [submitting, setSubmitting] = useState(false)
   const [transactionId, setTransactionId] = useState('')
   const [screenshot, setScreenshot] = useState(null)
 
+  const PAYMENT_BRANDS = {
+    BKASH: {
+      logoUrl: 'https://cdn.brandfetch.io/id_4D40okd/w/400/h/400/theme/dark/icon.jpeg?c=1bxid64Mup7aczewSAYMX&t=1773019907118',
+      badge: 'bK',
+      brandClass: 'text-[#e2136e]',
+    },
+    NAGAD: {
+      logoUrl: 'https://cdn.brandfetch.io/idPKXOsXfF/w/512/h/512/theme/dark/logo.png?c=1bxid64Mup7aczewSAYMX&t=1778051284059',
+      badge: 'N',
+      brandClass: 'text-[#f28c16]',
+    },
+  }
+
   useEffect(() => {
+    let mounted = true
+    setLoading((prev) => (prev || readCustomerCache(cacheKey, null) === null))
+
     orderApi.show(id)
-      .then((response) => setOrder(response.data.data))
-      .catch(() => toast.error(t('পেমেন্ট পেজ লোড করা যায়নি।', 'The payment page could not be loaded.')))
-      .finally(() => setLoading(false))
-  }, [id, t])
+      .then((response) => {
+        if (!mounted) return
+        const orderData = response.data.data
+        setOrder(orderData)
+        writeCustomerCache(cacheKey, orderData)
+      })
+      .catch(() => mounted && toast.error(t('পেমেন্ট পেজ লোড করা যায়নি।', 'The payment page could not be loaded.')))
+      .finally(() => mounted && setLoading(false))
+
+    return () => { mounted = false }
+  }, [id, t, cacheKey])
 
   const screenshotUrl = useMemo(() => (screenshot ? URL.createObjectURL(screenshot) : ''), [screenshot])
   const isBkash = order?.payment_method === 'BKASH'
@@ -100,7 +126,14 @@ export default function OrderPayment() {
   }
 
   if (loading) {
-    return <p className="text-sm text-slate-500">{t('পেমেন্ট পেজ লোড হচ্ছে...', 'Loading payment page...')}</p>
+    return (
+      <div className="flex min-h-70 items-center justify-center">
+        <div className="inline-flex items-center gap-3 px-4 py-3 text-md font-medium text-slate-700">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-950" />
+          {t('অনুগ্রহ করে অপেক্ষা করুন...', 'Please wait...')}
+        </div>
+      </div>
+    )
   }
 
   if (!order) {
@@ -140,7 +173,12 @@ export default function OrderPayment() {
                 {/* <div className={`text-sm font-semibold uppercase tracking-[0.18em] ${accent.badge}`}>
                   {t('পেমেন্ট রিসিভার', 'Payment receiver')}
                 </div> */}
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">{paymentLabel}</h2>
+                <h2 className="mt-2 flex items-center gap-3 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
+                  {order?.payment_method && PAYMENT_BRANDS[order.payment_method] ? (
+                    <img src={PAYMENT_BRANDS[order.payment_method].logoUrl} alt={order.payment_method} className="h-10 w-10" />
+                  ) : null}
+                  {paymentLabel}
+                </h2>
                 {/* <p className="mt-2 text-sm text-slate-600">{accountName}</p> */}
               </div>
               <div className={`w-full px-4 py-2 text-center text-sm font-semibold sm:w-auto ${accent.strong}`}>
@@ -154,10 +192,11 @@ export default function OrderPayment() {
                   {t('পেমেন্ট নাম্বার', 'Payment number')}
                 </div>
                 <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-                  <div className="min-w-0 break-all text-2xl font-semibold text-slate-950 sm:text-3xl sm:tracking-[0.06em]">{paymentNumber}</div>
-                  {/* <div className="mt-2 text-sm text-slate-500">
-                    {t(`Dial code: ${dialCode}`, `Dial code: ${dialCode}`)}
-                  </div> */}
+                  <div className="min-w-0 break-all text-2xl font-semibold text-slate-950 sm:text-3xl sm:tracking-[0.06em]">
+                    <span className={`inline-flex items-center gap-3`}>{/* logo + number */}
+                      <span>{paymentNumber}</span>
+                    </span>
+                  </div>
                   <button
                     type="button"
                     onClick={copyNumber}
@@ -172,9 +211,9 @@ export default function OrderPayment() {
             </div>
 
             <div className="mt-5 grid gap-3 md:grid-cols-3">
-              <HeroStat label={t('মোট টাকা', 'Total amount')} value={money(order.total_amount)} />
-              <HeroStat label={t('পেমেন্ট স্ট্যাটাস', 'Payment status')} value={getPaymentStatusLabel(order.payment_status, isBangla)} />
-              <HeroStat label={t('অর্ডার স্ট্যাটাস', 'Order status')} value={getOrderStatusLabel(order.order_status, isBangla)} />
+              <HeroStat label={t('মোট টাকা', 'Total amount')} value={money(order.total_amount, locale)} />
+              <HeroStat label={t('পেমেন্ট স্ট্যাটাস', 'Payment status')} value={<StatusText status={order.payment_status} type="payment" isBangla={isBangla} />} />
+              <HeroStat label={t('অর্ডার স্ট্যাটাস', 'Order status')} value={<StatusText status={order.order_status} type="order" isBangla={isBangla} />} />
             </div>
           </div>
 
@@ -324,4 +363,37 @@ function HeroStat({ label, value }) {
       <div className="mt-2 text-lg font-semibold text-slate-950">{value}</div>
     </div>
   )
+}
+
+function StatusText({ status, type = 'payment', isBangla = false }) {
+  const cls = (() => {
+    if (type === 'payment') {
+      if (status === 'awaiting_proof') return 'text-rose-600'
+      if (status === 'paid') return 'text-emerald-600'
+      if (status === 'under_review') return 'text-amber-600'
+      return 'text-slate-700'
+    }
+
+    // order status
+    switch (status) {
+      case 'pending_confirmation':
+      case 'pending':
+        return 'text-amber-600'
+      case 'processing':
+      case 'packed':
+      case 'out_for_delivery':
+        return 'text-sky-600'
+      case 'delivered':
+        return 'text-emerald-600'
+      case 'cancelled':
+      case 'returned':
+        return 'text-rose-600'
+      default:
+        return 'text-slate-700'
+    }
+  })()
+
+  const label = type === 'payment' ? getPaymentStatusLabel(status, isBangla) : getOrderStatusLabel(status, isBangla)
+
+  return <span className={`font-semibold ${cls}`}>{label}</span>
 }
