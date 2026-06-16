@@ -38,6 +38,7 @@ class ProductBrowseController extends Controller
                 'box_price',
                 'requires_prescription',
                 'description',
+                'description_bn',
                 'is_active',
             ])
             ->with(['category', 'manufacturer', 'images', 'batches' => $catalog->validBatchConstraint()])

@@ -46,6 +46,7 @@ class ProductCatalogService
                 'box_price',
                 'requires_prescription',
                 'description',
+                'description_bn',
                 'is_active',
             ])
             ->with([

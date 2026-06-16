@@ -21,6 +21,7 @@ const empty = {
   box_price: '',
   requires_prescription: false,
   description: '',
+  description_bn: '',
   is_active: true,
 }
 
@@ -158,7 +159,8 @@ export default function ProductForm() {
 
           <label className="flex items-center gap-2 rounded-xl border px-3 py-2"><input type="checkbox" checked={Boolean(form.requires_prescription)} onChange={(event) => setField('requires_prescription', event.target.checked)} /> Prescription required</label>
           <label className="flex items-center gap-2 rounded-xl border px-3 py-2"><input type="checkbox" checked={Boolean(form.is_active)} onChange={(event) => setField('is_active', event.target.checked)} /> Active</label>
-          <textarea className="rounded-xl border px-3 py-2 md:col-span-2" placeholder="Description" value={form.description || ''} onChange={(event) => setField('description', event.target.value)} />
+          <textarea className="rounded-xl border px-3 py-2 md:col-span-2" placeholder="Description (English)" value={form.description || ''} onChange={(event) => setField('description', event.target.value)} />
+          <textarea className="rounded-xl border px-3 py-2 md:col-span-2" placeholder="Description (Bangla)" value={form.description_bn || ''} onChange={(event) => setField('description_bn', event.target.value)} />
           <input className="rounded-xl border px-3 py-2 md:col-span-2" type="file" multiple accept="image/*" onChange={(event) => setFiles(Array.from(event.target.files || []))} />
           {images.length > 0 && <div className="grid gap-2 md:col-span-2 sm:grid-cols-3">{images.map((image) => <div key={image.id} className="rounded-2xl border p-2 text-sm"><img className="mb-2 h-24 w-full rounded-xl object-cover" src={image.image_url} alt="" /><button type="button" className="text-rose-700" onClick={() => removeImage(image)}>Delete</button></div>)}</div>}
           <button disabled={saving} className="rounded-xl bg-slate-950 px-4 py-2 text-white md:col-span-2 disabled:opacity-60">{saving ? 'Saving...' : 'Save'}</button>

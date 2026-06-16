@@ -89,6 +89,7 @@ class ProductController extends Controller
             'box_price' => ['nullable', 'numeric', 'min:0'],
             'requires_prescription' => ['required', 'boolean'],
             'description' => ['nullable', 'string'],
+            'description_bn' => ['nullable', 'string'],
             'is_active' => ['required', 'boolean'],
         ]);
     }
