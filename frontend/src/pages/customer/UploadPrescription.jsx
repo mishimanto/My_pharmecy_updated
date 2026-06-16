@@ -185,7 +185,7 @@ export default function UploadPrescription() {
                 {loading ? t('আপলোড হচ্ছে...', 'Uploading...') : t('প্রেসক্রিপশন আপলোড করুন', 'Upload prescription')}
               </button>
               <div className="text-sm text-slate-500">
-                {t('আপলোড শেষ হলে এটি Prescriptions তালিকায় দেখা যাবে।', 'After upload, it will appear in the Prescriptions list.')}
+                {t('আপলোড শেষ হলে এটি প্রেসক্রিপশনস তালিকায় দেখা যাবে।', 'After upload, it will appear in the Prescriptions list.')}
               </div>
             </div>
           </div>
