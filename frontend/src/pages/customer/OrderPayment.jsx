@@ -76,16 +76,16 @@ export default function OrderPayment() {
 
   const appSteps = [
     t(`আপনার ${paymentLabel} app খুলুন।`, `Open your ${paymentLabel} app.`),
-    t('Send Money বা Merchant Payment অপশন নিন।', 'Choose Send Money or Merchant Payment.'),
+    t('Send Money সিলেক্ট করুন।', 'Choose Send Money.'),
     t(`Receiver number হিসেবে ${paymentNumber} দিন এবং মোট টাকার পুরো পেমেন্ট করুন।`, `Use ${paymentNumber} as the receiver number and pay the full amount.`),
     t('পেমেন্ট শেষ হলে Transaction ID কপি করুন এবং screenshot নিন।', 'After payment, copy the Transaction ID and take a screenshot.'),
   ]
 
   const dialSteps = [
     t(`মোবাইলে ${dialCode} ডায়াল করুন।`, `Dial ${dialCode} on your phone.`),
-    t('Send Money বা Merchant Payment সিলেক্ট করুন।', 'Select Send Money or Merchant Payment.'),
+    t('Send Money সিলেক্ট করুন।', 'Choose Send Money.'),
     t(`Receiver number হিসেবে ${paymentNumber} দিন, তারপর amount লিখুন, তারপর PIN দিন।`, `Enter ${paymentNumber} as the receiver number, then enter the amount, then your PIN.`),
-    t('কনফার্ম SMS থেকে Transaction ID নিয়ে এই পেজে জমা দিন।', 'Take the Transaction ID from the confirmation SMS and submit it here.'),
+    t('কনফার্ম SMS থেকে Transaction ID নিয়ে এই পেজে জমা দিন।', 'Take the Transaction ID from the confirmation SMS and submit it here.'),
   ]
 
   const copyNumber = async () => {
