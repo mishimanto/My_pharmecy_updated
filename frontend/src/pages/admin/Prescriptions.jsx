@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import PageHeader from '../../components/common/PageHeader'
+// import PageHeader from '../../components/common/PageHeader'
 import EmptyState from '../../components/common/EmptyState'
 import { adminApi } from '../../api/adminApi'
 import { date } from '../../utils/formatters'
@@ -24,7 +24,7 @@ export default function Prescriptions() {
 
   return (
     <>
-      <PageHeader title="Prescriptions" subtitle="Review prescriptions uploaded by customers." />
+      {/* <PageHeader title="Prescriptions" subtitle="Review prescriptions uploaded by customers." /> */}
       <div className="mb-4 flex flex-col gap-2 sm:flex-row">
         <input className="w-full rounded border px-3 py-2" placeholder="Search by patient, doctor, or customer" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} />
         <select className="rounded border px-3 py-2" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1) }}><option value="">All Statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="need_clarification">Needs Clarification</option></select>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
-import PageHeader from '../../components/common/PageHeader'
+// import PageHeader from '../../components/common/PageHeader'
 import { date, money } from '../../utils/formatters'
 import { getPaymentStatusLabel } from '../../utils/statusLabels'
 
@@ -56,7 +56,7 @@ export default function Payments() {
 
   return (
     <>
-      <PageHeader title="Payments" subtitle="Review manual payment proofs, transaction IDs, and the verification workflow." />
+      {/* <PageHeader title="Payments" subtitle="Review manual payment proofs, transaction IDs, and the verification workflow." /> */}
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-slate-600">
@@ -96,8 +96,8 @@ export default function Payments() {
           </tbody>
         </table>
       </div>
-      <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600">
-        Keep COD payments pending until delivery is completed. For full-payment bKash or Nagad orders, move the status to `paid` after the proof is verified.
+      <div className="mt-4 rounded-lg border border-slate-200 bg-red-300/50 p-4 text-md text-slate-600">
+        <span className="font-bold">Note:</span> Keep <span className="font-semibold">Cash On Delivery</span> payments pending until delivery is completed. For full-payment (bKash or Nagad) orders, move the status to <span className="font-semibold text-green-700">Paid</span> after the proof is verified.
       </div>
     </>
   )

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
-import PageHeader from '../../components/common/PageHeader'
+// import PageHeader from '../../components/common/PageHeader'
 import { date } from '../../utils/formatters'
 import { getDeliveryStatusLabel } from '../../utils/statusLabels'
 
@@ -19,7 +19,7 @@ export default function Deliveries() {
 
   return (
     <>
-      <PageHeader title="Deliveries" subtitle="Assign riders and manage delivery statuses." />
+      {/* <PageHeader title="Deliveries" subtitle="Assign riders and manage delivery statuses." /> */}
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-slate-600">

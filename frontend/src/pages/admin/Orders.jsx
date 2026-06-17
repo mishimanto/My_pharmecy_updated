@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
-import PageHeader from '../../components/common/PageHeader'
+// import PageHeader from '../../components/common/PageHeader'
 import { date, money } from '../../utils/formatters'
 import { getOrderStatusLabel } from '../../utils/statusLabels'
 
@@ -31,7 +31,7 @@ export default function Orders() {
 
   return (
     <>
-      <PageHeader title="Orders" subtitle="Manage admin confirmation, cancellations, and status updates from here." />
+      {/* <PageHeader title="Orders" subtitle="Manage admin confirmation, cancellations, and status updates from here." /> */}
       <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_220px]">
         <input value={params.search} onChange={(event) => updateParams({ ...params, search: event.target.value, page: 1 })} placeholder="Order number, customer name, or phone" className="rounded-md border border-slate-300 px-3 py-2 text-sm" />
         <select value={params.status} onChange={(event) => updateParams({ ...params, status: event.target.value, page: 1 })} className="rounded-md border border-slate-300 px-3 py-2 text-sm">

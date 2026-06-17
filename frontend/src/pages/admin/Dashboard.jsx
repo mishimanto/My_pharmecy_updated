@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
-import PageHeader from '../../components/common/PageHeader'
+// import PageHeader from '../../components/common/PageHeader'
 import { date, money } from '../../utils/formatters'
 import { getOrderStatusLabel } from '../../utils/statusLabels'
 
@@ -44,11 +44,9 @@ export default function Dashboard() {
 
   return (
     <>
-      <PageHeader title="Dashboard" subtitle="Operational summary, pending work, and stock alerts." />
-      {loading ? <p className="text-sm text-slate-600">Loading...</p> : null}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {Object.entries(labels).map(([key, label]) => (
-          <div key={key} className="rounded-lg border border-slate-200 bg-white p-4">
+          <div key={key} className="rounded-lg shadow-md border border-slate-200 bg-white p-4">
             <p className="text-xs font-medium text-slate-500">{label}</p>
             <p className="mt-2 text-2xl font-semibold text-slate-950">{key === 'total_revenue' ? money(summary[key]) : summary[key] ?? 0}</p>
           </div>

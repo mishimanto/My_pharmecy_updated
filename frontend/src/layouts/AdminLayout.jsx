@@ -141,21 +141,17 @@ export default function AdminLayout() {
   }, [location.pathname])
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-950">
+    <div className="min-h-screen bg-slate-200 text-slate-950">
       <div className="flex min-h-screen">
         <aside
-          className={`fixed inset-y-0 left-0 z-40 w-72 border-r border-slate-800 bg-slate-950 text-white transition-transform duration-300 lg:static lg:translate-x-0 ${
+          className={`fixed inset-y-0 left-0 z-40 w-72 border-r border-slate-500/20 bg-[linear-gradient(135deg,#0d4b59_0%,#0f766e_52%,#13b8b0_100%)] text-white transition-transform duration-300 lg:static lg:translate-x-0 ${
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
           <div className="flex h-full flex-col">
-            <div className="border-b border-white/10 px-5 py-5">
-              <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/18 via-teal-400/10 to-slate-900 p-4 shadow-[0_24px_60px_-32px_rgba(16,185,129,0.85)]">
-                <p className="text-xs uppercase tracking-[0.28em] text-emerald-200/80">My Pharmecy</p>
-                <h1 className="mt-2 text-xl font-semibold">Admin Panel</h1>
-                <p className="mt-2 text-sm leading-6 text-slate-300">
-                  Manage orders, inventory, customer support, and daily operations from one workspace.
-                </p>
+            <div className="border-b border-white/20 px-5 py-6">
+              <div className="shadow-[0_24px_60px_-32px_rgba(16,185,129,0.85)]">                
+                <p className="text-md font-semibold uppercase tracking-[0.22em] text-slate-400">Admin Workspace</p>
               </div>
             </div>
 
@@ -163,7 +159,7 @@ export default function AdminLayout() {
               <div className="space-y-6">
                 {visibleGroups.map((group) => (
                   <div key={group.title}>
-                    <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">{group.title}</p>
+                    <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-white">{group.title}</p>
                     <div className="mt-3 space-y-1.5">
                       {group.items.map((item) => (
                         <NavItem key={item.to} item={item} />
@@ -172,19 +168,12 @@ export default function AdminLayout() {
                   </div>
                 ))}
               </div>
-            </nav>
-
-            <div className="border-t border-white/10 px-4 py-4">
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                <p className="text-sm font-medium text-white">{staff?.full_name || 'Admin User'}</p>
-                <p className="mt-1 text-xs text-slate-400">{roleNames}</p>
-              </div>
-            </div>
+            </nav>            
           </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+          <header className="sticky top-0 z-30 border-b border-slate-200 bg-gray-400/90 backdrop-blur">
             <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
               <div className="flex min-w-0 items-center gap-3">
                 <button
@@ -196,53 +185,35 @@ export default function AdminLayout() {
                   <FiMenu className="h-4 w-4" />
                 </button>
 
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Admin Workspace</p>
-                    <span className="hidden text-slate-300 sm:inline">/</span>
-                    <p className="text-xs font-medium text-slate-500">{todayLabel}</p>
-                  </div>
+                <div className="min-w-0">                  
                   <h2 className="truncate text-xl font-semibold text-slate-950">{activeItem?.label || 'Admin Panel'}</h2>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
                 <div className="hidden items-center gap-2 xl:flex">
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">
+                  <span className="rounded-full bg-slate-100/60 px-3 py-1.5 text-xs font-medium text-slate-600">
                     {roleNames}
-                  </span>
-                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
-                    {statusLabel}
-                  </span>
+                  </span>                  
                 </div>
 
                 <div className="relative">
                   <button
                     type="button"
-                    className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm transition hover:border-slate-300"
+                    className="flex items-center gap-3 px-3 py-1.5 shadow-sm transition hover:border-slate-300"
                     onClick={() => setSettingsOpen((open) => !open)}
                   >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-sm font-semibold text-white">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-950 text-sm font-semibold text-white">
                       {initials(staff?.full_name)}
                     </span>
                     <span className="hidden min-w-0 text-left md:block">
                       <span className="block truncate text-sm font-semibold text-slate-950">{staff?.full_name || 'Admin User'}</span>
-                      <span className="block truncate text-xs text-slate-500">{staff?.email || 'No email available'}</span>
                     </span>
-                    <FiChevronDown className={`h-4 w-4 text-slate-400 transition ${settingsOpen ? 'rotate-180' : ''}`} />
+                    <FiChevronDown className={`h-4 w-4 text-slate-700 transition ${settingsOpen ? 'rotate-180' : ''}`} />
                   </button>
 
                   {settingsOpen ? (
-                    <div className="absolute right-0 mt-3 w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_24px_70px_-28px_rgba(15,23,42,0.35)]">
-                      <div className="rounded-xl bg-slate-50 px-4 py-3">
-                        <p className="text-sm font-semibold text-slate-950">{staff?.full_name || 'Admin User'}</p>
-                        <p className="mt-1 text-xs text-slate-500">{staff?.email || 'No email available'}</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">{roleNames}</span>
-                          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-medium text-emerald-700">{statusLabel}</span>
-                        </div>
-                      </div>
-
+                    <div className="absolute right-0 mt-3 w-58 overflow-hidden rounded-md border border-slate-200 bg-white p-2 shadow-[0_24px_70px_-28px_rgba(15,23,42,0.35)]">
                       <div className="mt-2 space-y-1">
                         {visibleSettings.map((item) => (
                           <NavLink
@@ -259,8 +230,7 @@ export default function AdminLayout() {
                                 <span className="flex items-center gap-3">
                                   <item.icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                                   <span>{item.label}</span>
-                                </span>
-                                <span className="text-xs opacity-70">Open</span>
+                                </span>                                
                               </>
                             )}
                           </NavLink>
@@ -277,7 +247,6 @@ export default function AdminLayout() {
                             <FiLogOut className="h-4 w-4" />
                             <span>Log out</span>
                           </span>
-                          <span className="text-xs uppercase tracking-[0.2em]">Exit</span>
                         </button>
                       </div>
                     </div>
@@ -304,9 +273,9 @@ function NavItem({ item }) {
     <NavLink
       to={item.to}
       className={({ isActive }) =>
-        `group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition ${
+        `group flex items-center gap-3 rounded-sm px-3 py-3 text-sm font-medium transition ${
           isActive
-            ? 'bg-white text-slate-950 shadow-[0_16px_32px_-24px_rgba(255,255,255,0.9)]'
+            ? 'bg-gray-100/20 text-slate-950 shadow-[0_16px_32px_-24px_rgba(255,255,255,0.9)]'
             : 'text-slate-300 hover:bg-white/8 hover:text-white'
         }`
       }

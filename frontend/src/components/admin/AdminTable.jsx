@@ -60,7 +60,7 @@ export default function AdminTable({ resource }) {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id} className="border-t border-slate-100">
-                  {columns.map((column) => <td key={column} className="max-w-[220px] truncate px-3 py-2">{String(row[column] ?? '-')}</td>)}
+                  {columns.map((column) => <td key={column} className="max-w-55 truncate px-3 py-2">{String(row[column] ?? '-')}</td>)}
                   {!readOnly && <td className="px-3 py-2 text-right"><button className="rounded bg-rose-50 px-2 py-1 text-rose-700" onClick={() => remove(row.id)}>Delete</button></td>}
                 </tr>
               ))}
