@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import {
   FiActivity,
   FiAlertCircle,
   FiBox,
-  FiChevronDown,
   FiCreditCard,
   FiFileText,
   FiGrid,
@@ -12,22 +11,21 @@ import {
   FiHome,
   FiLayers,
   FiList,
-  FiLogOut,
   FiMapPin,
-  FiMenu,
   FiPackage,
   FiPieChart,
-  FiSettings,
   FiShield,
   FiShoppingBag,
   FiTag,
   FiTruck,
   FiUser,
   FiUsers,
-  FiX,
 } from 'react-icons/fi'
 import { useStaffAuth } from '../context/StaffAuthContext'
 import { hasPermission } from '../utils/permissions'
+import AdminHeader from '../components/admin/AdminHeader'
+import AdminSidebar from '../components/admin/AdminSidebar'
+import AdminFooter from '../components/admin/AdminFooter'
 
 const navigationGroups = [
   {
@@ -79,15 +77,6 @@ const settingsItems = [
   { to: '/admin/reports', label: 'Reports', permission: 'report.view', icon: FiPieChart },
   { to: '/admin/activity-logs', label: 'Activity Logs', permission: 'activity-log.view', icon: FiActivity },
 ]
-
-function initials(name = '') {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('') || 'AD'
-}
 
 function formatToday() {
   return new Intl.DateTimeFormat('en-US', {
@@ -143,122 +132,26 @@ export default function AdminLayout() {
   return (
     <div className="min-h-screen bg-slate-200 text-slate-950">
       <div className="flex min-h-screen">
-        <aside
-          className={`fixed inset-y-0 left-0 z-40 w-72 border-r border-slate-500/20 bg-[linear-gradient(135deg,#0d4b59_0%,#0f766e_52%,#13b8b0_100%)] text-white transition-transform duration-300 lg:static lg:translate-x-0 ${
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
-        >
-          <div className="flex h-full flex-col">
-            <div className="border-b border-white/20 px-5 py-6">
-              <div className="shadow-[0_24px_60px_-32px_rgba(16,185,129,0.85)]">                
-                <p className="text-md font-semibold uppercase tracking-[0.22em] text-slate-400">Admin Workspace</p>
-              </div>
-            </div>
-
-            <nav className="flex-1 overflow-y-auto px-4 py-5">
-              <div className="space-y-6">
-                {visibleGroups.map((group) => (
-                  <div key={group.title}>
-                    <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-white">{group.title}</p>
-                    <div className="mt-3 space-y-1.5">
-                      {group.items.map((item) => (
-                        <NavItem key={item.to} item={item} />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </nav>            
-          </div>
-        </aside>
+        <AdminSidebar sidebarOpen={sidebarOpen} visibleGroups={visibleGroups} />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 border-b border-slate-200 bg-gray-400/90 backdrop-blur">
-            <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-              <div className="flex min-w-0 items-center gap-3">
-                <button
-                  type="button"
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-950 lg:hidden"
-                  onClick={() => setSidebarOpen((open) => !open)}
-                >
-                  <span className="sr-only">Open sidebar</span>
-                  <FiMenu className="h-4 w-4" />
-                </button>
-
-                <div className="min-w-0">                  
-                  <h2 className="truncate text-xl font-semibold text-slate-950">{activeItem?.label || 'Admin Panel'}</h2>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="hidden items-center gap-2 xl:flex">
-                  <span className="rounded-full bg-slate-100/60 px-3 py-1.5 text-xs font-medium text-slate-600">
-                    {roleNames}
-                  </span>                  
-                </div>
-
-                <div className="relative">
-                  <button
-                    type="button"
-                    className="flex items-center gap-3 px-3 py-1.5 shadow-sm transition hover:border-slate-300"
-                    onClick={() => setSettingsOpen((open) => !open)}
-                  >
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-950 text-sm font-semibold text-white">
-                      {initials(staff?.full_name)}
-                    </span>
-                    <span className="hidden min-w-0 text-left md:block">
-                      <span className="block truncate text-sm font-semibold text-slate-950">{staff?.full_name || 'Admin User'}</span>
-                    </span>
-                    <FiChevronDown className={`h-4 w-4 text-slate-700 transition ${settingsOpen ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {settingsOpen ? (
-                    <div className="absolute right-0 mt-3 w-58 overflow-hidden rounded-md border border-slate-200 bg-white p-2 shadow-[0_24px_70px_-28px_rgba(15,23,42,0.35)]">
-                      <div className="mt-2 space-y-1">
-                        {visibleSettings.map((item) => (
-                          <NavLink
-                            key={item.to}
-                            to={item.to}
-                            className={({ isActive }) =>
-                              `flex items-center justify-between rounded-xl px-4 py-3 text-sm transition ${
-                                isActive ? 'bg-slate-950 text-white' : 'text-slate-700 hover:bg-slate-100'
-                              }`
-                            }
-                          >
-                            {({ isActive }) => (
-                              <>
-                                <span className="flex items-center gap-3">
-                                  <item.icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                                  <span>{item.label}</span>
-                                </span>                                
-                              </>
-                            )}
-                          </NavLink>
-                        ))}
-                      </div>
-
-                      <div className="mt-2 border-t border-slate-200 pt-2">
-                        <button
-                          type="button"
-                          className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-medium text-rose-600 transition hover:bg-rose-50"
-                          onClick={logout}
-                        >
-                          <span className="flex items-center gap-3">
-                            <FiLogOut className="h-4 w-4" />
-                            <span>Log out</span>
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          </header>
+          <AdminHeader
+            sidebarOpen={sidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+            settingsOpen={settingsOpen}
+            setSettingsOpen={setSettingsOpen}
+            activeItem={activeItem}
+            roleNames={roleNames}
+            staff={staff}
+            visibleSettings={visibleSettings}
+            logout={logout}
+          />
 
           <main className="flex-1 px-4 py-5 sm:px-6 lg:px-8">
             <Outlet />
           </main>
+
+          <AdminFooter />
         </div>
       </div>
 
@@ -268,24 +161,3 @@ export default function AdminLayout() {
   )
 }
 
-function NavItem({ item }) {
-  return (
-    <NavLink
-      to={item.to}
-      className={({ isActive }) =>
-        `group flex items-center gap-3 rounded-sm px-3 py-3 text-sm font-medium transition ${
-          isActive
-            ? 'bg-gray-100/20 text-slate-950 shadow-[0_16px_32px_-24px_rgba(255,255,255,0.9)]'
-            : 'text-slate-300 hover:bg-white/8 hover:text-white'
-        }`
-      }
-    >
-      {({ isActive }) => (
-        <>
-          <span className={`h-2.5 w-2.5 rounded-full transition ${isActive ? 'bg-emerald-500' : 'bg-slate-600 group-hover:bg-slate-400'}`} />
-          <span>{item.label}</span>
-        </>
-      )}
-    </NavLink>
-  )
-}
