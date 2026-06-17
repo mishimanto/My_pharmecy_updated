@@ -3,11 +3,73 @@ import { Link, useParams } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
+import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import PageHeader from '../../components/common/PageHeader'
 import { date, money } from '../../utils/formatters'
 import { getDeliveryStatusLabel, getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
 
-const statuses = ['pending_confirmation', 'prescription_review', 'confirmed', 'processing', 'packed', 'out_for_delivery', 'delivered', 'cancelled', 'returned', 'refunded']
+const orderStatuses = ['pending_confirmation', 'prescription_review', 'confirmed', 'processing', 'packed', 'out_for_delivery', 'delivered', 'cancelled', 'returned', 'refunded']
+const statusTransitions = {
+  pending_confirmation: ['confirmed', 'cancelled'],
+  prescription_review: ['pending_confirmation', 'confirmed', 'cancelled'],
+  confirmed: ['processing', 'cancelled'],
+  processing: ['packed'],
+  packed: ['out_for_delivery'],
+  out_for_delivery: ['delivered'],
+  delivered: ['returned', 'refunded'],
+  returned: ['refunded'],
+  cancelled: [],
+  refunded: [],
+}
+const statusTones = {
+  pending_confirmation: 'text-amber-600',
+  prescription_review: 'text-violet-600',
+  confirmed: 'text-sky-600',
+  processing: 'text-blue-600',
+  packed: 'text-indigo-600',
+  out_for_delivery: 'text-cyan-600',
+  delivered: 'text-emerald-600',
+  cancelled: 'text-rose-600',
+  returned: 'text-orange-600',
+  refunded: 'text-slate-600',
+}
+const paymentStatusStyles = {
+  awaiting_proof: 'border-amber-200 bg-amber-50 text-amber-700',
+  pending: 'border-amber-200 bg-amber-50 text-amber-700',
+  under_review: 'border-sky-200 bg-sky-50 text-sky-700',
+  paid: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  failed: 'border-rose-200 bg-rose-50 text-rose-700',
+  cancelled: 'border-slate-200 bg-slate-50 text-slate-600',
+  refunded: 'border-violet-200 bg-violet-50 text-violet-700',
+}
+const deliveryStatusStyles = {
+  pending: 'border-amber-200 bg-amber-50 text-amber-700',
+  assigned: 'border-sky-200 bg-sky-50 text-sky-700',
+  picked: 'border-blue-200 bg-blue-50 text-blue-700',
+  picked_up: 'border-blue-200 bg-blue-50 text-blue-700',
+  out_for_delivery: 'border-cyan-200 bg-cyan-50 text-cyan-700',
+  delivered: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  failed: 'border-rose-200 bg-rose-50 text-rose-700',
+  returned: 'border-orange-200 bg-orange-50 text-orange-700',
+}
+const metricStyles = {
+  status: {
+    panel: 'border-emerald-200 bg-[linear-gradient(135deg,#ecfdf5_0%,#d1fae5_100%)] shadow-[0_18px_45px_-34px_rgba(16,185,129,0.9)]',
+    bubble: 'from-white/80 via-emerald-100 to-emerald-300/80 shadow-[-14px_18px_34px_-24px_rgba(5,150,105,0.9),inset_12px_-12px_24px_rgba(5,150,105,0.22),inset_-10px_10px_18px_rgba(255,255,255,0.8)]',
+  },
+  payment: {
+    panel: 'border-sky-200 bg-[linear-gradient(135deg,#f0f9ff_0%,#dbeafe_100%)] shadow-[0_18px_45px_-34px_rgba(14,165,233,0.9)]',
+    bubble: 'from-white/80 via-sky-100 to-sky-300/80 shadow-[-14px_18px_34px_-24px_rgba(2,132,199,0.9),inset_12px_-12px_24px_rgba(2,132,199,0.22),inset_-10px_10px_18px_rgba(255,255,255,0.8)]',
+  },
+  total: {
+    panel: 'border-violet-200 bg-[linear-gradient(135deg,#f5f3ff_0%,#ede9fe_100%)] shadow-[0_18px_45px_-34px_rgba(139,92,246,0.9)]',
+    bubble: 'from-white/80 via-violet-100 to-violet-300/80 shadow-[-14px_18px_34px_-24px_rgba(124,58,237,0.9),inset_12px_-12px_24px_rgba(124,58,237,0.22),inset_-10px_10px_18px_rgba(255,255,255,0.8)]',
+  },
+  prescription: {
+    panel: 'border-amber-200 bg-[linear-gradient(135deg,#fffbeb_0%,#fef3c7_100%)] shadow-[0_18px_45px_-34px_rgba(245,158,11,0.9)]',
+    bubble: 'from-white/80 via-amber-100 to-amber-300/80 shadow-[-14px_18px_34px_-24px_rgba(217,119,6,0.9),inset_12px_-12px_24px_rgba(217,119,6,0.22),inset_-10px_10px_18px_rgba(255,255,255,0.8)]',
+  },
+}
 const prescriptionLabels = {
   pending: 'Pending review',
   approved: 'Approved',
@@ -27,7 +89,9 @@ export default function OrderDetails() {
   const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState('')
   const [reviewForm, setReviewForm] = useState({ prescription_match_status: 'matched', prescription_match_note: '' })
+  const [emergencyForm, setEmergencyForm] = useState({ order_status: '', note: '' })
   const [savingReview, setSavingReview] = useState(false)
+  const [savingEmergency, setSavingEmergency] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -35,6 +99,7 @@ export default function OrderDetails() {
       .then((res) => {
         setOrder(res.data.data)
         setStatus(res.data.data.order_status)
+        setEmergencyForm({ order_status: res.data.data.order_status, note: '' })
       })
       .catch(() => toast.error('Unable to load order details.'))
       .finally(() => setLoading(false))
@@ -51,6 +116,7 @@ export default function OrderDetails() {
         : 'matched',
       prescription_match_note: order.prescription_match_note || '',
     })
+    setEmergencyForm((current) => ({ ...current, order_status: order.order_status }))
   }, [order])
 
   const requiresPrescription = useMemo(
@@ -61,19 +127,30 @@ export default function OrderDetails() {
   const canConfirmPrescription = !requiresPrescription
     || (order?.prescription_match_status === 'matched' && order?.prescription?.status === 'approved')
 
-  const updateStatus = async () => {
-    if (!status || status === order.order_status) return
+  const nextStatuses = useMemo(() => {
+    const allowed = statusTransitions[order?.order_status] || []
+    return allowed.filter((item) => item !== 'confirmed' || canConfirmPrescription)
+  }, [canConfirmPrescription, order?.order_status])
+
+  const selectableStatuses = useMemo(
+    () => [order?.order_status, ...nextStatuses].filter(Boolean),
+    [nextStatuses, order?.order_status],
+  )
+  const quickNextStatus = nextStatuses[0] || ''
+
+  const updateStatus = async (targetStatus = status) => {
+    if (!targetStatus || targetStatus === order.order_status) return
 
     const result = await Swal.fire({
       title: 'Update order status?',
       input: 'textarea',
-      inputLabel: status === 'cancelled' ? 'Cancellation reason' : 'Admin note (optional)',
-      inputPlaceholder: status === 'cancelled' ? 'Explain why this order is being cancelled' : 'Add a short note if needed',
+      inputLabel: targetStatus === 'cancelled' ? 'Cancellation reason' : 'Admin note (optional)',
+      inputPlaceholder: targetStatus === 'cancelled' ? 'Explain why this order is being cancelled' : 'Add a short note if needed',
       showCancelButton: true,
       confirmButtonText: 'Update',
       cancelButtonText: 'Cancel',
       inputValidator: (value) => {
-        if (status === 'cancelled' && !value.trim()) {
+        if (targetStatus === 'cancelled' && !value.trim()) {
           return 'A cancellation reason is required.'
         }
         return undefined
@@ -83,7 +160,7 @@ export default function OrderDetails() {
     if (!result.isConfirmed) return
 
     try {
-      const res = await adminApi.patch('orders', id, 'status', { order_status: status, note: result.value || '' })
+      const res = await adminApi.patch('orders', id, 'status', { order_status: targetStatus, note: result.value || '' })
       setOrder(res.data.data)
       setStatus(res.data.data.order_status)
       toast.success('Order status updated.')
@@ -141,17 +218,62 @@ export default function OrderDetails() {
     }
   }
 
-  if (loading) return <p className="text-sm text-slate-600">Loading...</p>
+  const saveEmergencyCorrection = async () => {
+    if (!emergencyForm.order_status || emergencyForm.order_status === order.order_status) {
+      toast.error('Choose a different status.')
+      return
+    }
+
+    if (!emergencyForm.note.trim()) {
+      toast.error('Add a reason for emergency correction.')
+      return
+    }
+
+    const result = await Swal.fire({
+      title: 'Apply emergency correction?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Apply Correction',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626',
+    })
+
+    if (!result.isConfirmed) return
+
+    setSavingEmergency(true)
+    try {
+      const res = await adminApi.patch('orders', id, 'force-status', emergencyForm)
+      setOrder(res.data.data)
+      setStatus(res.data.data.order_status)
+      setEmergencyForm({ order_status: res.data.data.order_status, note: '' })
+      toast.success('Emergency correction saved.')
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to save emergency correction.')
+    } finally {
+      setSavingEmergency(false)
+    }
+  }
+
+  if (loading) return <AdminLoadingState className="py-8" />
   if (!order) return <p className="text-sm text-slate-600">Order not found.</p>
 
   return (
     <>
       <PageHeader title={order.order_number} subtitle={`${order.customer_name || 'Customer'} - ${date(order.order_date, 'en-US')}`} />
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Metric label="Order status" value={getOrderStatusLabel(order.order_status)} tone={statusTones[order.order_status]} variant="status" />
+        <Metric label="Payment" value={getPaymentStatusLabel(order.payment_status)} tone={getPaymentStatusTextColor(order.payment_status)} variant="payment" />
+        <Metric label="Total" value={money(order.total_amount)} variant="total" />
+        <Metric label="Prescription" value={requiresPrescription ? 'Review required' : 'Not required'} tone={requiresPrescription ? 'text-violet-600' : 'text-emerald-600'} variant="prescription" />
+      </div>
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
         <section className="space-y-6">
-          <div className="rounded-lg border border-slate-200 bg-white">
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
+              <h2 className="text-base font-semibold text-slate-950">Ordered medicines</h2>
+            </div>
             {order.items?.map((item) => (
-              <div key={item.id} className="border-b border-slate-100 p-4 last:border-b-0">
+              <div key={item.id} className="border-b border-slate-100 p-5 last:border-b-0">
                 <div className="flex justify-between gap-4">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -169,7 +291,7 @@ export default function OrderDetails() {
                   </div>
                   <p className="font-semibold text-slate-950">{money(item.subtotal)}</p>
                 </div>
-                <div className="mt-3 rounded-md bg-slate-50 p-3 text-xs text-slate-600">
+                <div className="mt-4 rounded-md border border-slate-100 bg-slate-50 p-3 text-xs text-slate-600">
                   {item.batches?.map((allocation) => (
                     <div key={allocation.id} className="flex justify-between">
                       <span>{allocation.batch?.batch_number}</span>
@@ -181,19 +303,35 @@ export default function OrderDetails() {
             ))}
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700">
-            <div><span className="font-semibold">Delivery area:</span> {order.delivery_area?.area_name || '-'}{order.delivery_area?.city ? `, ${order.delivery_area.city}` : ''}</div>
-            <div className="mt-2"><span className="font-semibold">Shipping address:</span> {order.shipping_address || '-'}</div>
-            {order.notes ? <div className="mt-2"><span className="font-semibold">Customer note:</span> {order.notes}</div> : null}
-            {order.admin_note ? <div className="mt-2"><span className="font-semibold">Admin note:</span> {order.admin_note}</div> : null}
-            {order.cancellation_reason ? <div className="mt-2 text-rose-700"><span className="font-semibold">Cancellation reason:</span> {order.cancellation_reason}</div> : null}
-            {order.memo_number ? <div className="mt-2"><span className="font-semibold">Memo number:</span> {order.memo_number}</div> : null}
+          <div className="rounded-lg border border-slate-200 bg-white p-5 text-sm shadow-sm">
+            <div className="border-b border-slate-100 pb-4">
+              <h2 className="text-base font-semibold text-slate-950">Customer and delivery info</h2>
+            </div>
+            <div className="mt-4 grid gap-4 text-slate-700 sm:grid-cols-2">
+              <Info label="Customer" value={order.customer_name || '-'} />
+              <Info label="Phone" value={order.customer_phone || '-'} />
+              <Info label="Delivery area" value={`${order.delivery_area?.area_name || '-'}${order.delivery_area?.city ? `, ${order.delivery_area.city}` : ''}`} />
+              <Info label="Shipping address" value={order.shipping_address || '-'} />
+            </div>
+            {order.notes ? <Note label="Customer note" value={order.notes} /> : null}
+            {order.memo_number ? <Note label="Invoice number" value={order.memo_number} /> : null}
           </div>
+
+          {(order.admin_note || order.cancellation_reason) ? (
+            <div className="rounded-lg border border-slate-200 bg-white p-5 text-sm shadow-sm">
+              <div className="border-b border-slate-100 pb-4">
+                <h2 className="text-base font-semibold text-slate-950">Internal notes</h2>
+                <p className="mt-1 text-xs text-slate-500">Staff-only notes and correction history for operational context.</p>
+              </div>
+              {order.admin_note ? <Note label="Admin note" value={order.admin_note} /> : null}
+              {order.cancellation_reason ? <Note label="Cancellation reason" value={order.cancellation_reason} tone="text-rose-700" /> : null}
+            </div>
+          ) : null}
         </section>
 
         <aside className="space-y-4">
           {requiresPrescription ? (
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="rounded-lg border border-violet-200 bg-white p-5 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-950">Prescription review</h2>
@@ -256,7 +394,7 @@ export default function OrderDetails() {
                 <select
                   value={reviewForm.prescription_match_status}
                   onChange={(event) => setReviewForm((current) => ({ ...current, prescription_match_status: event.target.value }))}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 >
                   <option value="matched">Matched with ordered items</option>
                   <option value="mismatch">Prescription does not match</option>
@@ -265,7 +403,7 @@ export default function OrderDetails() {
                 <textarea
                   value={reviewForm.prescription_match_note}
                   onChange={(event) => setReviewForm((current) => ({ ...current, prescription_match_note: event.target.value }))}
-                  className="min-h-28 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  className="min-h-28 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                   placeholder="Add why it mismatches, what needs clarification, or any internal note."
                 />
                 <button
@@ -279,37 +417,171 @@ export default function OrderDetails() {
             </div>
           ) : null}
 
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <h2 className="text-lg font-semibold text-slate-950">Status</h2>
-            <select value={status} onChange={(event) => setStatus(event.target.value)} className="mt-3 w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
-              {statuses.map((item) => <option key={item} value={item}>{getOrderStatusLabel(item)}</option>)}
-            </select>
-            <button onClick={updateStatus} disabled={status === order.order_status} className="mt-3 w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-300">
-              Update Status
-            </button>
+          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-950">Order status</h2>
+              </div>
+              <span className={`shrink-0 text-xs font-semibold ${statusTones[order.order_status] || 'text-slate-600'}`}>
+                {getOrderStatusLabel(order.order_status)}
+              </span>
+            </div>
+
+            {requiresPrescription && !canConfirmPrescription ? (
+              <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                Confirmation is locked until the prescription is approved and matched with the ordered RX medicines.
+              </div>
+            ) : null}
+
+            {nextStatuses.length ? (
+              <>
+                <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Update status</label>
+                <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+                  <select value={status} onChange={(event) => setStatus(event.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-100">
+                    {selectableStatuses.map((item) => <option key={item} value={item}>{getOrderStatusLabel(item)}</option>)}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => updateStatus(quickNextStatus)}
+                    disabled={!quickNextStatus}
+                    className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-300"
+                  >
+                    {quickNextStatus ? getOrderStatusLabel(quickNextStatus) : 'No next step'}
+                  </button>
+                </div>
+                <button onClick={() => updateStatus()} disabled={status === order.order_status} className="mt-3 w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-300">
+                  Update Status
+                </button>
+              </>
+            ) : (
+              <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+                This order is in a final state. No further status action is available.
+              </div>
+            )}
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm">
-            <h2 className="text-lg font-semibold text-slate-950">Summary</h2>
-            <div className="mt-4 space-y-2">
-              <div className="flex justify-between"><span>Subtotal</span><span>{money(order.subtotal_amount)}</span></div>
-              <div className="flex justify-between"><span>Delivery</span><span>{money(order.delivery_charge)}</span></div>
-              {Number(order.discount_amount || 0) > 0 ? <div className="flex justify-between text-emerald-700"><span>Coupon discount</span><span>-{money(order.discount_amount)}</span></div> : null}
-              <div className="flex justify-between font-semibold text-slate-950"><span>Total</span><span>{money(order.total_amount)}</span></div>
-              <div className="pt-3 text-slate-600">Payment: {getPaymentStatusLabel(order.payment_status)} ({order.payment_method})</div>
-              <div className="text-slate-600">Delivery: {getDeliveryStatusLabel(order.delivery?.delivery_status)}</div>
-              {order.payment?.transaction_id ? <div className="text-slate-600">Transaction ID: {order.payment.transaction_id}</div> : null}
+          <div className="rounded-lg border border-slate-200 bg-white p-5 text-sm shadow-sm">
+            <div className="border-b border-slate-100 pb-4">
+              <h2 className="text-lg font-semibold text-slate-950">Payment summary</h2>
+            </div>
+            <div className="mt-4 space-y-3">
+              <div className="flex justify-between text-slate-600"><span>Subtotal</span><span className="font-medium text-slate-900">{money(order.subtotal_amount)}</span></div>
+              <div className="flex justify-between text-slate-600"><span>Delivery</span><span className="font-medium text-slate-900">{money(order.delivery_charge)}</span></div>
+              {Number(order.discount_amount || 0) > 0 ? <div className="flex justify-between text-emerald-700"><span>Coupon discount</span><span className="font-medium">-{money(order.discount_amount)}</span></div> : null}
+              <div className="flex justify-between border-t border-slate-100 pt-3 text-base font-semibold text-slate-950"><span>Total</span><span>{money(order.total_amount)}</span></div>
+              <StatusSummaryRow label="Payment status" value={getPaymentStatusLabel(order.payment_status)} className={paymentStatusStyles[order.payment_status]} />
+              <div className="flex items-center justify-between gap-3 rounded-md border border-slate-100 bg-slate-50 px-3 py-2 text-slate-600">
+                <span>Payment method</span>
+                <span className="font-semibold text-slate-900">{getPaymentMethodLabel(order.payment_method)}</span>
+              </div>
+              <StatusSummaryRow label="Delivery" value={getDeliveryStatusLabel(order.delivery?.delivery_status)} className={deliveryStatusStyles[order.delivery?.delivery_status]} />
+              {order.payment?.transaction_id ? <div className="rounded-md border border-slate-100 bg-slate-50 p-3 text-slate-600">Transaction ID: <span className="font-medium text-slate-900">{order.payment.transaction_id}</span></div> : null}
               {order.payment?.payment_proof_url ? <a href={order.payment.payment_proof_url} target="_blank" rel="noreferrer" className="inline-flex text-emerald-700 underline">View payment screenshot</a> : null}
-              {order.payment?.reviewed_note ? <div className="text-slate-600">Payment note: {order.payment.reviewed_note}</div> : null}
+              {order.payment?.reviewed_note ? <div className="rounded-md border border-slate-100 bg-slate-50 p-3 text-slate-600">Payment note: <span className="font-medium text-slate-900">{order.payment.reviewed_note}</span></div> : null}
             </div>
             {!order.delivery && ['confirmed', 'processing', 'packed', 'out_for_delivery'].includes(order.order_status) && (
               <button onClick={createDelivery} className="mt-4 w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Create Delivery</button>
             )}
           </div>
+
+          <div className="rounded-lg border border-rose-200 bg-[linear-gradient(135deg,#fff1f2_0%,#ffe4e6_100%)] p-5 shadow-sm">
+            <div className="border-b border-rose-200/70 pb-4">
+              <h2 className="text-lg font-semibold text-rose-950">Emergency correction</h2>
+              <p className="mt-1 text-sm text-rose-700">Use this only to correct an accidental status change.</p>
+            </div>
+            <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-rose-700">Correct status</label>
+            <select
+              value={emergencyForm.order_status}
+              onChange={(event) => setEmergencyForm((current) => ({ ...current, order_status: event.target.value }))}
+              className="mt-2 w-full rounded-md border border-rose-200 bg-white px-3 py-2 text-sm shadow-xs focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+            >
+              {orderStatuses.map((item) => <option key={item} value={item}>{getOrderStatusLabel(item)}</option>)}
+            </select>
+            <textarea
+              value={emergencyForm.note}
+              onChange={(event) => setEmergencyForm((current) => ({ ...current, note: event.target.value }))}
+              className="mt-3 min-h-24 w-full rounded-md border border-rose-200 bg-white px-3 py-2 text-sm shadow-xs focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+              placeholder="Required: explain what happened and why this correction is needed."
+            />
+            <button
+              type="button"
+              onClick={saveEmergencyCorrection}
+              disabled={savingEmergency || emergencyForm.order_status === order.order_status}
+              className="mt-3 w-full rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-300"
+            >
+              {savingEmergency ? 'Saving...' : 'Apply Correction'}
+            </button>
+          </div>
         </aside>
       </div>
     </>
   )
+}
+
+function Metric({ label, value, tone = 'text-slate-950', variant = 'status' }) {
+  const style = metricStyles[variant] || metricStyles.status
+
+  return (
+    <div className={`relative overflow-hidden rounded-lg border p-4 ${style.panel}`}>
+      <span className={`pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-linear-to-br ${style.bubble}`}>
+        <span className="absolute left-5 top-5 h-5 w-5 rounded-full bg-white/70 blur-[1px]" />
+      </span>
+      <p className="relative text-xs font-medium text-slate-500">{label}</p>
+      <p className={`relative mt-2 text-base font-semibold ${tone}`}>{value}</p>
+    </div>
+  )
+}
+
+function Info({ label, value }) {
+  return (
+    <div>
+      <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">{label}</p>
+      <p className="mt-1 font-medium text-slate-800">{value}</p>
+    </div>
+  )
+}
+
+function Note({ label, value, tone = 'text-slate-700' }) {
+  return (
+    <div className={`mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm ${tone}`}>
+      <span className="font-semibold">{label}:</span> {value}
+    </div>
+  )
+}
+
+function StatusSummaryRow({ label, value, className = 'border-slate-200 bg-slate-50 text-slate-700' }) {
+  return (
+    <div className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 ${className}`}>
+      <span className="text-slate-600">{label}</span>
+      <span className="font-semibold">{value}</span>
+    </div>
+  )
+}
+
+function getPaymentMethodLabel(method) {
+  const normalized = String(method || '').toUpperCase()
+  const labels = {
+    COD: 'Cash on delivery',
+    BKASH: 'bKash',
+    NAGAD: 'Nagad',
+    NOGOD: 'Nagad',
+  }
+
+  return labels[normalized] || method || '-'
+}
+
+function getPaymentStatusTextColor(status) {
+  const colors = {
+    awaiting_proof: 'text-amber-700',
+    pending: 'text-amber-700',
+    under_review: 'text-sky-700',
+    paid: 'text-emerald-700',
+    failed: 'text-rose-700',
+    cancelled: 'text-slate-600',
+    refunded: 'text-violet-700',
+  }
+
+  return colors[status] || 'text-slate-950'
 }
 
 function getPrescriptionTone(status) {

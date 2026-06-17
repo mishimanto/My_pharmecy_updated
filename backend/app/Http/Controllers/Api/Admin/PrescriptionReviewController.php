@@ -27,7 +27,7 @@ class PrescriptionReviewController extends Controller
             ->latest('id')
             ->paginate($request->integer('per_page', 15));
 
-        return $this->ok($prescriptions, 'প্রেসক্রিপশন তালিকা পাওয়া গেছে।');
+        return $this->ok($prescriptions, 'Prescription list loaded successfully.');
     }
 
     public function show(int $id)
@@ -35,7 +35,7 @@ class PrescriptionReviewController extends Controller
         $prescription = Prescription::with(['user:id,full_name,phone,email', 'order:id,order_number', 'reviews.reviewer:id,full_name'])
             ->findOrFail($id);
 
-        return $this->ok($prescription, 'প্রেসক্রিপশন তথ্য পাওয়া গেছে।');
+        return $this->ok($prescription, 'Prescription details loaded successfully.');
     }
 
     public function review(Request $request, int $id, AdminActivityService $activity)
@@ -83,8 +83,7 @@ class PrescriptionReviewController extends Controller
                 'review' => $review->toArray(),
             ]);
 
-            return $this->ok($prescription->fresh()->load(['user:id,full_name,phone,email', 'reviews.reviewer:id,full_name']), 'প্রেসক্রিপশন রিভিউ সেভ হয়েছে।');
+            return $this->ok($prescription->fresh()->load(['user:id,full_name,phone,email', 'reviews.reviewer:id,full_name']), 'Prescription review saved successfully.');
         });
     }
 }
-

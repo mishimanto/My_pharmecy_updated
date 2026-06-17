@@ -6,6 +6,11 @@ use Illuminate\Support\Facades\Storage;
 
 class Manufacturer extends PharmacyModel
 {
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
+
     public function getLogoUrlAttribute($value): ?string
     {
         if ($value) {

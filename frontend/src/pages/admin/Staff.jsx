@@ -4,6 +4,7 @@ import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/common/PageHeader'
 import EmptyState from '../../components/common/EmptyState'
+import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import { adminApi } from '../../api/adminApi'
 
 const statusLabels = { active: 'Active', inactive: 'Inactive', suspended: 'Suspended' }
@@ -55,7 +56,7 @@ export default function Staff() {
       <div className="mb-4 flex gap-2">
         <input className="w-full rounded border px-3 py-2" placeholder="Search by name, email, phone, or status" value={search} onChange={(e) => { setLoading(true); setSearch(e.target.value); setPage(1) }} />
       </div>
-      {loading && <p className="text-sm text-slate-500">Loading...</p>}
+      {loading && <AdminLoadingState className="py-6" />}
       {!loading && staff.length === 0 && <EmptyState />}
       {staff.length > 0 && (
         <div className="overflow-x-auto rounded border bg-white">

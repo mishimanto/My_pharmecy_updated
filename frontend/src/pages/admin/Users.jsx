@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
+import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import PageHeader from '../../components/common/PageHeader'
 import { date } from '../../utils/formatters'
 
@@ -53,7 +54,7 @@ export default function Users() {
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-slate-600"><tr><th className="px-4 py-3">Name</th><th className="px-4 py-3">Phone</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Joined</th><th className="px-4 py-3"></th></tr></thead>
           <tbody className="divide-y divide-slate-100">
-            {loading ? <tr><td colSpan="6" className="px-4 py-6 text-center text-slate-500">Loading...</td></tr> : null}
+            {loading ? <AdminLoadingState colSpan={6} /> : null}
             {!loading && !users.length ? <tr><td colSpan="6" className="px-4 py-6 text-center text-slate-500">No customers found.</td></tr> : null}
             {users.map((user) => (
               <tr key={user.id}>

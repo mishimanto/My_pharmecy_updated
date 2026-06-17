@@ -15,13 +15,33 @@ class CategoryController extends Controller
 
     public function index(Request $request)
     {
+        $perPage = min(max($request->integer('per_page', 15), 5), 100);
+
         $categories = Category::query()
             ->with('parent:id,category_name')
-            ->when($request->search, fn ($query, $search) => $query->where('category_name', 'like', "%{$search}%")->orWhere('status', 'like', "%{$search}%"))
-            ->latest('id')
-            ->paginate($request->integer('per_page', 15));
+            ->withCount(['children', 'products'])
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = $request->string('search');
 
-        return $this->ok($categories, 'ক্যাটাগরি তালিকা পাওয়া গেছে।');
+                $query->where(function ($where) use ($search) {
+                    $where->where('category_name', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhere('status', 'like', "%{$search}%")
+                        ->orWhereHas('parent', fn ($parent) => $parent->where('category_name', 'like', "%{$search}%"));
+                });
+            })
+            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
+            ->when($request->filled('parent_id'), function ($query) use ($request) {
+                $parentId = (string) $request->input('parent_id');
+
+                $parentId === 'root'
+                    ? $query->whereNull('parent_id')
+                    : $query->where('parent_id', $parentId);
+            })
+            ->orderBy('category_name')
+            ->paginate($perPage);
+
+        return $this->ok($categories, 'Category list loaded successfully.');
     }
 
     public function store(Request $request, AdminActivityService $activity)
@@ -36,40 +56,68 @@ class CategoryController extends Controller
         $category = Category::create($data);
         $activity->log($request, 'create', 'category', $category->id, null, $category->toArray());
 
-        return $this->ok($category->load('parent'), 'ক্যাটাগরি তৈরি হয়েছে।', 201);
+        return $this->ok(
+            $category->load('parent')->loadCount(['children', 'products']),
+            'Category created successfully.',
+            201
+        );
     }
 
     public function show(int $id)
     {
-        return $this->ok(Category::with('parent', 'children')->findOrFail($id), 'ক্যাটাগরি তথ্য পাওয়া গেছে।');
+        return $this->ok(
+            Category::with('parent', 'children')->withCount(['children', 'products'])->findOrFail($id),
+            'Category details loaded successfully.'
+        );
     }
 
     public function update(Request $request, int $id, AdminActivityService $activity)
     {
         $category = Category::findOrFail($id);
         $old = $category->toArray();
+
         $data = $request->validate([
-            'parent_id' => ['nullable', 'exists:categories,id'],
+            'parent_id' => ['nullable', 'exists:categories,id', Rule::notIn([$category->id])],
             'category_name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
         ]);
 
+        if (! empty($data['parent_id'])) {
+            abort_if(
+                in_array((int) $data['parent_id'], $this->descendantIds($category), true),
+                422,
+                'A category cannot be moved under its own child category.'
+            );
+        }
+
         $category->update($data);
         $activity->log($request, 'update', 'category', $category->id, $old, $category->fresh()->toArray());
 
-        return $this->ok($category->load('parent'), 'ক্যাটাগরি আপডেট হয়েছে।');
+        return $this->ok(
+            $category->load('parent')->loadCount(['children', 'products']),
+            'Category updated successfully.'
+        );
     }
 
     public function destroy(Request $request, int $id, AdminActivityService $activity)
     {
         $category = Category::findOrFail($id);
-        abort_if($category->products()->exists(), 422, 'প্রোডাক্ট থাকা ক্যাটাগরি ডিলিট করা যাবে না।');
+        abort_if($category->products()->exists(), 422, 'Categories with products cannot be deleted.');
+
         $old = $category->toArray();
         $category->delete();
         $activity->log($request, 'delete', 'category', $id, $old);
 
-        return $this->ok(null, 'ক্যাটাগরি ডিলিট হয়েছে।');
+        return $this->ok(null, 'Category deleted successfully.');
+    }
+
+    private function descendantIds(Category $category): array
+    {
+        return $category->children()
+            ->with('children')
+            ->get()
+            ->flatMap(fn (Category $child) => [$child->id, ...$this->descendantIds($child)])
+            ->all();
     }
 }
-

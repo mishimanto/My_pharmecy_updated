@@ -1,17 +1,18 @@
-const CACHE_KEY = 'admin_resource_cache_v1'
+const CACHE_KEY = 'admin_resource_cache_v3'
+const RESPONSE_MAX_AGE = 5 * 60 * 1000
 
 function readCache() {
   if (typeof window === 'undefined') {
-    return { lists: {}, items: {} }
+    return { lists: {}, items: {}, responses: {} }
   }
 
   try {
     const parsed = JSON.parse(window.sessionStorage.getItem(CACHE_KEY) || 'null')
     return parsed && typeof parsed === 'object'
-      ? { lists: parsed.lists || {}, items: parsed.items || {} }
-      : { lists: {}, items: {} }
+      ? { lists: parsed.lists || {}, items: parsed.items || {}, responses: parsed.responses || {} }
+      : { lists: {}, items: {}, responses: {} }
   } catch {
-    return { lists: {}, items: {} }
+    return { lists: {}, items: {}, responses: {} }
   }
 }
 
@@ -60,4 +61,33 @@ export function setCachedItem(resource, id, item) {
   const cache = readCache()
   cache.items[`${resource}:${id}`] = item
   writeCache(cache)
+}
+
+export function responseKey(url, params = {}) {
+  const normalized = Object.entries(params || {})
+    .filter(([, value]) => value !== undefined && value !== null && value !== '')
+    .sort(([a], [b]) => a.localeCompare(b))
+
+  return `${url}:${JSON.stringify(normalized)}`
+}
+
+export function getCachedResponse(key, maxAge = RESPONSE_MAX_AGE) {
+  const cached = readCache().responses[key]
+  if (!cached) return null
+  if (Date.now() - cached.cachedAt > maxAge) return null
+
+  return cached.payload
+}
+
+export function setCachedResponse(key, payload) {
+  const cache = readCache()
+  cache.responses[key] = {
+    payload,
+    cachedAt: Date.now(),
+  }
+  writeCache(cache)
+}
+
+export function clearAdminResourceCache() {
+  writeCache({ lists: {}, items: {}, responses: {} })
 }

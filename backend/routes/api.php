@@ -155,6 +155,7 @@ Route::prefix('admin')->group(function () {
         Route::get('/manufacturers', [ManufacturerController::class, 'index'])->middleware('permission:product.view');
         Route::post('/manufacturers', [ManufacturerController::class, 'store'])->middleware('permission:product.create');
         Route::get('/manufacturers/{id}', [ManufacturerController::class, 'show'])->middleware('permission:product.view');
+        Route::post('/manufacturers/{id}', [ManufacturerController::class, 'update'])->middleware('permission:product.edit');
         Route::put('/manufacturers/{id}', [ManufacturerController::class, 'update'])->middleware('permission:product.edit');
         Route::delete('/manufacturers/{id}', [ManufacturerController::class, 'destroy'])->middleware('permission:product.delete');
 
@@ -192,6 +193,7 @@ Route::prefix('admin')->group(function () {
         Route::get('/orders/{id}', [OrderManagementController::class, 'show'])->middleware('permission:order.view');
         Route::patch('/orders/{id}/prescription-match', [OrderManagementController::class, 'prescriptionMatch'])->middleware('permission:prescription.review');
         Route::patch('/orders/{id}/status', [OrderManagementController::class, 'status'])->middleware('permission:order.update');
+        Route::patch('/orders/{id}/force-status', [OrderManagementController::class, 'forceStatus'])->middleware('permission:order.update');
 
         Route::get('/payments', [PaymentManagementController::class, 'index'])->middleware('permission:payment.view');
         Route::get('/payments/{id}', [PaymentManagementController::class, 'show'])->middleware('permission:payment.view');

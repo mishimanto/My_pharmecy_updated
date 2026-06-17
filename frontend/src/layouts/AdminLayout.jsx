@@ -147,7 +147,7 @@ export default function AdminLayout() {
             logout={logout}
           />
 
-          <main className="flex-1 px-4 py-5 sm:px-6 lg:px-8">
+          <main className="flex-1 px-5 py-5">
             <Outlet />
           </main>
 

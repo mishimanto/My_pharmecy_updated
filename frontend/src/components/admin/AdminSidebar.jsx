@@ -18,7 +18,10 @@ export default function AdminSidebar({ sidebarOpen, visibleGroups }) {
           <div className="space-y-6">
             {visibleGroups.map((group) => (
               <div key={group.title}>
-                <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-white">{group.title}</p>
+                <div className="flex items-center gap-3 px-3">
+                  <p className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.24em] text-white">{group.title}</p>
+                  <span className="h-px flex-1 bg-white/35" />
+                </div>
                 <div className="mt-3 space-y-1.5">
                   {group.items.map((item) => (
                     <NavItem key={item.to} item={item} />

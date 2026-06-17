@@ -26,7 +26,7 @@ export default function AdminLoader({ size = 256, inline = false }) {
         />
       </div>
       <p className="text-md font-semibold tracking-[0.24em] uppercase text-slate-500 animate-pulse">
-        Loading Workspace...
+        Please wait a while
       </p>
     </div>
   )

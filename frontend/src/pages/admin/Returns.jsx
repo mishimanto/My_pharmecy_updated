@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
+import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import PageHeader from '../../components/common/PageHeader'
 import { date, money } from '../../utils/formatters'
 
@@ -68,7 +69,7 @@ export default function Returns() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {loading ? <tr><td colSpan="6" className="px-4 py-6 text-center text-slate-500">Loading...</td></tr> : null}
+            {loading ? <AdminLoadingState colSpan={6} /> : null}
             {!loading && !returns.length ? <tr><td colSpan="6" className="px-4 py-6 text-center text-slate-500">No returns found.</td></tr> : null}
             {returns.map((item) => (
               <tr key={item.id}>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
+import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import PageHeader from '../../components/common/PageHeader'
 import { date, money } from '../../utils/formatters'
 import { getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
@@ -33,7 +34,7 @@ export default function UserDetails() {
       .finally(() => setLoading(false))
   }, [id, active])
 
-  if (!user) return <p className="text-sm text-slate-600">Loading...</p>
+  if (!user) return <AdminLoadingState className="py-8" />
 
   return (
     <>
@@ -49,7 +50,7 @@ export default function UserDetails() {
         {tabs.map(([key, label]) => <button key={key} onClick={() => { setLoading(true); setActive(key) }} className={`px-3 py-2 text-sm font-semibold ${active === key ? 'border-b-2 border-emerald-600 text-emerald-700' : 'text-slate-600'}`}>{label}</button>)}
       </div>
       <div className="mt-4 rounded-lg border border-slate-200 bg-white">
-        {loading ? <p className="p-5 text-sm text-slate-600">Loading...</p> : null}
+        {loading ? <AdminLoadingState className="py-5" /> : null}
         {!loading && !rows.length ? <p className="p-5 text-sm text-slate-600">No data found.</p> : null}
         {!loading && rows.map((row) => <HistoryRow key={row.id} type={active} row={row} />)}
       </div>

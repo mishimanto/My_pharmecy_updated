@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/common/PageHeader'
+import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import { adminApi } from '../../api/adminApi'
 import { date } from '../../utils/formatters'
 
@@ -24,6 +25,9 @@ export default function PrescriptionDetails() {
     if (!result.isConfirmed) return
     try {
       await adminApi.reviewPrescription(id, form)
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem('admin_prescriptions_payload_v1')
+      }
       toast.success('Review saved.')
       navigate('/admin/prescriptions')
     } catch (error) {
@@ -31,7 +35,7 @@ export default function PrescriptionDetails() {
     }
   }
 
-  if (!prescription) return <p className="p-4 text-slate-500">Loading...</p>
+  if (!prescription) return <AdminLoadingState className="py-8" />
 
   return (
     <>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
+import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import PageHeader from '../../components/common/PageHeader'
 import { date } from '../../utils/formatters'
 
@@ -46,7 +47,7 @@ export default function SupportTickets() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {loading ? <tr><td colSpan="6" className="px-4 py-6 text-center text-slate-500">Loading...</td></tr> : null}
+            {loading ? <AdminLoadingState colSpan={6} /> : null}
             {!loading && !tickets.length ? <tr><td colSpan="6" className="px-4 py-6 text-center text-slate-500">No tickets found.</td></tr> : null}
             {tickets.map((ticket) => (
               <tr key={ticket.id}>

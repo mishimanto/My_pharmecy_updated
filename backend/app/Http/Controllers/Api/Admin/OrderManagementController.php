@@ -58,6 +58,42 @@ class OrderManagementController extends Controller
         );
     }
 
+    public function forceStatus(Request $request, int $id, OrderStatusService $orders)
+    {
+        $data = $request->validate([
+            'order_status' => ['required', 'in:pending_confirmation,prescription_review,confirmed,processing,packed,out_for_delivery,delivered,cancelled,returned,refunded'],
+            'note' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $order = Order::query()->findOrFail($id);
+        $oldStatus = $order->order_status;
+
+        abort_if($oldStatus === $data['order_status'], 422, 'Choose a different status for emergency correction.');
+
+        $updatedOrder = DB::transaction(function () use ($request, $order, $oldStatus, $data, $orders) {
+            $order->update([
+                'order_status' => $data['order_status'],
+                'admin_note' => trim(($order->admin_note ? "{$order->admin_note}\n\n" : '') . "[Emergency correction] {$data['note']}"),
+            ]);
+
+            DB::table('admin_activity_logs')->insert([
+                'staff_id' => $request->user()->id,
+                'action_type' => 'emergency_status_correction',
+                'module_name' => 'orders',
+                'record_id' => $order->id,
+                'old_value' => json_encode(['order_status' => $oldStatus], JSON_UNESCAPED_UNICODE),
+                'new_value' => json_encode(['order_status' => $data['order_status'], 'note' => $data['note']], JSON_UNESCAPED_UNICODE),
+                'ip_address' => $request->ip(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return $order->fresh()->load($orders->relations());
+        });
+
+        return $this->ok($updatedOrder, 'Emergency status correction saved successfully.');
+    }
+
     public function prescriptionMatch(Request $request, int $id, OrderStatusService $orders)
     {
         $data = $request->validate([

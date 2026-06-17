@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
+import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import PageHeader from '../../components/common/PageHeader'
 
 const titles = {
@@ -29,7 +30,7 @@ export default function ReportDetails() {
   return (
     <>
       <PageHeader title={titles[type] || 'Report'} subtitle="Review the report data below." />
-      {loading ? <p className="text-sm text-slate-600">Loading...</p> : null}
+      {loading ? <AdminLoadingState className="py-8" /> : null}
       {report && Object.entries(report).map(([key, value]) => <ReportSection key={key} title={key} rows={Array.isArray(value) ? value : []} />)}
     </>
   )

@@ -3,6 +3,7 @@ import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
 import EmptyState from '../common/EmptyState'
+import AdminLoadingState from './AdminLoadingState'
 
 export default function AdminTable({ resource }) {
   const [rows, setRows] = useState([])
@@ -49,7 +50,7 @@ export default function AdminTable({ resource }) {
         <input className="w-full rounded border border-slate-300 bg-white px-3 py-2" placeholder="Search" value={search} onChange={(event) => { setLoading(true); setSearch(event.target.value); setPage(1) }} />
         <button className="rounded border border-slate-300 bg-white px-4 py-2 text-sm" onClick={() => { setLoading(true); setSearch(''); setPage(1) }}>Reset</button>
       </div>
-      {loading && <p className="text-sm text-slate-500">Loading...</p>}
+      {loading && <AdminLoadingState className="py-6" />}
       {!loading && rows.length === 0 && <EmptyState />}
       {rows.length > 0 && (
         <div className="overflow-x-auto rounded border border-slate-200 bg-white">

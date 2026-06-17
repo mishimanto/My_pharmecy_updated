@@ -47,9 +47,10 @@ class PaymentManagementController extends Controller
     public function status(Request $request, int $id)
     {
         $data = $request->validate([
-            'payment_status' => ['required', 'in:awaiting_proof,under_review,pending,paid,failed,cancelled,refunded'],
+            'payment_status' => ['required', 'in:awaiting_proof,paid,refunded,unpaid'],
             'reviewed_note' => ['nullable', 'string'],
         ]);
+        $data['payment_status'] = $data['payment_status'] === 'unpaid' ? 'awaiting_proof' : $data['payment_status'];
 
         $payment = Payment::query()->with('order.user', 'order.deliveryArea')->findOrFail($id);
         $old = $payment->payment_status;
@@ -59,7 +60,7 @@ class PaymentManagementController extends Controller
             'reviewed_note' => $data['reviewed_note'] ?? null,
             'reviewed_by_staff_id' => $request->user()->id,
             'reviewed_at' => now(),
-            'paid_at' => $data['payment_status'] === 'paid' ? now() : ($data['payment_status'] === 'pending' ? null : $payment->paid_at),
+            'paid_at' => $data['payment_status'] === 'paid' ? now() : ($data['payment_status'] === 'awaiting_proof' ? null : $payment->paid_at),
         ]);
 
         if ($payment->order) {

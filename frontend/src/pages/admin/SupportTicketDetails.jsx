@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
+import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import PageHeader from '../../components/common/PageHeader'
 import { date } from '../../utils/formatters'
 
@@ -74,7 +75,7 @@ export default function SupportTicketDetails() {
     }
   }
 
-  if (loading) return <p className="text-sm text-slate-600">Loading...</p>
+  if (loading) return <AdminLoadingState className="py-8" />
   if (!ticket) return <p className="text-sm text-slate-600">Ticket not found.</p>
 
   return (

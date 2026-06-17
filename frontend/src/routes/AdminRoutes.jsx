@@ -9,9 +9,12 @@ import Staff from '../pages/admin/Staff'
 import StaffForm from '../pages/admin/StaffForm'
 import Roles from '../pages/admin/Roles'
 import RoleForm from '../pages/admin/RoleForm'
-import Categories from '../pages/admin/Categories'
-import Manufacturers from '../pages/admin/Manufacturers'
-import ManufacturerForm from '../pages/admin/ManufacturerForm'
+import Categories from '../pages/admin/categories/Index'
+import CategoryCreate from '../pages/admin/categories/Create'
+import CategoryEdit from '../pages/admin/categories/Edit'
+import Manufacturers from '../pages/admin/manufacturers/Index'
+import ManufacturerCreate from '../pages/admin/manufacturers/Create'
+import ManufacturerEdit from '../pages/admin/manufacturers/Edit'
 import Products from '../pages/admin/Products'
 import ProductCreate from '../pages/admin/ProductCreate'
 import ProductEdit from '../pages/admin/ProductEdit'
@@ -54,9 +57,11 @@ export default function AdminRoutes() {
           <Route path="roles/create" element={<RoleForm />} />
           <Route path="roles/:id/edit" element={<RoleForm />} />
           <Route path="categories" element={<Categories />} />
+          <Route path="categories/create" element={<CategoryCreate />} />
+          <Route path="categories/:id/edit" element={<CategoryEdit />} />
           <Route path="manufacturers" element={<Manufacturers />} />
-          <Route path="manufacturers/create" element={<ManufacturerForm />} />
-          <Route path="manufacturers/:id/edit" element={<ManufacturerForm />} />
+          <Route path="manufacturers/create" element={<ManufacturerCreate />} />
+          <Route path="manufacturers/:id/edit" element={<ManufacturerEdit />} />
           <Route path="products" element={<Products />} />
           <Route path="products/create" element={<ProductCreate />} />
           <Route path="products/:id/edit" element={<ProductEdit />} />

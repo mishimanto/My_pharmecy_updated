@@ -19,6 +19,10 @@ class DeliveryController extends Controller
     public function index(Request $request)
     {
         $query = Delivery::query()->with('order.user', 'rider')->latest();
+        if ($request->filled('status')) {
+            $query->where('delivery_status', $request->string('status'));
+        }
+
         if ($request->filled('search')) {
             $search = $request->string('search');
             $query->where(function ($where) use ($search) {
