@@ -106,7 +106,7 @@ export default function UploadPrescription() {
           to="/prescriptions"
           className="inline-flex items-center justify-center gap-1 px-5 text-sm font-semibold text-slate-700 transition hover:border-emerald-200 hover:underline hover:text-emerald-700"
         >
-          <FiFileText className="h-3 w-3" />
+          <FiFileText className="h-4 w-4" />
           {t('All prescriptions', 'All prescriptions')}
         </Link>
       </div>

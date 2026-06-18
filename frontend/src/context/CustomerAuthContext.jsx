@@ -14,6 +14,12 @@ function generateGuestToken() {
   return `guest-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
+function isAuthFailure(error) {
+  const status = error?.response?.status
+
+  return status === 401 || status === 403
+}
+
 export function CustomerAuthProvider({ children }) {
   const [customer, setCustomer] = useState(() => readCustomerCache(CUSTOMER_PROFILE_CACHE_KEY, null))
   const [loading, setLoading] = useState(() => {
@@ -52,7 +58,11 @@ export function CustomerAuthProvider({ children }) {
         setCustomer(data.data)
         writeCustomerCache(CUSTOMER_PROFILE_CACHE_KEY, data.data)
       })
-      .catch(() => {
+      .catch((error) => {
+        if (!isAuthFailure(error)) {
+          return
+        }
+
         localStorage.removeItem('customer_token')
         setCustomer(null)
         clearCustomerCaches()
@@ -63,7 +73,6 @@ export function CustomerAuthProvider({ children }) {
   const login = useCallback(async (payload) => {
     const { data } = await customerAuthApi.login(payload)
     localStorage.setItem('customer_token', data.data.token)
-    localStorage.removeItem('staff_token')
     setCustomer(data.data.user)
     writeCustomerCache(CUSTOMER_PROFILE_CACHE_KEY, data.data.user)
   }, [])
@@ -71,7 +80,6 @@ export function CustomerAuthProvider({ children }) {
   const register = useCallback(async (payload) => {
     const { data } = await customerAuthApi.register(payload)
     localStorage.setItem('customer_token', data.data.token)
-    localStorage.removeItem('staff_token')
     setCustomer(data.data.user)
     writeCustomerCache(CUSTOMER_PROFILE_CACHE_KEY, data.data.user)
   }, [])

@@ -30,14 +30,26 @@ class InventoryTransactionController extends Controller
     public function lowStock(Request $request)
     {
         $threshold = $request->integer('threshold', 10);
-        $rows = DB::table('products')
-            ->join('inventory_batches', 'products.id', '=', 'inventory_batches.product_id')
+        $rows = DB::table('inventory_batches')
+            ->join('products', 'products.id', '=', 'inventory_batches.product_id')
+            ->join('suppliers', 'suppliers.id', '=', 'inventory_batches.supplier_id')
             ->where('inventory_batches.status', 'active')
             ->whereDate('inventory_batches.expiry_date', '>', now())
-            ->select('products.id', 'products.product_name', DB::raw('SUM(inventory_batches.stock_quantity - inventory_batches.reserved_quantity) as available_stock'))
-            ->groupBy('products.id', 'products.product_name')
-            ->having('available_stock', '<=', $threshold)
+            ->whereRaw('(inventory_batches.stock_quantity - inventory_batches.reserved_quantity) <= ?', [$threshold])
+            ->when($request->search, fn ($query, $search) => $query->where(fn ($inner) => $inner
+                ->where('inventory_batches.batch_number', 'like', "%{$search}%")
+                ->orWhere('products.product_name', 'like', "%{$search}%")
+                ->orWhere('suppliers.supplier_name', 'like', "%{$search}%")
+                ->orWhere('inventory_batches.status', 'like', "%{$search}%")))
+            ->select(
+                'inventory_batches.*',
+                'products.product_name',
+                'suppliers.supplier_name',
+                DB::raw('(inventory_batches.stock_quantity - inventory_batches.reserved_quantity) as available_stock'),
+            )
             ->orderBy('available_stock')
+            ->orderBy('inventory_batches.expiry_date')
+            ->orderByDesc('inventory_batches.id')
             ->paginate($request->integer('per_page', 15));
 
         return $this->ok($rows, 'লো স্টক রিপোর্ট পাওয়া গেছে।');
@@ -52,11 +64,16 @@ class InventoryTransactionController extends Controller
             ->where('inventory_batches.status', 'active')
             ->whereDate('inventory_batches.expiry_date', '>', now())
             ->whereDate('inventory_batches.expiry_date', '<=', now()->addDays($days))
+            ->when($request->search, fn ($query, $search) => $query->where(fn ($inner) => $inner
+                ->where('inventory_batches.batch_number', 'like', "%{$search}%")
+                ->orWhere('products.product_name', 'like', "%{$search}%")
+                ->orWhere('suppliers.supplier_name', 'like', "%{$search}%")
+                ->orWhere('inventory_batches.status', 'like', "%{$search}%")))
             ->select('inventory_batches.*', 'products.product_name', 'suppliers.supplier_name', DB::raw('(stock_quantity - reserved_quantity) as available_stock'))
             ->orderBy('inventory_batches.expiry_date')
+            ->orderByDesc('inventory_batches.id')
             ->paginate($request->integer('per_page', 15));
 
         return $this->ok($rows, 'নিয়ার এক্সপায়ারি রিপোর্ট পাওয়া গেছে।');
     }
 }
-

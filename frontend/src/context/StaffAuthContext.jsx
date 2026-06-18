@@ -3,30 +3,93 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { adminAuthApi } from '../api/adminAuthApi'
 
 const StaffAuthContext = createContext(null)
+const STAFF_PROFILE_CACHE_KEY = 'admin_auth_profile'
+
+function readStaffCache() {
+  if (typeof window === 'undefined') return null
+
+  try {
+    const raw = window.sessionStorage.getItem(STAFF_PROFILE_CACHE_KEY) || window.localStorage.getItem(STAFF_PROFILE_CACHE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function writeStaffCache(value) {
+  if (typeof window === 'undefined') return
+
+  const serialized = JSON.stringify(value)
+  window.sessionStorage.setItem(STAFF_PROFILE_CACHE_KEY, serialized)
+  window.localStorage.setItem(STAFF_PROFILE_CACHE_KEY, serialized)
+}
+
+function clearStaffCache() {
+  if (typeof window === 'undefined') return
+
+  window.sessionStorage.removeItem(STAFF_PROFILE_CACHE_KEY)
+  window.localStorage.removeItem(STAFF_PROFILE_CACHE_KEY)
+}
+
+function isAuthFailure(error) {
+  const status = error?.response?.status
+
+  return status === 401 || status === 403
+}
 
 export function StaffAuthProvider({ children }) {
-  const [staff, setStaff] = useState(null)
-  const [loading, setLoading] = useState(Boolean(localStorage.getItem('staff_token')))
+  const [staff, setStaff] = useState(() => readStaffCache())
+  const [loading, setLoading] = useState(() => {
+    const hasToken = Boolean(localStorage.getItem('staff_token'))
+    const cachedStaff = readStaffCache()
+
+    return hasToken && !cachedStaff
+  })
 
   useEffect(() => {
-    if (!localStorage.getItem('staff_token')) return
-    adminAuthApi.me().then(({ data }) => setStaff(data.data)).catch(() => {
-      localStorage.removeItem('staff_token')
+    if (!localStorage.getItem('staff_token')) {
       setStaff(null)
-    }).finally(() => setLoading(false))
+      clearStaffCache()
+      setLoading(false)
+      return
+    }
+
+    const cachedStaff = readStaffCache()
+
+    if (cachedStaff) {
+      setStaff(cachedStaff)
+      setLoading(false)
+    }
+
+    adminAuthApi.me()
+      .then(({ data }) => {
+        setStaff(data.data)
+        writeStaffCache(data.data)
+      })
+      .catch((error) => {
+        if (!isAuthFailure(error)) {
+          return
+        }
+
+        localStorage.removeItem('staff_token')
+        setStaff(null)
+        clearStaffCache()
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   const login = async (payload) => {
     const { data } = await adminAuthApi.login(payload)
     localStorage.setItem('staff_token', data.data.token)
-    localStorage.removeItem('customer_token')
     setStaff(data.data.staff)
+    writeStaffCache(data.data.staff)
   }
 
   const logout = async () => {
     await adminAuthApi.logout().catch(() => {})
     localStorage.removeItem('staff_token')
     setStaff(null)
+    clearStaffCache()
   }
 
   return <StaffAuthContext.Provider value={{ staff, loading, login, logout }}>{children}</StaffAuthContext.Provider>

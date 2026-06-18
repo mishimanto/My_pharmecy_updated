@@ -146,7 +146,7 @@ export default function Dashboard() {
           {orders.map((order) => <Row key={order.id} title={order.order_number} meta={`${order.customer_name || order.user?.full_name || '-'} - ${getOrderStatusLabel(order.order_status)}`} value={money(order.total_amount)} />)}
         </Panel>
         <Panel title="Pending Prescriptions" count={prescriptions.length} to="/admin/prescriptions">
-          {prescriptions.map((item) => <Row key={item.id} title={`Prescription #${item.id}`} meta={item.user?.full_name || '-'} value={date(item.uploaded_at, 'en-US')} />)}
+          {prescriptions.map((item) => <Row key={item.id} title={item.prescription_code || `Prescription #${item.id}`} meta={item.user?.full_name || 'Guest customer'} value={date(item.uploaded_at, 'en-US')} />)}
         </Panel>
         <Panel title="Low Stock" count={lowStock.length} to="/admin/inventory/low-stock">
           {lowStock.map((item) => <Row key={item.id} title={item.product_name} meta={item.batch_number} value={item.available_stock} />)}

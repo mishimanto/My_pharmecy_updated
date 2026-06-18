@@ -21,7 +21,8 @@ class PrescriptionReviewController extends Controller
             ->with(['user:id,full_name,phone,email', 'order:id,order_number', 'reviews.reviewer:id,full_name'])
             ->when($request->status, fn ($query, $status) => $query->where('status', $status))
             ->when($request->search, fn ($query, $search) => $query->where(fn ($inner) => $inner
-                ->where('patient_name', 'like', "%{$search}%")
+                ->where('prescription_code', 'like', "%{$search}%")
+                ->orWhere('patient_name', 'like', "%{$search}%")
                 ->orWhere('doctor_name', 'like', "%{$search}%")
                 ->orWhereHas('user', fn ($user) => $user->where('full_name', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%"))))
             ->latest('id')
@@ -32,7 +33,13 @@ class PrescriptionReviewController extends Controller
 
     public function show(int $id)
     {
-        $prescription = Prescription::with(['user:id,full_name,phone,email', 'order:id,order_number', 'reviews.reviewer:id,full_name'])
+        $prescription = Prescription::with([
+            'user:id,full_name,phone,email',
+            'order:id,order_number,order_status,prescription_match_status,total_amount',
+            'order.items:id,order_id,product_id,quantity,piece_quantity',
+            'order.items.product:id,product_name,generic_name',
+            'reviews.reviewer:id,full_name',
+        ])
             ->findOrFail($id);
 
         return $this->ok($prescription, 'Prescription details loaded successfully.');
@@ -83,7 +90,13 @@ class PrescriptionReviewController extends Controller
                 'review' => $review->toArray(),
             ]);
 
-            return $this->ok($prescription->fresh()->load(['user:id,full_name,phone,email', 'reviews.reviewer:id,full_name']), 'Prescription review saved successfully.');
+            return $this->ok($prescription->fresh()->load([
+                'user:id,full_name,phone,email',
+                'order:id,order_number,order_status,prescription_match_status,total_amount',
+                'order.items:id,order_id,product_id,quantity,piece_quantity',
+                'order.items.product:id,product_name,generic_name',
+                'reviews.reviewer:id,full_name',
+            ]), 'Prescription review saved successfully.');
         });
     }
 }

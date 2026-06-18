@@ -6,6 +6,19 @@ use Illuminate\Support\Facades\Storage;
 
 class Prescription extends PharmacyModel
 {
+    protected static function booted(): void
+    {
+        static::created(function (self $prescription): void {
+            if ($prescription->prescription_code) {
+                return;
+            }
+
+            $prescription->forceFill([
+                'prescription_code' => $prescription->generatePrescriptionCode(),
+            ])->saveQuietly();
+        });
+    }
+
     protected function casts(): array
     {
         return ['uploaded_at' => 'datetime'];
@@ -28,9 +41,15 @@ class Prescription extends PharmacyModel
         return $this->hasMany(PrescriptionReview::class);
     }
 
+    public function generatePrescriptionCode(): string
+    {
+        $date = ($this->created_at ?? now())->format('Ymd');
+
+        return sprintf('RX-%s-%05d', $date, $this->id);
+    }
+
     public function getFileUrlAttribute(): ?string
     {
         return $this->prescription_image ? Storage::disk('public')->url($this->prescription_image) : null;
     }
 }
-

@@ -356,7 +356,7 @@ export default function OrderDetails() {
                 <div className="mt-4 space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="font-semibold text-slate-950">Linked prescription #{order.prescription.id}</p>
+                      <p className="font-semibold text-slate-950">{order.prescription.prescription_code || `Linked prescription #${order.prescription.id}`}</p>
                       <p className="text-xs text-slate-500">Uploaded {date(order.prescription.uploaded_at || order.prescription.created_at, 'en-US')}</p>
                     </div>
                     <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${getPrescriptionTone(order.prescription.status)}`}>

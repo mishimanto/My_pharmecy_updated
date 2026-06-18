@@ -112,7 +112,7 @@ export default function Prescriptions() {
       <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_220px]">
         <input
           className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-          placeholder="Search by patient, doctor, or customer"
+          placeholder="Search by code, patient, doctor, or customer"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -141,6 +141,7 @@ export default function Prescriptions() {
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-slate-600">
               <tr>
+                <th className="px-4 py-3">Prescription</th>
                 <th className="px-4 py-3">Customer</th>
                 <th className="px-4 py-3">Patient</th>
                 <th className="px-4 py-3">Status</th>
@@ -151,7 +152,13 @@ export default function Prescriptions() {
             <tbody className="divide-y divide-slate-100">
               {items.map((item) => (
                 <tr key={item.id}>
-                  <td className="px-4 py-3 text-slate-600">{item.user?.full_name || '-'}</td>
+                  <td className="px-4 py-3">
+                    <div className="font-semibold text-slate-950">{item.prescription_code || `Prescription #${item.id}`}</div>
+                    {item.order?.order_number ? (
+                      <div className="text-xs text-slate-500">Order {item.order.order_number}</div>
+                    ) : null}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{item.user?.full_name || 'Guest customer'}</td>
                   <td className="px-4 py-3 font-medium text-slate-950">{item.patient_name || '-'}</td>
                   <td className="px-4 py-3"><span className={`text-xs font-semibold ${statusClasses[item.status] || 'text-slate-600'}`}>{labels[item.status] || item.status}</span></td>
                   <td className="px-4 py-3 text-slate-600">{date(item.uploaded_at || item.created_at, 'en-US')}</td>
