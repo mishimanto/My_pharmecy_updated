@@ -4,7 +4,23 @@ export const MEDICINE_PLACEHOLDER_SRC = '/images/medicine-placeholder.webp'
 
 export function resolveImageUrl(path, fallback = MEDICINE_PLACEHOLDER_SRC) {
   if (!path) return fallback
-  return path.startsWith('http') ? path : new URL(path, `${API_ORIGIN}/`).toString()
+  if (path.startsWith('http')) {
+    try {
+      const source = new URL(path)
+      const api = new URL(API_ORIGIN)
+      if (source.hostname === 'my_pharmecy.test' && api.hostname !== source.hostname) {
+        source.protocol = api.protocol
+        source.host = api.host
+        return source.toString()
+      }
+    } catch {
+      return path
+    }
+
+    return path
+  }
+
+  return new URL(path, `${API_ORIGIN}/`).toString()
 }
 
 export function handleImageFallback(event, fallback = MEDICINE_PLACEHOLDER_SRC) {

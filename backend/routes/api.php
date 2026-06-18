@@ -164,7 +164,8 @@ Route::prefix('admin')->group(function () {
         Route::get('/products/{id}', [ProductController::class, 'show'])->middleware('permission:product.view');
         Route::put('/products/{id}', [ProductController::class, 'update'])->middleware('permission:product.edit');
         Route::delete('/products/{id}', [ProductController::class, 'destroy'])->middleware('permission:product.delete');
-        Route::post('/products/{id}/images', [ProductImageController::class, 'store'])->middleware('permission:product.edit');
+        Route::put('/products/{id}/images', [ProductImageController::class, 'store'])->middleware('permission:product.edit');
+        Route::get('/products/{id}/images/chunk', [ProductImageController::class, 'chunk'])->middleware('permission:product.edit');
         Route::delete('/product-images/{id}', [ProductImageController::class, 'destroy'])->middleware('permission:product.delete');
         Route::patch('/products/{id}/status', [ProductController::class, 'status'])->middleware('permission:product.edit');
 

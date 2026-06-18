@@ -6,12 +6,7 @@ import toast from 'react-hot-toast'
 import { adminApi } from '../../../api/adminApi'
 import AdminLoadingState from '../../../components/admin/AdminLoadingState'
 import EmptyState from '../../../components/common/EmptyState'
-import { getManufacturerImage, handleImageFallback } from '../../../utils/imageUrl'
-import {
-  clearManufacturersCache,
-  readManufacturersCache,
-  writeManufacturersCache,
-} from '../../../utils/adminManufacturerCache'
+import { clearSuppliersCache, readSuppliersCache, writeSuppliersCache } from '../../../utils/adminSupplierCache'
 
 const statuses = ['', 'active', 'inactive']
 
@@ -20,14 +15,14 @@ function statusClass(status) {
 }
 
 function initials(name) {
-  return name?.slice(0, 2)?.toUpperCase() || 'NA'
+  return name?.slice(0, 2)?.toUpperCase() || 'SU'
 }
 
-export default function ManufacturerIndex() {
+export default function SupplierIndex() {
   const initialParams = { search: '', status: '', page: 1 }
-  const initialCache = readManufacturersCache(initialParams)
+  const initialCache = readSuppliersCache(initialParams)
   const [params, setParams] = useState(initialParams)
-  const [manufacturers, setManufacturers] = useState(initialCache?.manufacturers || [])
+  const [suppliers, setSuppliers] = useState(initialCache?.suppliers || [])
   const [meta, setMeta] = useState(initialCache?.meta || null)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(!initialCache)
@@ -35,32 +30,32 @@ export default function ManufacturerIndex() {
 
   useEffect(() => {
     let active = true
-    const cached = readManufacturersCache(params)
+    const cached = readSuppliersCache(params)
 
     if (cached) {
-      setManufacturers(cached.manufacturers || [])
+      setSuppliers(cached.suppliers || [])
       setMeta(cached.meta || null)
       setLoading(false)
       setUpdating(false)
       return () => { active = false }
     }
 
-    const hasRows = manufacturers.length > 0
+    const hasRows = suppliers.length > 0
     setLoading(!hasRows)
     setUpdating(hasRows)
 
-    adminApi.listFresh('manufacturers', params)
+    adminApi.listFresh('suppliers', params)
       .then(({ data }) => {
         if (!active) return
         const payload = {
-          manufacturers: data.data?.data || [],
+          suppliers: data.data?.data || [],
           meta: data.data,
         }
-        setManufacturers(payload.manufacturers)
+        setSuppliers(payload.suppliers)
         setMeta(payload.meta)
-        writeManufacturersCache(params, payload)
+        writeSuppliersCache(params, payload)
       })
-      .catch(() => active && toast.error('Unable to load manufacturers.'))
+      .catch(() => active && toast.error('Unable to load suppliers.'))
       .finally(() => {
         if (!active) return
         setLoading(false)
@@ -82,19 +77,19 @@ export default function ManufacturerIndex() {
     setParams(nextParams)
   }
 
-  const removeManufacturer = async (manufacturer) => {
-    if (manufacturer.products_count > 0) {
+  const removeSupplier = async (supplier) => {
+    if (supplier.batches_count > 0) {
       await Swal.fire({
-        title: 'Manufacturer is in use',
-        text: 'Move or remove the products for this manufacturer before deleting it.',
+        title: 'Supplier is in use',
+        text: 'This supplier has inventory batches. Remove or move those batches before deleting it.',
         confirmButtonText: 'OK',
       })
       return
     }
 
     const result = await Swal.fire({
-      title: 'Delete this manufacturer?',
-      text: manufacturer.manufacturer_name,
+      title: 'Delete this supplier?',
+      text: supplier.supplier_name,
       showCancelButton: true,
       confirmButtonText: 'Delete',
       cancelButtonText: 'Cancel',
@@ -104,22 +99,22 @@ export default function ManufacturerIndex() {
     if (!result.isConfirmed) return
 
     try {
-      await adminApi.remove('manufacturers', manufacturer.id)
-      clearManufacturersCache()
-      toast.success('Manufacturer deleted.')
+      await adminApi.remove('suppliers', supplier.id)
+      clearSuppliersCache()
+      toast.success('Supplier deleted.')
       setParams((current) => ({ ...current }))
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Unable to delete manufacturer.')
+      toast.error(error.response?.data?.message || 'Unable to delete supplier.')
     }
   }
 
   return (
     <>
-      <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_180px_170px]">
+      <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_180px_160px]">
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by manufacturer, country, or status"
+          placeholder="Search by supplier, phone, email, or status"
           className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
         />
         <select
@@ -129,54 +124,58 @@ export default function ManufacturerIndex() {
         >
           {statuses.map((status) => <option key={status || 'all'} value={status}>{status ? status[0].toUpperCase() + status.slice(1) : 'All Statuses'}</option>)}
         </select>
-        <Link to="/admin/manufacturers/create" className="flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700">
+        <Link to="/admin/suppliers/create" className="flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700">
           <FiPlus className="h-4 w-4" />
-          <span>Add Manufacturer</span>
+          <span>Add Supplier</span>
         </Link>
       </div>
 
       {updating ? <AdminLoadingState className="justify-start pb-3" /> : null}
-      {loading && manufacturers.length === 0 ? <AdminLoadingState className="py-8" /> : null}
-      {!loading && manufacturers.length === 0 ? (
-        <EmptyState title="No manufacturers found" text="Try another search term or adjust the status filter." />
+      {loading && suppliers.length === 0 ? <AdminLoadingState className="py-8" /> : null}
+      {!loading && suppliers.length === 0 ? (
+        <EmptyState title="No suppliers found" text="Try another search term or adjust the status filter." />
       ) : null}
 
-      {manufacturers.length > 0 ? (
+      {suppliers.length > 0 ? (
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-slate-600">
               <tr>
-                <th className="px-4 py-3">Manufacturer</th>
-                <th className="px-4 py-3">Country</th>
-                <th className="px-4 py-3 text-center">Products</th>
+                <th className="px-4 py-3">Supplier</th>
+                <th className="px-4 py-3">Contact</th>
+                <th className="px-4 py-3">Address</th>
+                <th className="px-4 py-3 text-center">Batches</th>
                 <th className="px-4 py-3 text-center">Status</th>
                 <th className="px-4 py-3 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {manufacturers.map((manufacturer) => (
-                <tr key={manufacturer.id}>
+              {suppliers.map((supplier) => (
+                <tr key={supplier.id}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      {manufacturer.logo_url ? (
-                        <img src={getManufacturerImage(manufacturer)} alt={manufacturer.manufacturer_name} loading="lazy" decoding="async" onError={handleImageFallback} className="h-11 w-11 object-cover" />
-                      ) : (
-                        <div className="flex h-11 w-11 items-center justify-center border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">
-                          {initials(manufacturer.manufacturer_name)}
-                        </div>
-                      )}
-                      <div className="font-semibold text-slate-950">{manufacturer.manufacturer_name}</div>
+                      <div className="flex h-11 w-11 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">
+                        {initials(supplier.supplier_name)}
+                      </div>
+                      <div>
+                        <div className="font-semibold text-slate-950">{supplier.supplier_name}</div>
+                        <div className="text-xs text-slate-500">Supplier ID #{supplier.id}</div>
+                      </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{manufacturer.country || '-'}</td>
-                  <td className="px-4 py-3 text-center text-slate-700">{manufacturer.products_count || 0}</td>
-                  <td className="px-4 py-3 text-center"><span className={`text-xs font-semibold ${statusClass(manufacturer.status)}`}>{manufacturer.status === 'active' ? 'Active' : 'Inactive'}</span></td>
+                  <td className="px-4 py-3 text-slate-600">
+                    <div>{supplier.phone || '-'}</div>
+                    <div className="text-xs text-slate-500">{supplier.email || '-'}</div>
+                  </td>
+                  <td className="max-w-sm px-4 py-3 text-slate-600">{supplier.address || '-'}</td>
+                  <td className="px-4 py-3 text-center text-slate-700">{supplier.batches_count || 0}</td>
+                  <td className="px-4 py-3 text-center"><span className={`text-xs font-semibold ${statusClass(supplier.status)}`}>{supplier.status === 'active' ? 'Active' : 'Inactive'}</span></td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex justify-center gap-3">
-                      <Link to={`/admin/manufacturers/${manufacturer.id}/edit`} className="flex h-8 w-8 items-center justify-center text-emerald-700 transition hover:text-emerald-800" title="Edit manufacturer">
+                      <Link to={`/admin/suppliers/${supplier.id}/edit`} className="flex h-8 w-8 items-center justify-center rounded-md border border-emerald-100 text-emerald-700 transition hover:bg-emerald-50" title="Edit supplier">
                         <FiEdit className="h-4 w-4" />
                       </Link>
-                      <button disabled={manufacturer.products_count > 0} onClick={() => removeManufacturer(manufacturer)} className="flex h-8 w-8 items-center justify-center text-rose-600 transition hover:text-rose-700 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300" title={manufacturer.products_count > 0 ? 'Manufacturer has products' : 'Delete manufacturer'}>
+                      <button disabled={supplier.batches_count > 0} onClick={() => removeSupplier(supplier)} className="flex h-8 w-8 items-center justify-center rounded-md border border-rose-100 text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300" title={supplier.batches_count > 0 ? 'Supplier has batches' : 'Delete supplier'}>
                         <FiTrash2 className="h-4 w-4" />
                       </button>
                     </div>

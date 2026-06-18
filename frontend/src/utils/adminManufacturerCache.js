@@ -1,4 +1,4 @@
-const MANUFACTURERS_CACHE_KEY = 'admin_manufacturers_payload_v1'
+const MANUFACTURERS_CACHE_KEY = 'admin_manufacturers_payload_v2'
 const MANUFACTURERS_CACHE_TTL = 2 * 60 * 1000
 
 export function manufacturerCacheKey(params) {

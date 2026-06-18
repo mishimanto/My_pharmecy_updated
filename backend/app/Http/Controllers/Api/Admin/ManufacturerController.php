@@ -42,11 +42,14 @@ class ManufacturerController extends Controller
             'manufacturer_name' => ['required', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'max:100'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
-            'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'logo' => ['nullable', 'file'],
+            'logo_data' => ['nullable', 'string'],
         ]);
-        unset($data['logo']);
+        unset($data['logo'], $data['logo_data']);
 
-        if ($request->hasFile('logo')) {
+        if ($request->filled('logo_data')) {
+            $data = [...$data, ...$logos->storeDataUri($request->string('logo_data')->toString())];
+        } elseif ($request->hasFile('logo')) {
             $data = [...$data, ...$logos->store($request->file('logo'))];
         }
 
@@ -66,13 +69,17 @@ class ManufacturerController extends Controller
         $manufacturer = Manufacturer::findOrFail($id);
         $old = $manufacturer->toArray();
         $data = $request->validate([
-            'manufacturer_name' => ['required', 'string', 'max:255'],
+            'manufacturer_name' => ['sometimes', 'required', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'max:100'],
-            'status' => ['required', Rule::in(['active', 'inactive'])],
-            'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'status' => ['sometimes', 'required', Rule::in(['active', 'inactive'])],
+            'logo' => ['nullable', 'file'],
+            'logo_data' => ['nullable', 'string'],
             'remove_logo' => ['nullable', 'boolean'],
         ]);
-        unset($data['logo'], $data['remove_logo']);
+        unset($data['logo'], $data['logo_data'], $data['remove_logo']);
+
+        $data['manufacturer_name'] ??= $manufacturer->manufacturer_name;
+        $data['status'] ??= $manufacturer->status;
 
         if ($request->boolean('remove_logo') && $manufacturer->logo_path) {
             $logos->delete($manufacturer->logo_path);
@@ -80,7 +87,9 @@ class ManufacturerController extends Controller
             $data['logo_path'] = null;
         }
 
-        if ($request->hasFile('logo')) {
+        if ($request->filled('logo_data')) {
+            $data = [...$data, ...$logos->storeDataUri($request->string('logo_data')->toString(), $manufacturer->logo_path)];
+        } elseif ($request->hasFile('logo')) {
             $data = [...$data, ...$logos->store($request->file('logo'), $manufacturer->logo_path)];
         }
 

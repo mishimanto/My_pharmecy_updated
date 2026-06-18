@@ -6,6 +6,7 @@ import { adminApi } from '../../../api/adminApi'
 import { productApi } from '../../../api/productApi'
 import AdminLoadingState from '../../../components/admin/AdminLoadingState'
 import { clearManufacturersCache } from '../../../utils/adminManufacturerCache'
+import { getManufacturerImage, handleImageFallback } from '../../../utils/imageUrl'
 
 const initialForm = {
   manufacturer_name: '',
@@ -23,6 +24,38 @@ function formFromManufacturer(manufacturer) {
 
 function initials(name) {
   return name?.slice(0, 2)?.toUpperCase() || 'NA'
+}
+
+function readFileAsDataUri(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+async function resizeLogoToDataUri(file) {
+  const source = await readFileAsDataUri(file)
+
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => {
+      const size = 192
+      const canvas = document.createElement('canvas')
+      const context = canvas.getContext('2d')
+      const sourceSize = Math.min(image.naturalWidth || image.width, image.naturalHeight || image.height)
+      const sx = ((image.naturalWidth || image.width) - sourceSize) / 2
+      const sy = ((image.naturalHeight || image.height) - sourceSize) / 2
+
+      canvas.width = size
+      canvas.height = size
+      context.drawImage(image, sx, sy, sourceSize, sourceSize, 0, 0, size, size)
+      resolve(canvas.toDataURL('image/webp', 0.72))
+    }
+    image.onerror = reject
+    image.src = source
+  })
 }
 
 export default function ManufacturerForm({ mode = 'create' }) {
@@ -46,7 +79,7 @@ export default function ManufacturerForm({ mode = 'create' }) {
         if (!active) return
         const manufacturer = data.data
         setForm(formFromManufacturer(manufacturer))
-        setPreview(manufacturer.logo_url || '')
+        setPreview(manufacturer.logo_url ? getManufacturerImage(manufacturer, '') : '')
       })
       .catch(() => active && toast.error('Unable to load manufacturer details.'))
       .finally(() => active && setLoading(false))
@@ -84,23 +117,21 @@ export default function ManufacturerForm({ mode = 'create' }) {
       return
     }
 
-    const payload = new FormData()
-    payload.append('manufacturer_name', form.manufacturer_name.trim())
-    payload.append('country', form.country.trim())
-    payload.append('status', form.status)
-
-    if (logoFile) {
-      payload.append('logo', logoFile)
+    const payload = {
+      manufacturer_name: form.manufacturer_name.trim(),
+      country: form.country.trim() || null,
+      status: form.status,
     }
 
-    if (removeLogo) {
-      payload.append('remove_logo', '1')
+    if (logoFile) {
+      payload.logo_data = await resizeLogoToDataUri(logoFile)
+    } else if (removeLogo) {
+      payload.remove_logo = true
     }
 
     setSaving(true)
     try {
       if (isEdit) {
-        payload.append('_method', 'PUT')
         await adminApi.updateManufacturer(id, payload)
         toast.success('Manufacturer updated.')
       } else {
@@ -177,7 +208,7 @@ export default function ManufacturerForm({ mode = 'create' }) {
               <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700">
                 <FiUploadCloud className="h-4 w-4" />
                 <span>Choose image</span>
-                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleLogoChange} className="hidden" />
+                <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
               </label>
             </label>
           </div>
@@ -187,7 +218,7 @@ export default function ManufacturerForm({ mode = 'create' }) {
           <div className="text-sm font-semibold text-slate-900">Profile preview</div>
           <div className="mt-4 flex flex-col items-center rounded-md border border-slate-200 bg-slate-50 p-4 text-center">
             {preview && !removeLogo ? (
-              <img src={preview} alt="Manufacturer logo preview" loading="lazy" decoding="async" className="h-24 w-24 rounded-lg border border-slate-200 bg-white object-cover" />
+              <img src={preview} alt="Manufacturer logo preview" loading="lazy" decoding="async" onError={handleImageFallback} className="h-24 w-24 bg-white object-cover" />
             ) : (
               <div className="flex h-24 w-24 items-center justify-center rounded-lg border border-slate-200 bg-white text-xl font-semibold text-slate-500">
                 {previewInitials}

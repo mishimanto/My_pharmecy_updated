@@ -3,25 +3,58 @@
 namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Encoders\WebpEncoder;
 use Intervention\Image\ImageManager;
-use Intervention\Image\Drivers\Gd\Driver;
+use Throwable;
 
 class ProductImageService
 {
     public function store(UploadedFile $file): array
     {
-        $path = $file->store('products/originals', 'public');
-        $webpPath = 'products/webp/' . pathinfo($path, PATHINFO_FILENAME) . '.webp';
+        return $this->storeImage(fn (ImageManager $manager) => $manager->decodePath($file->getRealPath()));
+    }
 
-        $image = (new ImageManager(new Driver()))->decodePath($file->getRealPath())->encode(new WebpEncoder(82));
-        Storage::disk('public')->put($webpPath, (string) $image);
+    public function storeDataUri(string $dataUri): array
+    {
+        if (! preg_match('/^data:image\/[a-zA-Z0-9.+-]+;base64,/', $dataUri)) {
+            throw ValidationException::withMessages([
+                'images' => 'Each product image must be a valid image file.',
+            ]);
+        }
+
+        return $this->storeImage(fn (ImageManager $manager) => $manager->decodeDataUri($dataUri));
+    }
+
+    private function storeImage(callable $decoder): array
+    {
+        $path = 'products/' . Str::uuid() . '.webp';
+
+        try {
+            $image = $decoder(new ImageManager(new Driver()))
+                ->scaleDown(width: 900, height: 900)
+                ->encode(new WebpEncoder(78));
+        } catch (Throwable $exception) {
+            Log::warning('Product image decode failed', [
+                'message' => $exception->getMessage(),
+                'exception' => $exception::class,
+            ]);
+
+            throw ValidationException::withMessages([
+                'images' => 'Each product image must be a valid image file.',
+            ]);
+        }
+
+        Storage::disk('public')->put($path, (string) $image);
 
         return [
             'image_path' => $path,
-            'image_webp_path' => $webpPath,
-            'image_url' => Storage::url($webpPath),
+            'image_webp_path' => $path,
+            'image_url' => Storage::url($path),
         ];
     }
 }

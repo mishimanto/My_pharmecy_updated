@@ -5,20 +5,50 @@ namespace App\Services;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Encoders\WebpEncoder;
 use Intervention\Image\ImageManager;
+use Throwable;
 
 class ManufacturerLogoService
 {
     public function store(UploadedFile $file, ?string $previousPath = null): array
     {
-        $path = 'manufacturers/webp/' . Str::uuid() . '.webp';
+        return $this->storeImage(fn (ImageManager $manager) => $manager->decodePath($file->getRealPath()), $previousPath);
+    }
 
-        $image = (new ImageManager(new Driver()))
-            ->decodePath($file->getRealPath())
-            ->coverDown(512, 512)
-            ->encode(new WebpEncoder(84));
+    public function storeDataUri(string $dataUri, ?string $previousPath = null): array
+    {
+        if (! preg_match('/^data:image\/[a-zA-Z0-9.+-]+;base64,(.+)$/', $dataUri, $matches)) {
+            throw ValidationException::withMessages([
+                'logo' => 'The logo must be a valid image file.',
+            ]);
+        }
+
+        $binary = base64_decode($matches[1], true);
+        if ($binary === false) {
+            throw ValidationException::withMessages([
+                'logo' => 'The logo must be a valid image file.',
+            ]);
+        }
+
+        return $this->storeImage(fn (ImageManager $manager) => $manager->decodeBinary($binary), $previousPath);
+    }
+
+    private function storeImage(callable $decoder, ?string $previousPath = null): array
+    {
+        $path = 'manufacturers/' . Str::uuid() . '.webp';
+
+        try {
+            $image = $decoder(new ImageManager(new Driver()))
+                ->coverDown(512, 512)
+                ->encode(new WebpEncoder(84));
+        } catch (Throwable) {
+            throw ValidationException::withMessages([
+                'logo' => 'The logo must be a valid image file.',
+            ]);
+        }
 
         Storage::disk('public')->put($path, (string) $image);
         $this->delete($previousPath);
