@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { FiFileText, FiUpload, FiX } from 'react-icons/fi'
 import { prescriptionApi } from '../../api/prescriptionApi'
@@ -7,7 +7,7 @@ import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 
 const ACCEPTED_TYPES = 'image/*,.pdf'
-const MAX_FILE_MB = 5
+const MAX_FILE_MB = 4
 
 export default function UploadPrescription() {
   const { ensureGuestToken } = useCustomerAuth()
@@ -44,7 +44,16 @@ export default function UploadPrescription() {
   }
 
   const handleFileChange = (event) => {
-    setFile(event.target.files?.[0] || null)
+    const selectedFile = event.target.files?.[0] || null
+
+    if (selectedFile && selectedFile.size > MAX_FILE_MB * 1024 * 1024) {
+      toast.error(`Prescription file must be ${MAX_FILE_MB} MB or smaller.`)
+      event.target.value = ''
+      setFile(null)
+      return
+    }
+
+    setFile(selectedFile)
   }
 
   const clearFile = () => {
@@ -87,6 +96,21 @@ export default function UploadPrescription() {
         )}
       /> */}
 
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border border-slate-200 bg-white p-5 sm:p-6">
+        <div>
+          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0e6574]">
+            {t('Upload prescription', 'Upload prescription')}
+          </div>
+        </div>
+        <Link
+          to="/prescriptions"
+          className="inline-flex items-center justify-center gap-1 px-5 text-sm font-semibold text-slate-700 transition hover:border-emerald-200 hover:underline hover:text-emerald-700"
+        >
+          <FiFileText className="h-3 w-3" />
+          {t('All prescriptions', 'All prescriptions')}
+        </Link>
+      </div>
+
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <form className="border border-slate-200 bg-white p-5 sm:p-6" onSubmit={submit}>
           {/* <div className="border-b border-slate-200 pb-5">
@@ -120,13 +144,10 @@ export default function UploadPrescription() {
               <div className="border border-slate-200 bg-slate-50 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      <FiFileText className="h-4 w-4" />
-                      {t('নির্বাচিত ফাইল', 'Selected file')}
-                    </div>
+                    
                     <div className="mt-2 break-all text-base font-semibold text-slate-950">{fileSummary.name}</div>
                     <div className="mt-2 text-sm text-slate-500">
-                      {fileSummary.type} • {fileSummary.size}
+                      Format: <span className="font-semibold">{fileSummary.type}</span> • Size: <span className="font-semibold">{fileSummary.size}</span>
                     </div>
                   </div>
                   <button
@@ -194,12 +215,9 @@ export default function UploadPrescription() {
         <aside className="xl:sticky xl:top-24 xl:self-start">
           <div className="overflow-hidden border border-slate-200 bg-white">
             <div className="border-b border-slate-200 px-5 py-4">
-              <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0e6574]">
+              <div className="text-sm text-center font-semibold uppercase tracking-[0.18em] text-[#0e6574]">
                 {t('প্রেসক্রিপশন প্রিভিউ', 'Prescription preview')}
               </div>
-              <h3 className="mt-2 text-lg font-semibold text-slate-950">
-                {fileSummary ? fileSummary.name : t('ফাইল সিলেক্ট করলে এখানে দেখা যাবে', 'Select a file to preview it here')}
-              </h3>
             </div>
 
             <div className="bg-slate-50 p-4">

@@ -15,6 +15,7 @@ import OrderDetails from '../pages/customer/OrderDetails'
 import OrderPayment from '../pages/customer/OrderPayment'
 import Tracking from '../pages/customer/Tracking'
 import Prescriptions from '../pages/customer/Prescriptions'
+import PrescriptionDetails from '../pages/customer/PrescriptionDetails'
 import Rewards from '../pages/customer/Rewards'
 import UploadPrescription from '../pages/customer/UploadPrescription'
 import Support from '../pages/customer/Support'
@@ -45,6 +46,7 @@ export default function CustomerRoutes() {
         <Route path="orders/:id/payment" element={<OrderPayment />} />
         <Route path="orders/:id/tracking" element={<Tracking />} />
         <Route path="prescriptions" element={<ProtectedCustomerRoute><Prescriptions /></ProtectedCustomerRoute>} />
+        <Route path="prescriptions/:id" element={<ProtectedCustomerRoute><PrescriptionDetails /></ProtectedCustomerRoute>} />
         <Route path="rewards" element={<ProtectedCustomerRoute><Rewards /></ProtectedCustomerRoute>} />
         <Route path="upload-prescription" element={<ProtectedCustomerRoute><UploadPrescription /></ProtectedCustomerRoute>} />
         <Route path="support" element={<ProtectedCustomerRoute><Support /></ProtectedCustomerRoute>} />

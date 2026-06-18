@@ -12,13 +12,10 @@ import { isPrescriptionLoginRequiredError, requiresPrescriptionLogin as requires
 import { readPreferredPrescriptionId, writePreferredPrescriptionId } from '../../utils/prescriptionSelection'
 import { getProductPath, getProductRouteKey } from '../../utils/productRouting'
 import { getCategoryName } from '../../utils/categoryNames'
+import { prescriptionDisplayName, prescriptionDisplayNameById } from '../../utils/prescriptionDisplay'
 import { getDefaultPurchaseOption, getLocalizedConversionLabel, getPurchaseOptions, getUnitLabel, getUnitSummary } from '../../utils/purchaseUnits'
 
 const selectablePrescriptionStatuses = ['approved', 'pending']
-const prescriptionStatusLabels = {
-  approved: { bn: 'Approved', en: 'Approved' },
-  pending: { bn: 'Pending review', en: 'Pending review' },
-}
 
 function roundedMoney(value, locale = 'en-US') {
   const amount = Number(value || 0)
@@ -243,8 +240,8 @@ export default function ProductDetails() {
       toast.success(
         product.requires_prescription && selectedPrescriptionId
           ? t(
-            `${activeUnitSummary} কার্টে যোগ হয়েছে। Checkout-এ prescription #${selectedPrescriptionId} আগে থেকেই সিলেক্ট থাকবে।`,
-            `Added ${activeUnitSummary} to cart. Prescription #${selectedPrescriptionId} will be preselected at checkout.`,
+            `${activeUnitSummary} কার্টে যোগ হয়েছে। Checkout-এ ${prescriptionDisplayNameById(selectablePrescriptions, selectedPrescriptionId)} আগে থেকেই সিলেক্ট থাকবে।`,
+            `Added ${activeUnitSummary} to cart. ${prescriptionDisplayNameById(selectablePrescriptions, selectedPrescriptionId)} will be preselected at checkout.`,
           )
           : t(
             `${activeUnitSummary} কার্টে যোগ করা হয়েছে।`,
@@ -437,9 +434,9 @@ export default function ProductDetails() {
                               className="w-full border border-amber-300 bg-white px-2 py-3 text-sm text-slate-900 outline-none"
                             >
                               <option value="">{t('একটি প্রেসক্রিপশন সিলেক্ট করুন', 'Select a prescription')}</option>
-                              {selectablePrescriptions.map((item) => (
+                              {selectablePrescriptions.map((item, index) => (
                                 <option key={item.id} value={item.id}>
-                                  #{item.id} - {isBangla ? prescriptionStatusLabels[item.status]?.bn : prescriptionStatusLabels[item.status]?.en}
+                                  {prescriptionDisplayName(index)}
                                 </option>
                               ))}
                             </select>

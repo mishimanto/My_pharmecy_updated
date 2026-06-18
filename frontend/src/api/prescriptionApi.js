@@ -121,6 +121,15 @@ export const prescriptionApi = {
   },
   refreshList: () => fetchList(),
   show: (id) => api.get(`/customer/prescriptions/${id}`),
+  destroy: async (id) => {
+    const scopeKey = getScopeKey()
+    const response = await api.delete(`/customer/prescriptions/${id}`)
+    const currentItems = listCache.get(scopeKey) || []
+
+    cacheListForScope(scopeKey, currentItems.filter((item) => String(item?.id) !== String(id)))
+
+    return response
+  },
   create: async (payload) => {
     const scopeKey = getScopeKey()
     const response = await api.post('/customer/prescriptions', payload, { headers: { 'Content-Type': 'multipart/form-data' } })

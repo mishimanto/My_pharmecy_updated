@@ -105,6 +105,7 @@ Route::prefix('customer')->group(function () {
         Route::get('/prescriptions', [PrescriptionController::class, 'index']);
         Route::post('/prescriptions', [PrescriptionController::class, 'store']);
         Route::get('/prescriptions/{id}', [PrescriptionController::class, 'show']);
+        Route::delete('/prescriptions/{id}', [PrescriptionController::class, 'destroy']);
 
     });
 });

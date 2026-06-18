@@ -13,6 +13,7 @@ import { useStorefront } from '../../context/StorefrontContext'
 import { clearCheckoutDraft, readCheckoutDraft, writeCheckoutDraft } from '../../utils/checkoutDraft'
 import { money } from '../../utils/formatters'
 import { getOrderPath } from '../../utils/orderRouting'
+import { prescriptionDisplayName, prescriptionDisplayNameById } from '../../utils/prescriptionDisplay'
 import { getUnitLabel } from '../../utils/purchaseUnits'
 import { clearPreferredPrescriptionId, readPreferredPrescriptionId, writePreferredPrescriptionId } from '../../utils/prescriptionSelection'
 
@@ -541,15 +542,15 @@ export default function Checkout() {
                       className="mt-4 w-72 border border-amber-300 bg-white px-4 py-2 text-sm text-slate-900 outline-none"
                     >
                       <option value="">{loading ? t('প্রেসক্রিপশন লোড হচ্ছে...', 'Loading prescriptions...') : t('একটি প্রেসক্রিপশন বাছুন', 'Select a prescription')}</option>
-                      {prescriptions.map((item) => (
-                        <option key={item.id} value={item.id}>#{item.id} - {item.status}</option>
+                      {prescriptions.map((item, index) => (
+                        <option key={item.id} value={item.id}>{prescriptionDisplayName(index)}</option>
                       ))}
                     </select>
                     {form.prescription_id ? (
                       <p className="mt-3 text-sm leading-7 text-slate-600">
                         {t(
-                          `Prescription #${form.prescription_id} এই অর্ডারের জন্য সিলেক্ট করা আছে।`,
-                          `Prescription #${form.prescription_id} is selected for this order.`,
+                          `${prescriptionDisplayNameById(prescriptions, form.prescription_id)} এই অর্ডারের জন্য সিলেক্ট করা আছে।`,
+                          `${prescriptionDisplayNameById(prescriptions, form.prescription_id)} is selected for this order.`,
                         )}
                       </p>
                     ) : null}
@@ -838,3 +839,4 @@ function CheckoutNote({ icon: Icon, title, body }) {
     </div>
   )
 }
+

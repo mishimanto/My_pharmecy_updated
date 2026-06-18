@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Prescription;
+use App\Services\PrescriptionFileService;
 use App\Services\ShopperContextService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
@@ -26,18 +27,25 @@ class PrescriptionController extends Controller
         return $this->ok($prescriptions, 'Prescriptions loaded successfully.');
     }
 
-    public function store(Request $request, ShopperContextService $shopper)
+    public function store(Request $request, ShopperContextService $shopper, PrescriptionFileService $files)
     {
         [$user, $guestToken] = $shopper->requireGuestOrUser($request);
 
+        $prescriptionCount = Prescription::query()
+            ->when($user, fn ($query) => $query->where('user_id', $user->id))
+            ->when(! $user, fn ($query) => $query->where('guest_token', $guestToken))
+            ->count();
+
+        abort_if($prescriptionCount >= 10, 422, 'You can keep up to 10 prescriptions. Please delete an old prescription before uploading a new one.');
+
         $data = $request->validate([
-            'prescription_file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'prescription_file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:4096'],
             'patient_name' => ['nullable', 'string', 'max:255'],
             'doctor_name' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
         ]);
 
-        $path = $data['prescription_file']->store('prescriptions', 'public');
+        $path = $files->store($data['prescription_file']);
 
         $prescription = Prescription::create([
             'user_id' => $user?->id,
@@ -63,5 +71,20 @@ class PrescriptionController extends Controller
             ->findOrFail($id);
 
         return $this->ok($prescription, 'Prescription loaded successfully.');
+    }
+
+    public function destroy(Request $request, int $id, ShopperContextService $shopper, PrescriptionFileService $files)
+    {
+        [$user, $guestToken] = $shopper->requireGuestOrUser($request);
+
+        $prescription = Prescription::query()
+            ->when($user, fn ($query) => $query->where('user_id', $user->id))
+            ->when(! $user, fn ($query) => $query->where('guest_token', $guestToken))
+            ->findOrFail($id);
+
+        $files->delete($prescription->prescription_image);
+        $prescription->delete();
+
+        return $this->ok(null, 'Prescription deleted successfully.');
     }
 }
