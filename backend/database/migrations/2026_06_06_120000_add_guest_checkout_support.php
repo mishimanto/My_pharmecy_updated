@@ -138,12 +138,20 @@ return new class extends Migration
 
     private function hasIndex(string $table, string $indexName): bool
     {
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            return false;
+        }
+
         return collect(DB::select("SHOW INDEX FROM `{$table}`"))
             ->contains(fn ($index) => $index->Key_name === $indexName);
     }
 
     private function isNullable(string $table, string $column): bool
     {
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            return true;
+        }
+
         $result = DB::selectOne(
             'SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
             [$table, $column],

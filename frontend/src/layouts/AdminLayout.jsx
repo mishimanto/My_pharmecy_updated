@@ -50,11 +50,17 @@ const navigationGroups = [
     title: 'Inventory',
     items: [
       { to: '/admin/suppliers', label: 'Suppliers', permission: 'inventory.view', icon: FiUsers },
-      { to: '/admin/inventory', label: 'Inventory', permission: 'inventory.view', icon: FiPackage },
-      { to: '/admin/inventory/batches', label: 'Batches', permission: 'inventory.view', icon: FiLayers },
-      { to: '/admin/inventory/transactions', label: 'Stock Transactions', permission: 'inventory.view', icon: FiList },
-      { to: '/admin/inventory/low-stock', label: 'Low Stock', permission: 'inventory.view', icon: FiAlertCircle },
-      { to: '/admin/inventory/near-expiry', label: 'Near Expiry', permission: 'inventory.view', icon: FiActivity },
+      {
+        label: 'Inventory',
+        permission: 'inventory.view',
+        icon: FiPackage,
+        children: [
+          { to: '/admin/inventory/batches', label: 'Batches', permission: 'inventory.view', icon: FiLayers },
+          { to: '/admin/inventory/transactions', label: 'Stock Transactions', permission: 'inventory.view', icon: FiList },
+          { to: '/admin/inventory/low-stock', label: 'Low Stock', permission: 'inventory.view', icon: FiAlertCircle },
+          { to: '/admin/inventory/near-expiry', label: 'Near Expiry', permission: 'inventory.view', icon: FiActivity },
+        ],
+      },
     ],
   },
   {
@@ -78,6 +84,36 @@ const settingsItems = [
   { to: '/admin/activity-logs', label: 'Activity Logs', permission: 'activity-log.view', icon: FiActivity },
 ]
 
+function matchesPath(pathname, item) {
+  if (!item?.to) {
+    return false
+  }
+
+  if (item.end) {
+    return pathname === item.to
+  }
+
+  return pathname === item.to || pathname.startsWith(`${item.to}/`)
+}
+
+function filterNavItem(item, staff) {
+  if (item.children?.length) {
+    const children = item.children.filter((child) => filterNavItem(child, staff))
+
+    if ((!item.permission || hasPermission(staff, item.permission)) && children.length > 0) {
+      return { ...item, children }
+    }
+
+    return null
+  }
+
+  return !item.permission || hasPermission(staff, item.permission) ? item : null
+}
+
+function flattenNavItems(items) {
+  return items.flatMap((item) => [item, ...(item.children ? flattenNavItems(item.children) : [])])
+}
+
 function formatToday() {
   return new Intl.DateTimeFormat('en-US', {
     weekday: 'short',
@@ -97,7 +133,7 @@ export default function AdminLayout() {
       navigationGroups
         .map((group) => ({
           ...group,
-          items: group.items.filter((item) => !item.permission || hasPermission(staff, item.permission)),
+          items: group.items.map((item) => filterNavItem(item, staff)).filter(Boolean),
         }))
         .filter((group) => group.items.length > 0),
     [staff],
@@ -110,8 +146,8 @@ export default function AdminLayout() {
 
   const activeItem = useMemo(
     () =>
-      [...visibleGroups.flatMap((group) => group.items), ...visibleSettings].find(
-        (item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
+      [...flattenNavItems(visibleGroups.flatMap((group) => group.items)), ...visibleSettings].find(
+        (item) => matchesPath(location.pathname, item),
       ),
     [location.pathname, visibleGroups, visibleSettings],
   )

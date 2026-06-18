@@ -21,11 +21,13 @@ import ProductEdit from '../pages/admin/products/Edit'
 import Suppliers from '../pages/admin/suppliers/Index'
 import SupplierCreate from '../pages/admin/suppliers/Create'
 import SupplierEdit from '../pages/admin/suppliers/Edit'
-import Inventory from '../pages/admin/Inventory'
-import InventoryBatches from '../pages/admin/InventoryBatches'
-import InventoryTransactions from '../pages/admin/InventoryTransactions'
-import LowStock from '../pages/admin/LowStock'
-import NearExpiry from '../pages/admin/NearExpiry'
+import Inventory from '../pages/admin/inventory/Index'
+import InventoryBatches from '../pages/admin/inventory/batches/Index'
+import InventoryBatchCreate from '../pages/admin/inventory/batches/Create'
+import InventoryBatchEdit from '../pages/admin/inventory/batches/Edit'
+import InventoryTransactions from '../pages/admin/inventory/transactions/Index'
+import LowStock from '../pages/admin/inventory/LowStock'
+import NearExpiry from '../pages/admin/inventory/NearExpiry'
 import Prescriptions from '../pages/admin/Prescriptions'
 import PrescriptionDetails from '../pages/admin/PrescriptionDetails'
 import Orders from '../pages/admin/Orders'
@@ -72,6 +74,8 @@ export default function AdminRoutes() {
           <Route path="suppliers/:id/edit" element={<SupplierEdit />} />
           <Route path="inventory" element={<Inventory />} />
           <Route path="inventory/batches" element={<InventoryBatches />} />
+          <Route path="inventory/batches/create" element={<InventoryBatchCreate />} />
+          <Route path="inventory/batches/:id/edit" element={<InventoryBatchEdit />} />
           <Route path="inventory/transactions" element={<InventoryTransactions />} />
           <Route path="inventory/low-stock" element={<LowStock />} />
           <Route path="inventory/near-expiry" element={<NearExpiry />} />

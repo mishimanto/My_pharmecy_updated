@@ -526,14 +526,10 @@ export default function Checkout() {
                 </div>
                 {customer ? (
                   <div className="flex-1">
-                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-700">{t('প্রেসক্রিপশন প্রয়োজন', 'Prescription required')}</p>
-                    <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{t('চালিয়ে যেতে অনুমোদিত প্রেসক্রিপশন বাছুন', 'Attach an approved prescription to continue')}</h2>
-                    <p className="mt-3 text-sm leading-7 text-slate-600">
-                      {t(
-                        'প্রেসক্রিপশন-নির্ভর ওষুধের অর্ডার অ্যাডমিন কনফার্ম করার আগে একটি আপলোড করা প্রেসক্রিপশন বেছে নিতে হবে।',
-                        'Prescription-linked medicines require one uploaded prescription before the admin can confirm the order.',
-                      )}
-                    </p>
+                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-700">{t(
+                      'অর্ডারটি সম্পন্ন করতে একটি অনুমোদিত প্রেসক্রিপশন সংযুক্ত করুন',
+                      'Attach an approved prescription to complete this order'
+                    )}</p>
                     <select
                       value={form.prescription_id}
                       onChange={(event) => {
@@ -542,7 +538,7 @@ export default function Checkout() {
                         writePreferredPrescriptionId(nextValue)
                       }}
                       required
-                      className="mt-4 w-full border border-amber-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none"
+                      className="mt-4 w-72 border border-amber-300 bg-white px-4 py-2 text-sm text-slate-900 outline-none"
                     >
                       <option value="">{loading ? t('প্রেসক্রিপশন লোড হচ্ছে...', 'Loading prescriptions...') : t('একটি প্রেসক্রিপশন বাছুন', 'Select a prescription')}</option>
                       {prescriptions.map((item) => (

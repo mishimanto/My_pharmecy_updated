@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\InventoryBatchRequest;
 use App\Models\InventoryBatch;
 use App\Services\AdminActivityService;
 use App\Services\InventoryService;
@@ -39,7 +40,7 @@ class InventoryBatchController extends Controller
         return $this->ok($batches, 'Inventory batches retrieved.');
     }
 
-    public function store(Request $request, AdminActivityService $activity, InventoryService $inventory)
+    public function store(InventoryBatchRequest $request, AdminActivityService $activity, InventoryService $inventory)
     {
         $data = $this->validated($request);
         $batch = InventoryBatch::create($data);
@@ -54,7 +55,7 @@ class InventoryBatchController extends Controller
         return $this->ok($this->appendAvailable(InventoryBatch::with('product', 'supplier')->findOrFail($id)), 'Inventory batch details retrieved.');
     }
 
-    public function update(Request $request, int $id, AdminActivityService $activity, InventoryService $inventory)
+    public function update(InventoryBatchRequest $request, int $id, AdminActivityService $activity, InventoryService $inventory)
     {
         $batch = InventoryBatch::findOrFail($id);
         $old = $batch->toArray();
@@ -98,20 +99,9 @@ class InventoryBatchController extends Controller
         return $this->ok(null, 'Inventory batch deleted.');
     }
 
-    private function validated(Request $request): array
+    private function validated(InventoryBatchRequest $request): array
     {
-        return $request->validate([
-            'product_id' => ['required', 'exists:products,id'],
-            'supplier_id' => ['required', 'exists:suppliers,id'],
-            'batch_number' => ['required', 'string', 'max:100'],
-            'expiry_date' => ['required', 'date'],
-            'manufactured_date' => ['nullable', 'date'],
-            'purchase_price' => ['required', 'numeric', 'min:0'],
-            'selling_price' => ['required', 'numeric', 'min:0'],
-            'stock_quantity' => ['required', 'integer', 'min:0'],
-            'reserved_quantity' => ['nullable', 'integer', 'min:0'],
-            'status' => ['required', Rule::in(['active', 'inactive', 'expired', 'damaged'])],
-        ]);
+        return $request->validated();
     }
 
     private function appendAvailable(InventoryBatch $batch): InventoryBatch
