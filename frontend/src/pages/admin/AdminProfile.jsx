@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FiEdit, FiKey, FiMail, FiPhone, FiSave, FiShield, FiUser } from 'react-icons/fi'
+import { FiArrowRight, FiKey, FiSave } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 // import PageHeader from '../../components/common/PageHeader'
 import { useStaffAuth } from '../../context/StaffAuthContext'
@@ -107,46 +107,60 @@ export default function AdminProfile() {
             </div>
 
             <form onSubmit={submit} className="mt-5 grid gap-4 sm:grid-cols-2">
-              <FormField
-                icon={FiUser}
-                label="Full name"
-                value={form.full_name}
-                onChange={(value) => setForm((current) => ({ ...current, full_name: value }))}
-                placeholder="Enter full name"
-              />
-              <FormField
-                icon={FiMail}
-                label="Email address"
-                type="email"
-                value={form.email}
-                onChange={(value) => setForm((current) => ({ ...current, email: value }))}
-                placeholder="Enter email"
-              />
-              <FormField
-                icon={FiPhone}
-                label="Phone number"
-                value={form.phone}
-                onChange={(value) => setForm((current) => ({ ...current, phone: value }))}
-                placeholder="Enter phone number"
-              />
-              <FormField
-                icon={FiShield}
-                label="License no"
-                value={form.license_no}
-                onChange={(value) => setForm((current) => ({ ...current, license_no: value }))}
-                placeholder="Enter license number"
-              />
+              <div>
+                <label htmlFor="admin-full-name" className="text-sm font-medium text-slate-700">Full name</label>
+                <input
+                  id="admin-full-name"
+                  type="text"
+                  value={form.full_name}
+                  onChange={(event) => setForm((current) => ({ ...current, full_name: event.target.value }))}
+                  placeholder="Enter full name"
+                  className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-3 focus:ring-emerald-100"
+                />
+              </div>
+              <div>
+                <label htmlFor="admin-email" className="text-sm font-medium text-slate-700">Email address</label>
+                <input
+                  id="admin-email"
+                  type="email"
+                  value={form.email}
+                  onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                  placeholder="Enter email"
+                  className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-3 focus:ring-emerald-100"
+                />
+              </div>
+              <div>
+                <label htmlFor="admin-phone" className="text-sm font-medium text-slate-700">Phone number</label>
+                <input
+                  id="admin-phone"
+                  type="text"
+                  value={form.phone}
+                  onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                  placeholder="Enter phone number"
+                  className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-3 focus:ring-emerald-100"
+                />
+              </div>
+              <div>
+                <label htmlFor="admin-license-no" className="text-sm font-medium text-slate-700">License no</label>
+                <input
+                  id="admin-license-no"
+                  type="text"
+                  value={form.license_no}
+                  onChange={(event) => setForm((current) => ({ ...current, license_no: event.target.value }))}
+                  placeholder="Enter license number"
+                  className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-3 focus:ring-emerald-100"
+                />
+              </div>
 
               <div className="sm:col-span-2 flex flex-wrap items-center gap-3 pt-2">
                 <button
                   type="submit"
                   disabled={!hasChanges || saving}
-                  className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  className="inline-flex items-center gap-2 rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
                   <FiSave className="h-4 w-4" />
                   {saving ? 'Saving...' : 'Save Profile'}
                 </button>
-                <p className="text-sm text-slate-500">Role, permissions, and status are controlled by privileged admin workflows.</p>
               </div>
             </form>
           </div>
@@ -161,13 +175,15 @@ export default function AdminProfile() {
                 <Link
                   key={item.to}
                   to={item.to}
-                  className="block rounded-md border border-slate-200 bg-slate-50 px-4 py-4 transition hover:border-emerald-300 hover:bg-white"
+                  className="group block rounded-md border border-slate-200 bg-slate-50 px-4 py-3 transition hover:border-emerald-300 hover:bg-white hover:shadow-sm"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-semibold text-slate-950">{item.title}</p>
                     </div>
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Open</span>
+                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-emerald-700 transition group-hover:text-emerald-800 group-hover:translate-x-0.5" title={`Open ${item.title}`}>
+                      <FiArrowRight className="h-4 w-4" />
+                    </span>
                   </div>
                 </Link>
               ))}
@@ -201,24 +217,6 @@ function MetricCard({ label, value, note }) {
       <p className="mt-3 text-2xl font-semibold text-slate-950">{value}</p>
       <p className="mt-2 text-sm text-slate-600">{note}</p>
     </div>
-  )
-}
-
-function FormField({ icon: Icon, label, value, onChange, placeholder, type = 'text' }) {
-  return (
-    <label className="rounded-3xl border border-slate-200 bg-white p-4">
-      <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-        <Icon className="h-3.5 w-3.5" />
-        {label}
-      </span>
-      <input
-        type={type}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="mt-3 w-full border-0 bg-transparent p-0 text-sm font-medium text-slate-950 outline-none placeholder:text-slate-400"
-      />
-    </label>
   )
 }
 

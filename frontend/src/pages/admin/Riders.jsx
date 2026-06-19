@@ -83,7 +83,7 @@ function StatCard({ icon: Icon, label, value, tone = 'slate' }) {
 
   return (
     <div className={`rounded-lg border px-4 py-4 ${tones[tone] || tones.slate}`}>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em]">{label}</p>
           <p className="mt-1 text-2xl font-semibold text-slate-950">{value}</p>

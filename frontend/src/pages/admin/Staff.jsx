@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FiEdit, FiPlus, FiShield, FiTrash2, FiUser, FiUsers } from 'react-icons/fi'
+import { FiEdit, FiPlus, FiShield, FiTrash2, FiUser, FiUserCheck, FiUserX, FiUsers } from 'react-icons/fi'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
-import PageHeader from '../../components/common/PageHeader'
 import EmptyState from '../../components/common/EmptyState'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import { adminApi } from '../../api/adminApi'
@@ -76,14 +75,14 @@ function StatCard({ icon: Icon, label, value, tone = 'slate' }) {
 
   return (
     <div className={`rounded-lg border px-4 py-4 ${tones[tone] || tones.slate}`}>
-      <div className="flex items-center gap-3">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-sm">
-          <Icon className="h-4 w-4" />
-        </span>
+      <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em]">{label}</p>
           <p className="mt-1 text-2xl font-semibold text-slate-950">{value}</p>
         </div>
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-sm">
+          <Icon className="h-4 w-4" />
+        </span>
       </div>
     </div>
   )
@@ -106,6 +105,8 @@ export default function Staff() {
     suspended: allStaff.filter((member) => member.status === 'suspended').length,
     roles: new Set(allStaff.flatMap((member) => member.roles?.map((role) => role.name) || [])).size,
   }), [allStaff])
+
+  const hasActiveFilters = Boolean(search || params.status)
 
   const loadStats = () => {
     adminApi.listFresh('staff', { page: 1, per_page: 100 })
@@ -168,6 +169,10 @@ export default function Staff() {
     setParams((current) => ({ ...current }))
   }
 
+  const updateParams = (nextParams) => {
+    setParams(nextParams)
+  }
+
   const changeStatus = async (member, status) => {
     const result = await Swal.fire({
       title: 'Update staff status?',
@@ -209,17 +214,6 @@ export default function Staff() {
 
   return (
     <>
-      <PageHeader
-        title="Staff"
-        subtitle="Manage staff members, primary roles, and account status."
-        action={(
-          <Link className="inline-flex items-center gap-2 rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800" to="/admin/staff/create">
-            <FiPlus className="h-4 w-4" />
-            New Staff Member
-          </Link>
-        )}
-      />
-
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard icon={FiUsers} label="Total Staff" value={stats.total} tone="slate" />
         <StatCard icon={FiUser} label="Active Staff" value={stats.active} tone="emerald" />
@@ -227,8 +221,8 @@ export default function Staff() {
         <StatCard icon={FiEdit} label="Role Types" value={stats.roles} tone="sky" />
       </div>
 
-      <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid gap-3 xl:grid-cols-[1fr_220px_140px]">
+      <div className="mb-4">
+        <div className="grid gap-3 xl:grid-cols-[1fr_220px_150px_170px]">
           <input
             className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
             placeholder="Search by name, email, phone, or status"
@@ -237,7 +231,7 @@ export default function Staff() {
           />
           <select
             value={params.status}
-            onChange={(event) => setParams((current) => ({ ...current, status: event.target.value, page: 1 }))}
+            onChange={(event) => updateParams({ ...params, status: event.target.value, page: 1 })}
             className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
           >
             {statuses.map((status) => (
@@ -248,12 +242,19 @@ export default function Staff() {
           </select>
           <button
             type="button"
-            onClick={() => { setSearch(''); setParams({ search: '', status: '', page: 1 }) }}
-            disabled={!search && !params.status}
-            className="inline-flex items-center justify-center rounded-md border border-slate-500 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-700 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => { setSearch(''); updateParams({ search: '', status: '', page: 1 }) }}
+            disabled={!hasActiveFilters}
+            className="inline-flex items-center justify-center rounded-md border border-slate-500 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-gray-600 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Clear Filters
           </button>
+          <Link
+            className="inline-flex items-center justify-center gap-2 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+            to="/admin/staff/create"
+          >
+            <FiPlus className="h-4 w-4" />
+            New Staff
+          </Link>
         </div>
       </div>
 
@@ -262,28 +263,27 @@ export default function Staff() {
       {!loading && staff.length === 0 ? <EmptyState title="No staff found" text="Try another search term or adjust the status filter." /> : null}
 
       {staff.length > 0 ? (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <table className="min-w-full border border-slate-300 divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-slate-600">
               <tr>
                 <th className="px-4 py-3">Staff Member</th>
                 <th className="px-4 py-3">Contact</th>
                 <th className="px-4 py-3">Role</th>
                 <th className="px-4 py-3">License</th>
-                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3 text-center">Status</th>
                 <th className="px-4 py-3 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {staff.map((member) => (
-                <tr key={member.id} className="transition hover:bg-slate-50/70">
+                <tr key={member.id} className="transition hover:bg-slate-50/80">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700">
+                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br from-slate-100 to-slate-200 text-xs font-semibold text-slate-700">
                         {getInitials(member.full_name)}
                       </span>
                       <div>
-                        <div className="font-semibold text-slate-950">{member.full_name}</div>
+                        <div className="font-medium text-slate-950">{member.full_name}</div>
                         <div className="text-xs text-slate-500">Staff #{member.id}</div>
                       </div>
                     </div>
@@ -294,29 +294,46 @@ export default function Staff() {
                   </td>
                   <td className="px-4 py-3 text-slate-700">{member.roles?.map((role) => role.name).join(', ') || '-'}</td>
                   <td className="px-4 py-3 text-slate-600">{member.license_no || '-'}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center">
                     <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(member.status)}`}>
                       {statusLabels[member.status] || member.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <Link className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300" to={`/admin/staff/${member.id}/edit`}>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-3">
+                      <Link
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:border-emerald-300"
+                        to={`/admin/staff/${member.id}/edit`}
+                        title="Edit staff"
+                      >
                         <FiEdit className="h-4 w-4" />
-                        Edit
                       </Link>
                       {member.status !== 'active' ? (
-                        <button className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300" onClick={() => changeStatus(member, 'active')}>
-                          Activate
+                        <button
+                          type="button"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:border-emerald-300"
+                          onClick={() => changeStatus(member, 'active')}
+                          title="Activate staff"
+                        >
+                          <FiUserCheck className="h-4 w-4" />
                         </button>
                       ) : (
-                        <button className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 transition hover:border-amber-300" onClick={() => changeStatus(member, 'inactive')}>
-                          Deactivate
+                        <button
+                          type="button"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-amber-200 bg-amber-50 text-amber-700 transition hover:border-amber-300"
+                          onClick={() => changeStatus(member, 'inactive')}
+                          title="Deactivate staff"
+                        >
+                          <FiUserX className="h-4 w-4" />
                         </button>
                       )}
-                      <button className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-3 py-1.5 text-sm font-semibold text-rose-700 transition hover:border-rose-300" onClick={() => remove(member)}>
+                      <button
+                        type="button"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-600 transition hover:border-rose-300 hover:text-rose-700"
+                        onClick={() => remove(member)}
+                        title="Delete staff"
+                      >
                         <FiTrash2 className="h-4 w-4" />
-                        Delete
                       </button>
                     </div>
                   </td>
@@ -324,15 +341,14 @@ export default function Staff() {
               ))}
             </tbody>
           </table>
-        </div>
       ) : null}
 
       {meta?.last_page > 1 ? (
         <div className="mt-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
           <span>Page {meta.current_page || params.page} / {meta.last_page}</span>
           <div className="flex justify-end gap-2">
-            <button className="rounded-md border border-slate-300 px-3 py-1 font-medium transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50" disabled={params.page <= 1} onClick={() => setParams((current) => ({ ...current, page: current.page - 1 }))}>Previous</button>
-            <button className="rounded-md border border-slate-300 px-3 py-1 font-medium transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50" disabled={meta.current_page >= meta.last_page} onClick={() => setParams((current) => ({ ...current, page: current.page + 1 }))}>Next</button>
+            <button className="rounded-md border border-slate-300 px-3 py-1 font-medium transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50" disabled={params.page <= 1} onClick={() => updateParams({ ...params, page: params.page - 1 })}>Previous</button>
+            <button className="rounded-md border border-slate-300 px-3 py-1 font-medium transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50" disabled={meta.current_page >= meta.last_page} onClick={() => updateParams({ ...params, page: params.page + 1 })}>Next</button>
           </div>
         </div>
       ) : null}

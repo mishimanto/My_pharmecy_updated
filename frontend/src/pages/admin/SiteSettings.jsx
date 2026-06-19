@@ -203,20 +203,10 @@ export default function SiteSettings() {
 
   return (
     <>
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={FiGlobe} label="Site Name" value={stats.brandName} tone="slate" />
-        <StatCard icon={FiImage} label="Logo Ready" value={stats.hasLogo} tone="sky" />
-        <StatCard icon={FiPhone} label="Contact Status" value={stats.contactReady} tone="emerald" />
-        <StatCard icon={FiMapPin} label="Map Status" value={stats.mapReady} tone="violet" />
-      </div>
-
       <form onSubmit={submit} className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_340px]">
         <section className="border border-slate-300 bg-white p-4">
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-slate-950">Site settings</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Manage the brand, contact, and footer details used across the storefront and admin shell.
-            </p>
+            <h2 className="text-lg p-2 border-b border-slate-300 font-semibold text-slate-950">Site settings</h2>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -250,7 +240,6 @@ export default function SiteSettings() {
               <FiSave className="h-4 w-4" />
               <span>{saving ? 'Saving...' : 'Save Settings'}</span>
             </button>
-            <p className="text-sm text-slate-500">Changes update the shared brand data used by customer and admin layouts.</p>
           </div>
         </section>
 

@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FiCheckCircle, FiClock, FiHeadphones, FiMessageSquare } from 'react-icons/fi'
+import { FiCheckCircle, FiClock, FiEye, FiHeadphones, FiMessageSquare } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import EmptyState from '../../components/common/EmptyState'
-import PageHeader from '../../components/common/PageHeader'
 import { date } from '../../utils/formatters'
 
 const statuses = ['', 'open', 'in_progress', 'resolved', 'closed']
@@ -68,14 +67,14 @@ function StatCard({ icon: Icon, label, value, tone = 'slate' }) {
 
   return (
     <div className={`rounded-lg border px-4 py-4 ${tones[tone] || tones.slate}`}>
-      <div className="flex items-center gap-3">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-sm">
-          <Icon className="h-4 w-4" />
-        </span>
+      <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em]">{label}</p>
           <p className="mt-1 text-2xl font-semibold text-slate-950">{value}</p>
         </div>
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-sm">
+          <Icon className="h-4 w-4" />
+        </span>
       </div>
     </div>
   )
@@ -98,6 +97,8 @@ export default function SupportTickets() {
     inProgress: allTickets.filter((ticket) => ticket.status === 'in_progress').length,
     resolved: allTickets.filter((ticket) => ticket.status === 'resolved').length,
   }), [allTickets])
+
+  const hasActiveFilters = Boolean(search || params.status)
 
   const loadStats = () => {
     adminApi.listFresh('support-tickets', { page: 1, per_page: 100 })
@@ -154,6 +155,10 @@ export default function SupportTickets() {
     return () => clearTimeout(timeout)
   }, [search])
 
+  const updateParams = (nextParams) => {
+    setParams(nextParams)
+  }
+
   return (
     <>
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -173,7 +178,7 @@ export default function SupportTickets() {
           />
           <select
             value={params.status}
-            onChange={(event) => setParams((current) => ({ ...current, status: event.target.value, page: 1 }))}
+            onChange={(event) => updateParams({ ...params, status: event.target.value, page: 1 })}
             className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
           >
             {statuses.map((status) => (
@@ -186,10 +191,10 @@ export default function SupportTickets() {
             type="button"
             onClick={() => {
               setSearch('')
-              setParams({ search: '', status: '', page: 1 })
+              updateParams({ search: '', status: '', page: 1 })
             }}
-            disabled={!search && !params.status}
-            className="inline-flex items-center justify-center rounded-md border border-slate-500 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-700 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!hasActiveFilters}
+            className="inline-flex items-center justify-center rounded-md border border-slate-500 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-gray-600 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Clear Filters
           </button>
@@ -203,57 +208,58 @@ export default function SupportTickets() {
       ) : null}
 
       {tickets.length > 0 ? (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-left text-slate-600">
-              <tr>
-                <th className="px-4 py-3">Ticket</th>
-                <th className="px-4 py-3">Customer</th>
-                <th className="px-4 py-3">Linked Order</th>
-                <th className="px-4 py-3 text-center">Replies</th>
-                <th className="px-4 py-3">Assigned To</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Created</th>
-                <th className="px-4 py-3 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {tickets.map((ticket) => (
-                <tr key={ticket.id} className="transition hover:bg-slate-50/70">
-                  <td className="px-4 py-3">
-                    <div>
-                      <div className="font-semibold text-slate-950">{ticket.subject}</div>
-                      <div className="mt-1 text-xs text-slate-500">Ticket #{ticket.id}</div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div>
-                      <div className="font-medium text-slate-800">{ticket.user?.full_name || '-'}</div>
-                      <div className="text-xs text-slate-500">{ticket.user?.phone || '-'}</div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{ticket.order?.order_number || '-'}</td>
-                  <td className="px-4 py-3 text-center font-semibold text-slate-700">{ticket.replies_count || 0}</td>
-                  <td className="px-4 py-3 text-slate-600">{ticket.assigned_staff?.full_name || 'Unassigned'}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(ticket.status)}`}>
-                      {statusLabel(ticket.status)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{date(ticket.created_at, 'en-US')}</td>
-                  <td className="px-4 py-3 text-center">
+        <table className="min-w-full border border-slate-300 divide-y divide-slate-200 text-sm">
+          <thead className="bg-slate-50 text-left text-slate-600">
+            <tr>
+              <th className="px-4 py-3">Ticket</th>
+              <th className="px-4 py-3">Customer</th>
+              <th className="px-4 py-3">Linked Order</th>
+              <th className="px-4 py-3 text-center">Replies</th>
+              <th className="px-4 py-3">Assigned To</th>
+              <th className="px-4 py-3 text-center">Status</th>
+              <th className="px-4 py-3 text-center">Created</th>
+              <th className="px-4 py-3 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {tickets.map((ticket) => (
+              <tr key={ticket.id} className="transition hover:bg-slate-50/80">
+                <td className="px-4 py-3">
+                  <div>
+                    <div className="font-medium text-slate-950">{ticket.subject}</div>
+                    <div className="text-xs text-slate-500">Ticket #{ticket.id}</div>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div>
+                    <div className="font-medium text-slate-800">{ticket.user?.full_name || '-'}</div>
+                    <div className="text-xs text-slate-500">{ticket.user?.phone || '-'}</div>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-slate-600">{ticket.order?.order_number || '-'}</td>
+                <td className="px-4 py-3 text-center font-semibold text-slate-700">{ticket.replies_count || 0}</td>
+                <td className="px-4 py-3 text-slate-600">{ticket.assigned_staff?.full_name || 'Unassigned'}</td>
+                <td className="px-4 py-3 text-center">
+                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(ticket.status)}`}>
+                    {statusLabel(ticket.status)}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-center text-slate-600">{date(ticket.created_at, 'en-US')}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-center gap-3">
                     <Link
                       to={`/admin/support/${ticket.id}`}
-                      className="inline-flex items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300"
+                      title="Open ticket"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:border-emerald-300"
                     >
-                      Open
+                      <FiEye className="h-4 w-4" />
                     </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       ) : null}
 
       {meta?.last_page > 1 ? (
@@ -262,14 +268,14 @@ export default function SupportTickets() {
           <div className="flex justify-end gap-2">
             <button
               disabled={params.page <= 1}
-              onClick={() => setParams((current) => ({ ...current, page: current.page - 1 }))}
+              onClick={() => updateParams({ ...params, page: params.page - 1 })}
               className="rounded-md border border-slate-300 px-3 py-1 font-medium transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Previous
             </button>
             <button
               disabled={params.page >= meta.last_page}
-              onClick={() => setParams((current) => ({ ...current, page: current.page + 1 }))}
+              onClick={() => updateParams({ ...params, page: params.page + 1 })}
               className="rounded-md border border-slate-300 px-3 py-1 font-medium transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Next

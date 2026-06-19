@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { FiMenu, FiChevronDown, FiLogOut } from 'react-icons/fi'
 
 function initials(name = '') {
@@ -65,24 +65,16 @@ export default function AdminHeader({
               <div className="absolute right-0 mt-3 w-58 overflow-hidden rounded-md border border-slate-200 bg-white p-2 shadow-[0_24px_70px_-28px_rgba(15,23,42,0.35)]">
                 <div className="mt-2 space-y-1">
                   {visibleSettings.map((item) => (
-                    <NavLink
+                    <Link
                       key={item.to}
                       to={item.to}
-                      className={({ isActive }) =>
-                        `flex items-center justify-between rounded-xl px-4 py-3 text-sm transition ${
-                          isActive ? 'bg-slate-950 text-white' : 'text-slate-700 hover:bg-slate-100'
-                        }`
-                      }
+                      className="flex items-center justify-between rounded-xl px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-100"
                     >
-                      {({ isActive }) => (
-                        <>
-                          <span className="flex items-center gap-3">
-                            <item.icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                            <span>{item.label}</span>
-                          </span>                                
-                        </>
-                      )}
-                    </NavLink>
+                      <span className="flex items-center gap-3">
+                        <item.icon className="h-4 w-4 text-slate-400" />
+                        <span>{item.label}</span>
+                      </span>
+                    </Link>
                   ))}
                 </div>
 
