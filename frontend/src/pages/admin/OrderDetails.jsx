@@ -8,14 +8,12 @@ import PageHeader from '../../components/common/PageHeader'
 import { date, money } from '../../utils/formatters'
 import { getDeliveryStatusLabel, getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
 
-const orderStatuses = ['pending_confirmation', 'prescription_review', 'confirmed', 'processing', 'packed', 'out_for_delivery', 'delivered', 'cancelled', 'returned', 'refunded']
+const orderStatuses = ['pending_confirmation', 'prescription_review', 'confirmed', 'processing', 'delivered', 'cancelled', 'returned', 'refunded']
 const statusTransitions = {
   pending_confirmation: ['confirmed', 'cancelled'],
   prescription_review: ['pending_confirmation', 'confirmed', 'cancelled'],
   confirmed: ['processing', 'cancelled'],
-  processing: ['packed'],
-  packed: ['out_for_delivery'],
-  out_for_delivery: ['delivered'],
+  processing: ['delivered'],
   delivered: ['returned', 'refunded'],
   returned: ['refunded'],
   cancelled: [],
@@ -26,8 +24,6 @@ const statusTones = {
   prescription_review: 'text-violet-600',
   confirmed: 'text-sky-600',
   processing: 'text-blue-600',
-  packed: 'text-indigo-600',
-  out_for_delivery: 'text-cyan-600',
   delivered: 'text-emerald-600',
   cancelled: 'text-rose-600',
   returned: 'text-orange-600',
@@ -44,10 +40,6 @@ const paymentStatusStyles = {
 }
 const deliveryStatusStyles = {
   pending: 'border-amber-200 bg-amber-50 text-amber-700',
-  assigned: 'border-sky-200 bg-sky-50 text-sky-700',
-  picked: 'border-blue-200 bg-blue-50 text-blue-700',
-  picked_up: 'border-blue-200 bg-blue-50 text-blue-700',
-  out_for_delivery: 'border-cyan-200 bg-cyan-50 text-cyan-700',
   delivered: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   failed: 'border-rose-200 bg-rose-50 text-rose-700',
   returned: 'border-orange-200 bg-orange-50 text-orange-700',
@@ -126,17 +118,25 @@ export default function OrderDetails() {
 
   const canConfirmPrescription = !requiresPrescription
     || (order?.prescription_match_status === 'matched' && order?.prescription?.status === 'approved')
+  const requiresPaidVerification = ['BKASH', 'NAGAD'].includes(String(order?.payment_method || '').toUpperCase())
+  const canConfirmPayment = !requiresPaidVerification || order?.payment_status === 'paid'
+  const canConfirmOrder = canConfirmPrescription && canConfirmPayment
 
   const nextStatuses = useMemo(() => {
     const allowed = statusTransitions[order?.order_status] || []
-    return allowed.filter((item) => item !== 'confirmed' || canConfirmPrescription)
-  }, [canConfirmPrescription, order?.order_status])
+    return allowed.filter((item) => {
+      if (item === 'confirmed' && !canConfirmOrder) return false
+      if (item === 'delivered' && !canMarkOrderDelivered(order)) return false
+      return true
+    })
+  }, [canConfirmOrder, order])
 
   const selectableStatuses = useMemo(
     () => [order?.order_status, ...nextStatuses].filter(Boolean),
     [nextStatuses, order?.order_status],
   )
   const quickNextStatus = nextStatuses[0] || ''
+  const deliveryFlowMessage = useMemo(() => getOrderDeliveryFlowMessage(order), [order])
 
   const updateStatus = async (targetStatus = status) => {
     if (!targetStatus || targetStatus === order.order_status) return
@@ -266,14 +266,14 @@ export default function OrderDetails() {
         <Metric label="Total" value={money(order.total_amount)} variant="total" />
         <Metric label="Prescription" value={requiresPrescription ? 'Review required' : 'Not required'} tone={requiresPrescription ? 'text-violet-600' : 'text-emerald-600'} variant="prescription" />
       </div>
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
         <section className="space-y-6">
           <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
+            <div className="border-b border-slate-300 bg-slate-50/70 px-5 py-4">
               <h2 className="text-base font-semibold text-slate-950">Ordered medicines</h2>
             </div>
             {order.items?.map((item) => (
-              <div key={item.id} className="border-b border-slate-100 p-5 last:border-b-0">
+              <div key={item.id} className="border-b border-slate-300 p-5 last:border-b-0">
                 <div className="flex justify-between gap-4">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -304,7 +304,7 @@ export default function OrderDetails() {
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-white p-5 text-sm shadow-sm">
-            <div className="border-b border-slate-100 pb-4">
+            <div className="border-b border-slate-300 pb-4">
               <h2 className="text-base font-semibold text-slate-950">Customer and delivery info</h2>
             </div>
             <div className="mt-4 grid gap-4 text-slate-700 sm:grid-cols-2">
@@ -313,13 +313,21 @@ export default function OrderDetails() {
               <Info label="Delivery area" value={`${order.delivery_area?.area_name || '-'}${order.delivery_area?.city ? `, ${order.delivery_area.city}` : ''}`} />
               <Info label="Shipping address" value={order.shipping_address || '-'} />
             </div>
+            {order.delivery ? (
+              <div className="mt-4 bg-emerald-50 p-3 text-sm text-emerald-900">
+                <span className="font-semibold">Delivery number:</span>{' '}
+                <Link to={`/admin/deliveries/${order.delivery.id}`} className="font-semibold underline">
+                  {order.delivery.tracking_no || `Delivery #${order.delivery.id}`}
+                </Link>
+              </div>
+            ) : null}
             {order.notes ? <Note label="Customer note" value={order.notes} /> : null}
             {order.memo_number ? <Note label="Invoice number" value={order.memo_number} /> : null}
           </div>
 
           {(order.admin_note || order.cancellation_reason) ? (
             <div className="rounded-lg border border-slate-200 bg-white p-5 text-sm shadow-sm">
-              <div className="border-b border-slate-100 pb-4">
+              <div className="border-b border-slate-300 pb-4">
                 <h2 className="text-base font-semibold text-slate-950">Internal notes</h2>
                 <p className="mt-1 text-xs text-slate-500">Staff-only notes and correction history for operational context.</p>
               </div>
@@ -418,7 +426,7 @@ export default function OrderDetails() {
           ) : null}
 
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-300 pb-4">
               <div>
                 <h2 className="text-lg font-semibold text-slate-950">Order status</h2>
               </div>
@@ -427,9 +435,26 @@ export default function OrderDetails() {
               </span>
             </div>
 
-            {requiresPrescription && !canConfirmPrescription ? (
+            {!canConfirmOrder ? (
               <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                Confirmation is locked until the prescription is approved and matched with the ordered RX medicines.
+                {getConfirmationBlockMessage(order, {
+                  canConfirmPrescription,
+                  canConfirmPayment,
+                  requiresPaidVerification,
+                })}
+              </div>
+            ) : null}
+
+            {deliveryFlowMessage ? (
+              <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <span>{deliveryFlowMessage}</span>
+                  {order.delivery ? (
+                    <Link to={`/admin/deliveries/${order.delivery.id}`} className="font-semibold text-amber-900 underline">
+                      Open delivery
+                    </Link>
+                  ) : null}
+                </div>
               </div>
             ) : null}
 
@@ -455,41 +480,73 @@ export default function OrderDetails() {
               </>
             ) : (
               <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-                This order is in a final state. No further status action is available.
+                {deliveryFlowMessage
+                  ? 'This order is waiting for the delivery step before the next status can be used.'
+                  : 'This order is in a final state. No further status action is available.'}
               </div>
             )}
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-white p-5 text-sm shadow-sm">
-            <div className="border-b border-slate-100 pb-4">
+            <div className="border-b border-slate-300 pb-4">
               <h2 className="text-lg font-semibold text-slate-950">Payment summary</h2>
             </div>
             <div className="mt-4 space-y-3">
               <div className="flex justify-between text-slate-600"><span>Subtotal</span><span className="font-medium text-slate-900">{money(order.subtotal_amount)}</span></div>
               <div className="flex justify-between text-slate-600"><span>Delivery</span><span className="font-medium text-slate-900">{money(order.delivery_charge)}</span></div>
               {Number(order.discount_amount || 0) > 0 ? <div className="flex justify-between text-emerald-700"><span>Coupon discount</span><span className="font-medium">-{money(order.discount_amount)}</span></div> : null}
-              <div className="flex justify-between border-t border-slate-100 pt-3 text-base font-semibold text-slate-950"><span>Total</span><span>{money(order.total_amount)}</span></div>
-              <StatusSummaryRow label="Payment status" value={getPaymentStatusLabel(order.payment_status)} className={paymentStatusStyles[order.payment_status]} />
-              <div className="flex items-center justify-between gap-3 rounded-md border border-slate-100 bg-slate-50 px-3 py-2 text-slate-600">
-                <span>Payment method</span>
+              <div className="flex justify-between border-y border-slate-200 py-3 text-base font-semibold text-slate-950"><span>Total</span><span>{money(order.total_amount)}</span></div>
+              <StatusSummaryRow
+                label="Status"
+                value={getPaymentStatusLabel(order.payment_status)}
+                className={paymentStatusStyles[order.payment_status]}
+                action={order.payment && order.payment_status === 'under_review' ? (
+                  <Link
+                    to={`/admin/payments?search=${encodeURIComponent(order.payment.transaction_id || order.order_number)}`}
+                    className="font-semibold text-sky-800 underline"
+                  >
+                    Review payment
+                  </Link>
+                ) : null}
+              />
+              <div className="flex items-center justify-between gap-3 bg-slate-100 px-3 py-2 text-slate-600">
+                <span>Method</span>
                 <span className="font-semibold text-slate-900">{getPaymentMethodLabel(order.payment_method)}</span>
               </div>
-              <StatusSummaryRow label="Delivery" value={getDeliveryStatusLabel(order.delivery?.delivery_status)} className={deliveryStatusStyles[order.delivery?.delivery_status]} />
-              {order.payment?.transaction_id ? <div className="rounded-md border border-slate-100 bg-slate-50 p-3 text-slate-600">Transaction ID: <span className="font-medium text-slate-900">{order.payment.transaction_id}</span></div> : null}
               {order.payment?.payment_proof_url ? <a href={order.payment.payment_proof_url} target="_blank" rel="noreferrer" className="inline-flex text-emerald-700 underline">View payment screenshot</a> : null}
-              {order.payment?.reviewed_note ? <div className="rounded-md border border-slate-100 bg-slate-50 p-3 text-slate-600">Payment note: <span className="font-medium text-slate-900">{order.payment.reviewed_note}</span></div> : null}
+              {order.payment?.reviewed_note ? <div className="border border-slate-100 bg-slate-50 p-3 text-slate-600">Payment note: <span className="font-medium text-slate-900">{order.payment.reviewed_note}</span></div> : null}
             </div>
-            {!order.delivery && ['confirmed', 'processing', 'packed', 'out_for_delivery'].includes(order.order_status) && (
-              <button onClick={createDelivery} className="mt-4 w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Create Delivery</button>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-white p-5 text-sm shadow-sm">
+            <div className="border-b border-slate-300 pb-4">
+              <h2 className="text-lg font-semibold text-slate-950">Delivery summary</h2>
+            </div>
+            <div className="mt-4 space-y-3">
+              <StatusSummaryRow label="Delivery" value={getDeliveryStatusLabel(order.delivery?.delivery_status)} className={deliveryStatusStyles[order.delivery?.delivery_status]} />
+              {order.delivery ? (
+                <div className="bg-emerald-50 p-3 text-slate-700">
+                  Delivery number:{' '}
+                  <Link to={`/admin/deliveries/${order.delivery.id}`} className="font-semibold text-emerald-800 underline">
+                    {order.delivery.tracking_no || `Delivery #${order.delivery.id}`}
+                  </Link>
+                </div>
+              ) : (
+                <div className="border border-slate-200 bg-slate-50 p-3 text-slate-600">
+                  No delivery has been created for this order yet.
+                </div>
+              )}
+            </div>
+            {!order.delivery && ['confirmed', 'processing'].includes(order.order_status) && (
+              <button onClick={createDelivery} className="mt-4 w-full rounded-md bg-emerald-600 px-4 py-3 text-md font-semibold text-white">Create Delivery</button>
             )}
           </div>
 
           <div className="rounded-lg border border-rose-200 bg-[linear-gradient(135deg,#fff1f2_0%,#ffe4e6_100%)] p-5 shadow-sm">
             <div className="border-b border-rose-200/70 pb-4">
               <h2 className="text-lg font-semibold text-rose-950">Emergency correction</h2>
-              <p className="mt-1 text-sm text-rose-700">Use this only to correct an accidental status change.</p>
             </div>
-            <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-rose-700">Correct status</label>
+            <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-rose-700">Update status</label>
             <select
               value={emergencyForm.order_status}
               onChange={(event) => setEmergencyForm((current) => ({ ...current, order_status: event.target.value }))}
@@ -543,17 +600,20 @@ function Info({ label, value }) {
 
 function Note({ label, value, tone = 'text-slate-700' }) {
   return (
-    <div className={`mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm ${tone}`}>
+    <div className={`mt-3 bg-slate-100 p-3 text-sm ${tone}`}>
       <span className="font-semibold">{label}:</span> {value}
     </div>
   )
 }
 
-function StatusSummaryRow({ label, value, className = 'border-slate-200 bg-slate-50 text-slate-700' }) {
+function StatusSummaryRow({ label, value, action = null, className = 'border-slate-200 bg-slate-50 text-slate-700' }) {
   return (
-    <div className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 ${className}`}>
+    <div className={`flex items-center justify-between gap-3 px-3 py-2 ${className}`}>
       <span className="text-slate-600">{label}</span>
-      <span className="font-semibold">{value}</span>
+      <div className="flex items-center gap-3">
+        {action}
+        <span className="font-semibold">{value}</span>
+      </div>
     </div>
   )
 }
@@ -582,6 +642,35 @@ function getPaymentStatusTextColor(status) {
   }
 
   return colors[status] || 'text-slate-950'
+}
+
+function canMarkOrderDelivered(order) {
+  if (!order?.delivery) return false
+
+  return ['pending', 'delivered'].includes(order.delivery?.delivery_status)
+}
+
+function getOrderDeliveryFlowMessage(order) {
+  if (!order) return ''
+
+  if (order.order_status === 'processing') {
+    if (!order.delivery) return 'Create a delivery record before marking this order delivered.'
+    if (!canMarkOrderDelivered(order)) return 'Keep the delivery active before marking this order delivered.'
+  }
+
+  return ''
+}
+
+function getConfirmationBlockMessage(order, flags) {
+  if (flags.requiresPaidVerification && !flags.canConfirmPayment) {
+    return 'Order confirmation is pending payment verification.'
+  }
+
+  if (!flags.canConfirmPrescription) {
+    return getPrescriptionBlockMessage(order)
+  }
+
+  return 'This order is not ready for confirmation yet.'
 }
 
 function getPrescriptionTone(status) {

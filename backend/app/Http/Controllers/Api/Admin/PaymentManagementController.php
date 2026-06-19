@@ -47,20 +47,31 @@ class PaymentManagementController extends Controller
     public function status(Request $request, int $id)
     {
         $data = $request->validate([
-            'payment_status' => ['required', 'in:awaiting_proof,paid,refunded,unpaid'],
+            'payment_status' => ['required', 'in:pending,awaiting_proof,under_review,paid,refunded,unpaid'],
             'reviewed_note' => ['nullable', 'string'],
         ]);
         $data['payment_status'] = $data['payment_status'] === 'unpaid' ? 'awaiting_proof' : $data['payment_status'];
 
-        $payment = Payment::query()->with('order.user', 'order.deliveryArea')->findOrFail($id);
+        $payment = Payment::query()->with('order.user', 'order.deliveryArea', 'order.delivery')->findOrFail($id);
         $old = $payment->payment_status;
+
+        abort_if(
+            $payment->order
+            && $payment->order->payment_method === 'COD'
+            && $data['payment_status'] === 'paid'
+            && $payment->order->order_status !== 'delivered',
+            422,
+            'Cash on delivery can be marked paid only after the order is delivered.'
+        );
 
         $payment->update([
             'payment_status' => $data['payment_status'],
             'reviewed_note' => $data['reviewed_note'] ?? null,
             'reviewed_by_staff_id' => $request->user()->id,
             'reviewed_at' => now(),
-            'paid_at' => $data['payment_status'] === 'paid' ? now() : ($data['payment_status'] === 'awaiting_proof' ? null : $payment->paid_at),
+            'paid_at' => $data['payment_status'] === 'paid'
+                ? now()
+                : (in_array($data['payment_status'], ['pending', 'awaiting_proof', 'under_review'], true) ? null : $payment->paid_at),
         ]);
 
         if ($payment->order) {

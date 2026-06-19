@@ -381,8 +381,6 @@ function StatusText({ status, type = 'payment', isBangla = false }) {
       case 'pending':
         return 'text-amber-600'
       case 'processing':
-      case 'packed':
-      case 'out_for_delivery':
         return 'text-sky-600'
       case 'delivered':
         return 'text-emerald-600'

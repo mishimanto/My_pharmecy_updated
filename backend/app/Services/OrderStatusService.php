@@ -14,9 +14,7 @@ class OrderStatusService
         'pending_confirmation' => ['confirmed', 'cancelled'],
         'prescription_review' => ['pending_confirmation', 'confirmed', 'cancelled'],
         'confirmed' => ['processing', 'cancelled'],
-        'processing' => ['packed'],
-        'packed' => ['out_for_delivery'],
-        'out_for_delivery' => ['delivered'],
+        'processing' => ['delivered'],
         'delivered' => ['returned', 'refunded'],
         'returned' => ['refunded'],
         'cancelled' => [],
@@ -58,9 +56,12 @@ class OrderStatusService
 
     public function updateByStaff(Order $order, string $status, Staff $staff, ?string $note = null, ?string $ipAddress = null): Order
     {
+        $order->loadMissing('delivery', 'payment');
+
         abort_unless(in_array($status, $this->allowedNextStatuses($order->order_status), true), 422, 'The requested order status transition is not allowed.');
         abort_if($status === 'cancelled' && blank($note), 422, 'A cancellation reason is required.');
-        abort_if($status === 'confirmed' && ! $this->canConfirmPrescriptionOrder($order), 422, $this->prescriptionConfirmationMessage($order));
+        abort_if($status === 'confirmed' && ! $this->canConfirmOrder($order), 422, $this->confirmationBlockMessage($order));
+        abort_if($status === 'delivered' && ! $this->canMarkOrderDelivered($order), 422, $this->deliveredBlockMessage($order));
 
         return DB::transaction(function () use ($order, $status, $staff, $note, $ipAddress) {
             $oldStatus = $order->order_status;
@@ -108,6 +109,7 @@ class OrderStatusService
             $order->cancelled_at = $status === 'cancelled' ? now() : $order->cancelled_at;
             $order->cancelled_by_staff_id = $status === 'cancelled' ? $staff->id : $order->cancelled_by_staff_id;
             $order->save();
+            $this->syncDeliveryStatusFromOrder($order, $status);
 
             DB::table('admin_activity_logs')->insert([
                 'staff_id' => $staff->id,
@@ -166,6 +168,25 @@ class OrderStatusService
             && $order->prescription->status === 'approved';
     }
 
+    public function canConfirmOrder(Order $order): bool
+    {
+        $order->loadMissing('payment');
+
+        return $this->canConfirmPrescriptionOrder($order)
+            && $this->hasRequiredPaymentVerification($order);
+    }
+
+    public function hasRequiredPaymentVerification(Order $order): bool
+    {
+        $paymentMethod = strtoupper((string) $order->payment_method);
+
+        if ($paymentMethod === 'COD') {
+            return true;
+        }
+
+        return $order->payment_status === 'paid';
+    }
+
     public function prescriptionConfirmationMessage(Order $order): string
     {
         if (! $this->requiresPrescriptionReview($order) || ($order->prescription_match_status === 'matched' && $order->prescription?->status === 'approved')) {
@@ -181,6 +202,37 @@ class OrderStatusService
         }
 
         return 'Mark the linked prescription as matched with the ordered medicines before confirming this order.';
+    }
+
+    public function confirmationBlockMessage(Order $order): string
+    {
+        if (! $this->hasRequiredPaymentVerification($order)) {
+            return 'Verify the full payment and mark it as paid before confirming this order.';
+        }
+
+        return $this->prescriptionConfirmationMessage($order);
+    }
+
+    public function canMarkOrderDelivered(Order $order): bool
+    {
+        $order->loadMissing('delivery');
+
+        if (! $order->delivery) {
+            return false;
+        }
+
+        return in_array($order->delivery->delivery_status, ['pending', 'delivered'], true);
+    }
+
+    public function deliveredBlockMessage(Order $order): string
+    {
+        $order->loadMissing('delivery');
+
+        if (! $order->delivery) {
+            return 'Create a delivery record before marking this order as delivered.';
+        }
+
+        return 'The linked delivery must stay active before marking the order as delivered.';
     }
 
     private function releaseReservedStock(Order $order): void
@@ -200,6 +252,26 @@ class OrderStatusService
             foreach ($item->batches as $allocation) {
                 $this->inventory->markStockSold($allocation->batch_id, $allocation->quantity, 'order_item', $item->id);
             }
+        }
+    }
+
+    private function syncDeliveryStatusFromOrder(Order $order, string $status): void
+    {
+        if (! $order->delivery) {
+            return;
+        }
+
+        $updates = match ($status) {
+            'delivered' => [
+                'delivery_status' => 'delivered',
+                'delivered_at' => $order->delivery->delivered_at ?: now(),
+            ],
+            'returned', 'refunded' => ['delivery_status' => 'returned'],
+            default => null,
+        };
+
+        if ($updates) {
+            $order->delivery->update($updates);
         }
     }
 }

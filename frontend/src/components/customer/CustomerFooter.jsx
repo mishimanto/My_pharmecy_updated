@@ -37,16 +37,13 @@ export default function CustomerFooter() {
         <div className="space-y-5">
           <div className="flex items-center gap-4">
             {settings?.logo_url ? (
-              <img src={settings.logo_url} alt={settings.site_name || 'Site logo'} className="h-12 w-12 bg-white object-contain p-1 shadow-[0_18px_35px_-20px_rgba(15,23,42,0.55)]" />
+              <img src={settings.logo_url} alt={settings.site_name || 'Site logo'} className="h-12 bg-white object-contain p-1 shadow-[0_18px_35px_-20px_rgba(15,23,42,0.55)]" />
             ) : (
               <span className="flex h-12 w-12 items-center justify-center bg-white text-sm font-bold uppercase tracking-[0.18em] text-[#0f766e] shadow-[0_18px_35px_-20px_rgba(15,23,42,0.55)]">
                 Rx
               </span>
             )}
-            <div>
-              <div className="text-lg font-semibold text-white">{settings?.site_name || 'My Pharmecy'}</div>
-              {settings?.site_tagline ? <div className="text-sm text-white/75">{settings.site_tagline}</div> : null}
-            </div>
+            
           </div>
 
           <div className="space-y-3 text-sm text-white/82">

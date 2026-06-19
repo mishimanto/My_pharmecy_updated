@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FiEdit, FiPlus, FiShield, FiTrash2, FiUser, FiUserCheck, FiUserX, FiUsers } from 'react-icons/fi'
+import { FiEdit, FiPlus, FiShield, FiTrash2, FiUser, FiUserCheck, FiUserX, FiUsers, FiLock  } from 'react-icons/fi'
+import { PiNewspaperClipping } from "react-icons/pi";
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import EmptyState from '../../components/common/EmptyState'

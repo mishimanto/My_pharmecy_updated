@@ -8,12 +8,9 @@ import EmptyState from '../../components/common/EmptyState'
 import { date } from '../../utils/formatters'
 import { getDeliveryStatusLabel } from '../../utils/statusLabels'
 
-const statuses = ['', 'pending', 'assigned', 'picked_up', 'out_for_delivery', 'delivered', 'failed', 'returned']
+const statuses = ['', 'pending', 'delivered', 'failed', 'returned']
 const statusClasses = {
   pending: 'text-amber-600',
-  assigned: 'text-sky-600',
-  picked_up: 'text-blue-600',
-  out_for_delivery: 'text-cyan-600',
   delivered: 'text-emerald-600',
   failed: 'text-rose-600',
   returned: 'text-orange-600',
@@ -115,12 +112,12 @@ export default function Deliveries() {
 
   return (
     <>
-      {/* <PageHeader title="Deliveries" subtitle="Assign riders and manage delivery statuses." /> */}
+      {/* <PageHeader title="Deliveries" subtitle="Manage direct-store delivery records and statuses." /> */}
       <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_220px]">
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Tracking number, order number, or rider"
+          placeholder="Tracking number or order number"
           className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
         />
         <select
@@ -145,7 +142,6 @@ export default function Deliveries() {
               <tr>
                 <th className="px-4 py-3">Tracking</th>
                 <th className="px-4 py-3">Order</th>
-                <th className="px-4 py-3">Rider</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Delivered</th>
                 <th className="px-4 py-3 text-center">Actions</th>
@@ -156,7 +152,6 @@ export default function Deliveries() {
                 <tr key={delivery.id}>
                   <td className="px-4 py-3 font-medium text-slate-950">{delivery.tracking_no || '-'}</td>
                   <td className="px-4 py-3 text-slate-600">{delivery.order?.order_number || '-'}</td>
-                  <td className="px-4 py-3 text-slate-600">{delivery.rider?.full_name || '-'}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs font-semibold ${statusClasses[delivery.delivery_status] || 'text-slate-600'}`}>
                       {getDeliveryStatusLabel(delivery.delivery_status)}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
@@ -8,7 +9,7 @@ import EmptyState from '../../components/common/EmptyState'
 import { date, money } from '../../utils/formatters'
 import { getPaymentStatusLabel } from '../../utils/statusLabels'
 
-const statuses = ['', 'awaiting_proof', 'paid', 'refunded']
+const statuses = ['', 'pending', 'awaiting_proof', 'under_review', 'paid', 'refunded']
 const paymentStatuses = statuses.filter(Boolean)
 const PAYMENTS_CACHE_KEY = 'admin_payments_payload_v1'
 const PAYMENTS_CACHE_TTL = 2 * 60 * 1000
@@ -64,12 +65,15 @@ function clearPaymentsCache() {
 }
 
 export default function Payments() {
-  const initialParams = { search: '', status: '', page: 1 }
+  const [searchParams] = useSearchParams()
+  const initialSearch = searchParams.get('search') || ''
+  const initialStatus = searchParams.get('status') || ''
+  const initialParams = { search: initialSearch, status: initialStatus, page: 1 }
   const initialCache = readPaymentsCache(initialParams)
   const [params, setParams] = useState(initialParams)
   const [payments, setPayments] = useState(initialCache?.payments || [])
   const [meta, setMeta] = useState(initialCache?.meta || null)
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(initialSearch)
   const [loading, setLoading] = useState(!initialCache)
   const [updating, setUpdating] = useState(false)
 
@@ -208,7 +212,7 @@ export default function Payments() {
                       onChange={(event) => updateStatus(payment, event.target.value)}
                       className="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
                     >
-                      {paymentStatuses.map((status) => <option key={status} value={status}>{getPaymentStatusLabel(status)}</option>)}
+                      {getAvailablePaymentStatuses(payment).map((status) => <option key={status} value={status}>{getPaymentStatusLabel(status)}</option>)}
                     </select>
                   </td>
                   <td className="px-4 py-3 text-slate-600">{date(payment.paid_at, 'en-US')}</td>
@@ -234,4 +238,23 @@ export default function Payments() {
       </div>
     </>
   )
+}
+
+function getAvailablePaymentStatuses(payment) {
+  const method = String(payment?.payment_method || '').toUpperCase()
+  const orderStatus = payment?.order?.order_status
+
+  let allowed = method === 'COD'
+    ? paymentStatuses.filter((status) => ['pending', 'paid', 'refunded'].includes(status))
+    : paymentStatuses.filter((status) => ['awaiting_proof', 'under_review', 'paid', 'refunded'].includes(status))
+
+  if (method === 'COD' && orderStatus !== 'delivered') {
+    allowed = allowed.filter((status) => status !== 'paid')
+  }
+
+  if (payment?.payment_status && !allowed.includes(payment.payment_status)) {
+    return [payment.payment_status, ...allowed]
+  }
+
+  return allowed
 }

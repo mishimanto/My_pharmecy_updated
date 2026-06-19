@@ -8,14 +8,12 @@ import EmptyState from '../../components/common/EmptyState'
 import { date, money } from '../../utils/formatters'
 import { getOrderStatusLabel } from '../../utils/statusLabels'
 
-const statuses = ['', 'pending_confirmation', 'prescription_review', 'confirmed', 'processing', 'packed', 'out_for_delivery', 'delivered', 'cancelled', 'returned', 'refunded']
+const statuses = ['', 'pending_confirmation', 'prescription_review', 'confirmed', 'processing', 'delivered', 'cancelled', 'returned', 'refunded']
 const statusClasses = {
   pending_confirmation: 'text-amber-600',
   prescription_review: 'text-violet-600',
   confirmed: 'text-sky-600',
   processing: 'text-blue-600',
-  packed: 'text-indigo-600',
-  out_for_delivery: 'text-cyan-600',
   delivered: 'text-emerald-600',
   cancelled: 'text-rose-600',
   returned: 'text-orange-600',

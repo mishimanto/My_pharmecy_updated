@@ -23,7 +23,7 @@ class DashboardController extends Controller
             'today_orders' => DB::table('orders')->whereDate('order_date', $today)->count(),
             'total_revenue' => (float) DB::table('payments')->where('payment_status', 'paid')->sum('amount'),
             'pending_prescription_reviews' => DB::table('prescriptions')->where('status', 'pending')->count(),
-            'pending_deliveries' => DB::table('deliveries')->whereIn('delivery_status', ['pending', 'assigned', 'picked_up', 'out_for_delivery'])->count(),
+            'pending_deliveries' => DB::table('deliveries')->where('delivery_status', 'pending')->count(),
             'low_stock_batches' => DB::table('inventory_batches')->whereRaw('(stock_quantity - reserved_quantity) <= 10')->count(),
             'near_expiry_batches' => DB::table('inventory_batches')->whereDate('expiry_date', '>', now())->whereDate('expiry_date', '<=', now()->addDays(30))->count(),
             'open_support_tickets' => DB::table('support_tickets')->whereIn('status', ['open', 'in_progress'])->count(),

@@ -226,7 +226,6 @@ Route::prefix('admin')->group(function () {
         Route::get('/deliveries', [DeliveryController::class, 'index'])->middleware('permission:delivery.manage');
         Route::get('/deliveries/{id}', [DeliveryController::class, 'show'])->middleware('permission:delivery.manage');
         Route::post('/orders/{id}/delivery', [DeliveryController::class, 'createForOrder'])->middleware('permission:delivery.manage');
-        Route::patch('/deliveries/{id}/assign-rider', [DeliveryController::class, 'assignRider'])->middleware('permission:delivery.manage');
         Route::patch('/deliveries/{id}/status', [DeliveryController::class, 'status'])->middleware('permission:delivery.manage');
 
         Route::get('/support-tickets', [SupportManagementController::class, 'index'])->middleware('permission:support.manage');

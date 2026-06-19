@@ -42,7 +42,7 @@ export default function MyOrders() {
     total: orders.length,
     active: orders.filter((order) => !['delivered', 'cancelled', 'returned', 'refunded'].includes(order.order_status)).length,
     delivered: orders.filter((order) => order.order_status === 'delivered').length,
-    pendingDelivery: orders.filter((order) => ['confirmed', 'processing', 'packed', 'out_for_delivery'].includes(order.order_status)).length,
+    pendingDelivery: orders.filter((order) => ['confirmed', 'processing'].includes(order.order_status)).length,
   }), [orders])
 
   const visibleOrders = useMemo(() => {

@@ -39,7 +39,6 @@ export default function TrackOrder() {
 
   return (
     <>
-
       <div className="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
         <section className="border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
           <div className="border-b border-slate-200 pb-4">
@@ -151,7 +150,7 @@ function TrackingCard({ label, value, tone = 'slate' }) {
 function getOrderStatusTone(status) {
   if (['delivered'].includes(status)) return 'emerald'
   if (['cancelled', 'returned', 'refunded'].includes(status)) return 'rose'
-  if (['confirmed', 'processing', 'packed', 'out_for_delivery'].includes(status)) return 'sky'
+  if (['confirmed', 'processing'].includes(status)) return 'sky'
   if (['prescription_review', 'pending_confirmation', 'pending'].includes(status)) return 'amber'
   return 'slate'
 }
@@ -159,7 +158,6 @@ function getOrderStatusTone(status) {
 function getDeliveryStatusTone(status) {
   if (['delivered'].includes(status)) return 'emerald'
   if (['failed', 'returned'].includes(status)) return 'rose'
-  if (['assigned', 'picked', 'picked_up', 'out_for_delivery'].includes(status)) return 'sky'
   if (['pending'].includes(status)) return 'amber'
   return 'slate'
 }

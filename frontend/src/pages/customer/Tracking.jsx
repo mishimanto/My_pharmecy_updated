@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { FiArrowRight, FiClock, FiPackage, FiTruck, FiUser } from 'react-icons/fi'
+import { FiArrowRight, FiClock, FiPackage, FiTruck } from 'react-icons/fi'
 import { orderApi } from '../../api/orderApi'
 import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
@@ -67,15 +67,14 @@ export default function Tracking() {
           {!delivery ? (
             <div className="mt-5 border border-slate-200 bg-slate-50 p-5 text-sm leading-7 text-slate-500">
               {t(
-                'এই অর্ডারের জন্য এখনো ডেলিভারি তৈরি হয়নি। অর্ডারটি এখনো রিভিউ, কনফার্মেশন বা প্যাকিং পর্যায়ে থাকতে পারে।',
-                'Delivery has not been created for this order yet. The order can still be under review, confirmation, or packing.',
+                'এই অর্ডারের জন্য এখনো ডেলিভারি তৈরি হয়নি। অর্ডারটি এখনো রিভিউ, কনফার্মেশন বা প্রসেসিং পর্যায়ে থাকতে পারে।',
+                'Delivery has not been created for this order yet. The order can still be under review, confirmation, or processing.',
               )}
             </div>
           ) : (
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <TrackingBlock label={t('ট্র্যাকিং নাম্বার', 'Tracking number')} value={delivery.tracking_no} icon={FiPackage} />
               <TrackingBlock label={t('ডেলিভারি স্ট্যাটাস', 'Delivery status')} value={getDeliveryStatusLabel(delivery.delivery_status, isBangla)} icon={FiTruck} tone={getDeliveryStatusTone(delivery.delivery_status)} />
-              <TrackingBlock label={t('অ্যাসাইন্ড রাইডার', 'Assigned rider')} value={delivery.rider?.full_name || t('এখনো অ্যাসাইন হয়নি', 'Not assigned')} icon={FiUser} />
               <TrackingBlock label={t('অর্ডার স্ট্যাটাস', 'Order status')} value={getOrderStatusLabel(tracking.order_status, isBangla)} icon={FiClock} tone={getOrderStatusTone(tracking.order_status)} />
             </div>
           )}
@@ -131,7 +130,7 @@ function TrackingBlock({ label, value, icon: Icon, tone = 'slate' }) {
 function getOrderStatusTone(status) {
   if (['delivered'].includes(status)) return 'emerald'
   if (['cancelled', 'returned', 'refunded'].includes(status)) return 'rose'
-  if (['confirmed', 'processing', 'packed', 'out_for_delivery'].includes(status)) return 'sky'
+  if (['confirmed', 'processing'].includes(status)) return 'sky'
   if (['prescription_review', 'pending_confirmation', 'pending'].includes(status)) return 'amber'
   return 'slate'
 }
@@ -139,7 +138,6 @@ function getOrderStatusTone(status) {
 function getDeliveryStatusTone(status) {
   if (['delivered'].includes(status)) return 'emerald'
   if (['failed', 'returned'].includes(status)) return 'rose'
-  if (['assigned', 'picked', 'picked_up', 'out_for_delivery'].includes(status)) return 'sky'
   if (['pending'].includes(status)) return 'amber'
   return 'slate'
 }

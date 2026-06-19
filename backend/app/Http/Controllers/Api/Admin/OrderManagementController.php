@@ -46,7 +46,7 @@ class OrderManagementController extends Controller
     public function status(Request $request, int $id, OrderStatusService $orders)
     {
         $data = $request->validate([
-            'order_status' => ['required', 'in:pending_confirmation,prescription_review,confirmed,processing,packed,out_for_delivery,delivered,cancelled,returned,refunded'],
+            'order_status' => ['required', 'in:pending_confirmation,prescription_review,confirmed,processing,delivered,cancelled,returned,refunded'],
             'note' => ['nullable', 'string'],
         ]);
 
@@ -61,7 +61,7 @@ class OrderManagementController extends Controller
     public function forceStatus(Request $request, int $id, OrderStatusService $orders)
     {
         $data = $request->validate([
-            'order_status' => ['required', 'in:pending_confirmation,prescription_review,confirmed,processing,packed,out_for_delivery,delivered,cancelled,returned,refunded'],
+            'order_status' => ['required', 'in:pending_confirmation,prescription_review,confirmed,processing,delivered,cancelled,returned,refunded'],
             'note' => ['required', 'string', 'max:1000'],
         ]);
 
