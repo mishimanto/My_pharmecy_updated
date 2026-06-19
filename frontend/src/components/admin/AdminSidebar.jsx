@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { FiChevronDown } from 'react-icons/fi'
+import { useSiteSettings } from '../../context/SiteSettingsContext'
 
 function matchesPath(pathname, item) {
   if (!item?.to) {
@@ -28,6 +29,7 @@ function itemKey(item) {
 
 export default function AdminSidebar({ sidebarOpen, visibleGroups }) {
   const location = useLocation()
+  const { settings } = useSiteSettings()
   const [openItems, setOpenItems] = useState({})
 
   const activeParentKeys = useMemo(() => {
@@ -58,7 +60,11 @@ export default function AdminSidebar({ sidebarOpen, visibleGroups }) {
       <div className="flex h-full flex-col">
         <div className="border-b border-white/20 px-5 py-6">
           <div className="shadow-[0_24px_60px_-32px_rgba(16,185,129,0.85)]">
-            <p className="text-md font-semibold uppercase tracking-[0.22em] text-slate-400">Admin Workspace</p>
+            <div className="flex items-center gap-3">              
+              <div>                
+                <p className="text-md font-semibold uppercase tracking-[0.22em] text-slate-300">Admin Workspace</p>
+              </div>
+            </div>
           </div>
         </div>
 

@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom'
+import { useSiteSettings } from '../context/SiteSettingsContext'
 
 export default function AuthLayout({ title, children }) {
+  const { settings } = useSiteSettings()
+
   return (
     <main className="min-h-screen bg-[#eef2f5]">
       <div className="mx-auto grid min-h-screen  xl:grid-cols-[0.98fr_0.72fr]">
@@ -14,11 +17,16 @@ export default function AuthLayout({ title, children }) {
           <div className="relative flex w-full flex-col justify-between p-12 text-white">
             <div className="flex items-start justify-between gap-4">
               <Link to="/" className="inline-flex items-center gap-4">
-                <span className="flex h-12 w-12 items-center justify-center border border-white/15 bg-white/10 text-sm font-bold uppercase tracking-[0.18em] text-white">
-                  Rx
-                </span>
+                {settings?.logo_url ? (
+                  <img src={settings.logo_url} alt={settings.site_name || 'Site logo'} className="h-12 w-12 object-contain" />
+                ) : (
+                  <span className="flex h-12 w-12 items-center justify-center border border-white/15 bg-white/10 text-sm font-bold uppercase tracking-[0.18em] text-white">
+                    Rx
+                  </span>
+                )}
                 <div>
-                  <div className="text-lg font-semibold tracking-tight">My Pharmecy</div>
+                  <div className="text-lg font-semibold tracking-tight">{settings?.site_name || 'My Pharmecy'}</div>
+                  {settings?.site_tagline ? <div className="mt-1 text-sm text-slate-200">{settings.site_tagline}</div> : null}
                 </div>
               </Link>
 

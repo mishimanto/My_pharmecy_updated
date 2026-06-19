@@ -15,12 +15,29 @@ class DeliveryAreaController extends Controller
     public function index(Request $request)
     {
         $query = DeliveryArea::query()->latest();
+
         if ($request->filled('search')) {
-            $search = $request->string('search');
-            $query->where(fn ($where) => $where->where('area_name', 'like', "%{$search}%")->orWhere('city', 'like', "%{$search}%")->orWhere('status', 'like', "%{$search}%"));
+            $search = $request->string('search')->toString();
+            $query->where(function ($where) use ($search) {
+                $where
+                    ->where('area_name', 'like', "%{$search}%")
+                    ->orWhere('city', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%");
+            });
         }
 
-        return $this->ok($query->paginate($request->integer('per_page', 10)), 'ডেলিভারি এলাকা পাওয়া গেছে।');
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status')->toString());
+        }
+
+        if ($request->filled('city')) {
+            $query->where('city', $request->string('city')->toString());
+        }
+
+        return $this->ok(
+            $query->paginate($request->integer('per_page', 10)),
+            'ডেলিভারি এলাকা পাওয়া গেছে।'
+        );
     }
 
     public function store(Request $request, AdminActivityService $activity)

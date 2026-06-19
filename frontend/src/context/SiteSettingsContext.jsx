@@ -1,0 +1,118 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { siteSettingsApi } from '../api/siteSettingsApi'
+
+const SITE_SETTINGS_CACHE_KEY = 'site_settings_payload_v1'
+const SITE_SETTINGS_CACHE_TTL = 5 * 60 * 1000
+
+const defaultSettings = {
+  site_name: 'My Pharmecy',
+  site_tagline: 'Trusted online pharmacy support',
+  support_phone: '09610-001122',
+  support_email: 'support@mypharmecy.test',
+  address: 'Dhaka service point',
+  city: 'Dhaka',
+  support_hours: '8AM to 11PM support',
+  whatsapp_number: '09610-001122',
+  facebook_url: '',
+  instagram_url: '',
+  youtube_url: '',
+  map_embed_url: 'https://www.google.com/maps?q=Dhaka%2C%20Bangladesh&z=12&output=embed',
+  footer_note: 'Prescription-aware online pharmacy experience',
+  logo_url: '',
+}
+
+const SiteSettingsContext = createContext(null)
+
+function readCache() {
+  if (typeof window === 'undefined') return null
+
+  try {
+    const cached = JSON.parse(window.sessionStorage.getItem(SITE_SETTINGS_CACHE_KEY) || 'null')
+    if (!cached || Date.now() - cached.cachedAt > SITE_SETTINGS_CACHE_TTL) return null
+    return cached.payload
+  } catch {
+    return null
+  }
+}
+
+function writeCache(payload) {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.sessionStorage.setItem(SITE_SETTINGS_CACHE_KEY, JSON.stringify({
+      payload,
+      cachedAt: Date.now(),
+    }))
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+function mergeSettings(payload) {
+  return { ...defaultSettings, ...(payload || {}) }
+}
+
+export function SiteSettingsProvider({ children }) {
+  const cached = readCache()
+  const [settings, setSettings] = useState(() => mergeSettings(cached))
+  const [loading, setLoading] = useState(() => !cached)
+
+  const updateSettingsState = useCallback((payload) => {
+    const merged = mergeSettings(payload)
+    setSettings(merged)
+    writeCache(merged)
+    setLoading(false)
+    return merged
+  }, [])
+
+  const refreshSettings = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading((current) => current || !settings?.site_name)
+    }
+
+    const response = await siteSettingsApi.show()
+    return updateSettingsState(response.data?.data)
+  }, [settings?.site_name, updateSettingsState])
+
+  useEffect(() => {
+    if (cached) return undefined
+
+    let active = true
+
+    siteSettingsApi.show()
+      .then((response) => {
+        if (!active) return
+        updateSettingsState(response.data?.data)
+      })
+      .catch(() => {
+        if (!active) return
+        setLoading(false)
+      })
+
+    return () => { active = false }
+  }, [cached, updateSettingsState])
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    document.title = settings?.site_name || defaultSettings.site_name
+  }, [settings?.site_name])
+
+  const value = useMemo(() => ({
+    settings,
+    loading,
+    refreshSettings,
+    updateSettingsState,
+  }), [loading, refreshSettings, settings, updateSettingsState])
+
+  return <SiteSettingsContext.Provider value={value}>{children}</SiteSettingsContext.Provider>
+}
+
+export function useSiteSettings() {
+  const context = useContext(SiteSettingsContext)
+
+  if (!context) {
+    throw new Error('useSiteSettings must be used within a SiteSettingsProvider')
+  }
+
+  return context
+}

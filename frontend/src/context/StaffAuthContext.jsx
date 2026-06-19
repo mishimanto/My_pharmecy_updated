@@ -78,6 +78,18 @@ export function StaffAuthProvider({ children }) {
       .finally(() => setLoading(false))
   }, [])
 
+  const refreshProfile = async () => {
+    const { data } = await adminAuthApi.me()
+    setStaff(data.data)
+    writeStaffCache(data.data)
+    return data.data
+  }
+
+  const updateProfileState = (nextStaff) => {
+    setStaff(nextStaff)
+    writeStaffCache(nextStaff)
+  }
+
   const login = async (payload) => {
     const { data } = await adminAuthApi.login(payload)
     localStorage.setItem('staff_token', data.data.token)
@@ -92,7 +104,7 @@ export function StaffAuthProvider({ children }) {
     clearStaffCache()
   }
 
-  return <StaffAuthContext.Provider value={{ staff, loading, login, logout }}>{children}</StaffAuthContext.Provider>
+  return <StaffAuthContext.Provider value={{ staff, loading, login, logout, refreshProfile, updateProfileState }}>{children}</StaffAuthContext.Provider>
 }
 
 export const useStaffAuth = () => useContext(StaffAuthContext)

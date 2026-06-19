@@ -54,4 +54,6 @@ export const adminApi = {
   replySupportTicket: (id, formData) => clearAfter(api.post(`/admin/support-tickets/${id}/replies`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })),
   permissions: () => cachedGet('/admin/permissions'),
   syncRolePermissions: (id, permissions) => clearAfter(api.post(`/admin/roles/${id}/permissions`, { permissions })),
+  siteSettings: () => cachedGet('/admin/site-settings'),
+  updateSiteSettings: (payload) => clearAfter(api.put('/admin/site-settings', payload)),
 }

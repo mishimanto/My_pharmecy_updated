@@ -18,11 +18,16 @@ class StaffController extends Controller
     {
         $staff = Staff::query()
             ->with('roles:id,name')
-            ->when($request->search, fn ($query, $search) => $query->where(fn ($inner) => $inner
-                ->where('full_name', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%")
-                ->orWhere('phone', 'like', "%{$search}%")
-                ->orWhere('status', 'like', "%{$search}%")))
+            ->when($request->search, function ($query, $search) {
+                $query->where(function ($inner) use ($search) {
+                    $inner
+                        ->where('full_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('status', 'like', "%{$search}%");
+                });
+            })
+            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')->toString()))
             ->latest('id')
             ->paginate($request->integer('per_page', 15));
 
@@ -108,4 +113,3 @@ class StaffController extends Controller
         return $this->ok(null, 'স্টাফ ডিলিট হয়েছে।');
     }
 }
-

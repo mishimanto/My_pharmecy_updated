@@ -17,16 +17,38 @@ class RefundController extends Controller
     {
         $query = Refund::query()->with('returnRequest.user', 'returnRequest.order')->latest();
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->string('status'));
+        if ($request->filled('search')) {
+            $search = $request->string('search')->toString();
+            $query->where(function ($where) use ($search) {
+                $where
+                    ->where('refund_method', 'like', "%{$search}%")
+                    ->orWhere('transaction_id', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhereHas('returnRequest.user', function ($user) use ($search) {
+                        $user
+                            ->where('full_name', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('returnRequest.order', fn ($order) => $order->where('order_number', 'like', "%{$search}%"));
+            });
         }
 
-        return $this->ok($query->paginate($request->integer('per_page', 10)), 'রিফান্ড তালিকা পাওয়া গেছে।');
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status')->toString());
+        }
+
+        return $this->ok(
+            $query->paginate($request->integer('per_page', 10)),
+            'রিফান্ড তালিকা পাওয়া গেছে।'
+        );
     }
 
     public function show(int $id)
     {
-        return $this->ok(Refund::query()->with('returnRequest.user', 'returnRequest.order.payment')->findOrFail($id), 'রিফান্ড বিস্তারিত পাওয়া গেছে।');
+        return $this->ok(
+            Refund::query()->with('returnRequest.user', 'returnRequest.order.payment')->findOrFail($id),
+            'রিফান্ড বিস্তারিত পাওয়া গেছে।'
+        );
     }
 
     public function status(Request $request, int $id, AdminActivityService $activity)
@@ -60,6 +82,9 @@ class RefundController extends Controller
             'updated_at' => now(),
         ]);
 
-        return $this->ok($refund->fresh()->load('returnRequest.user', 'returnRequest.order.payment'), 'রিফান্ড স্ট্যাটাস আপডেট হয়েছে।');
+        return $this->ok(
+            $refund->fresh()->load('returnRequest.user', 'returnRequest.order.payment'),
+            'রিফান্ড স্ট্যাটাস আপডেট হয়েছে।'
+        );
     }
 }

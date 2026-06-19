@@ -15,12 +15,31 @@ class RiderController extends Controller
     public function index(Request $request)
     {
         $query = Rider::query()->latest();
+
         if ($request->filled('search')) {
-            $search = $request->string('search');
-            $query->where(fn ($where) => $where->where('full_name', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%")->orWhere('status', 'like', "%{$search}%"));
+            $search = $request->string('search')->toString();
+            $query->where(function ($where) use ($search) {
+                $where
+                    ->where('full_name', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('vehicle_type', 'like', "%{$search}%")
+                    ->orWhere('vehicle_number', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%");
+            });
         }
 
-        return $this->ok($query->paginate($request->integer('per_page', 10)), 'রাইডার তালিকা পাওয়া গেছে।');
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status')->toString());
+        }
+
+        if ($request->filled('vehicle_type')) {
+            $query->where('vehicle_type', $request->string('vehicle_type')->toString());
+        }
+
+        return $this->ok(
+            $query->paginate($request->integer('per_page', 10)),
+            'রাইডার তালিকা পাওয়া গেছে।'
+        );
     }
 
     public function store(Request $request, AdminActivityService $activity)
@@ -33,7 +52,10 @@ class RiderController extends Controller
 
     public function show(int $id)
     {
-        return $this->ok(Rider::query()->with('deliveries')->findOrFail($id), 'রাইডার বিস্তারিত পাওয়া গেছে।');
+        return $this->ok(
+            Rider::query()->with('deliveries')->findOrFail($id),
+            'রাইডার বিস্তারিত পাওয়া গেছে।'
+        );
     }
 
     public function update(Request $request, int $id, AdminActivityService $activity)

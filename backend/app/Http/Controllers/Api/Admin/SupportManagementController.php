@@ -16,23 +16,38 @@ class SupportManagementController extends Controller
 
     public function index(Request $request)
     {
-        $query = SupportTicket::query()->with('user', 'order', 'assignedStaff')->latest();
+        $query = SupportTicket::query()
+            ->with([
+                'user:id,full_name,phone',
+                'order:id,order_number',
+                'assignedStaff:id,full_name',
+            ])
+            ->withCount('replies')
+            ->latest();
 
         if ($request->filled('search')) {
-            $search = $request->string('search');
+            $search = $request->string('search')->toString();
             $query->where(function ($where) use ($search) {
-                $where->where('subject', 'like', "%{$search}%")
+                $where
+                    ->where('subject', 'like', "%{$search}%")
                     ->orWhere('status', 'like', "%{$search}%")
-                    ->orWhereHas('user', fn ($user) => $user->where('full_name', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%"))
+                    ->orWhereHas('user', function ($user) use ($search) {
+                        $user
+                            ->where('full_name', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%");
+                    })
                     ->orWhereHas('order', fn ($order) => $order->where('order_number', 'like', "%{$search}%"));
             });
         }
 
         if ($request->filled('status')) {
-            $query->where('status', $request->string('status'));
+            $query->where('status', $request->string('status')->toString());
         }
 
-        return $this->ok($query->paginate($request->integer('per_page', 10)), 'সাপোর্ট টিকিট তালিকা পাওয়া গেছে।');
+        return $this->ok(
+            $query->paginate($request->integer('per_page', 10)),
+            'সাপোর্ট টিকিট তালিকা পাওয়া গেছে।'
+        );
     }
 
     public function show(int $id)
@@ -92,7 +107,9 @@ class SupportManagementController extends Controller
             'replied_by_user_id' => null,
             'replied_by_staff_id' => $request->user()->id,
             'message' => $data['message'],
-            'attachment' => $request->hasFile('attachment') ? $request->file('attachment')->store('support-ticket-attachments', 'public') : null,
+            'attachment' => $request->hasFile('attachment')
+                ? $request->file('attachment')->store('support-ticket-attachments', 'public')
+                : null,
         ]);
 
         if ($ticket->status === 'open') {

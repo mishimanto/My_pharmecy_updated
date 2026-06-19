@@ -2,6 +2,8 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import AdminLayout from '../layouts/AdminLayout'
 import ProtectedAdminRoute from './ProtectedAdminRoute'
 import AdminProfile from '../pages/admin/AdminProfile'
+import AdminChangePassword from '../pages/admin/AdminChangePassword'
+import SiteSettings from '../pages/admin/SiteSettings'
 import Dashboard from '../pages/admin/Dashboard'
 import Users from '../pages/admin/Users'
 import UserDetails from '../pages/admin/UserDetails'
@@ -51,6 +53,8 @@ export default function AdminRoutes() {
       <Routes>
         <Route element={<AdminLayout />}>
           <Route path="profile" element={<AdminProfile />} />
+          <Route path="profile/password" element={<AdminChangePassword />} />
+          <Route path="site-settings" element={<SiteSettings />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="users" element={<Users />} />
           <Route path="users/:id" element={<UserDetails />} />

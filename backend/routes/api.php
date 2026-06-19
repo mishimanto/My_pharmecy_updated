@@ -1,8 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminAuthController;
+use App\Http\Controllers\Api\Admin\AdminActivityLogController;
 use App\Http\Controllers\Api\Admin\CategoryController;
-use App\Http\Controllers\Api\Admin\CrudController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\DeliveryAreaController;
 use App\Http\Controllers\Api\Admin\DeliveryController;
@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\Admin\ReturnManagementController;
 use App\Http\Controllers\Api\Admin\RiderController;
 use App\Http\Controllers\Api\Admin\RolePermissionController;
 use App\Http\Controllers\Api\Admin\ReportController;
+use App\Http\Controllers\Api\Admin\SiteSettingsController as AdminSiteSettingsController;
 use App\Http\Controllers\Api\Admin\StaffController;
 use App\Http\Controllers\Api\Admin\SupplierController;
 use App\Http\Controllers\Api\Admin\SupportManagementController;
@@ -37,6 +38,7 @@ use App\Http\Controllers\Api\Customer\PrescriptionController;
 use App\Http\Controllers\Api\Customer\ProductBrowseController;
 use App\Http\Controllers\Api\Customer\ReturnRequestController;
 use App\Http\Controllers\Api\Customer\SupportTicketController;
+use App\Http\Controllers\Api\SiteSettingsController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
@@ -62,6 +64,8 @@ Route::get('/manufacturers', fn () => [
     'data' => \App\Models\Manufacturer::where('status', 'active')->orderBy('manufacturer_name')->get(),
     'errors' => null,
 ]);
+
+Route::get('/site-settings', [SiteSettingsController::class, 'show']);
 
 Route::prefix('customer')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
@@ -116,6 +120,8 @@ Route::prefix('admin')->group(function () {
     Route::middleware(['auth:sanctum', 'staff.auth'])->group(function () {
         Route::get('/me', [AdminAuthController::class, 'me']);
         Route::get('/profile', [AdminAuthController::class, 'profile']);
+        Route::put('/profile', [AdminAuthController::class, 'updateProfile']);
+        Route::put('/profile/password', [AdminAuthController::class, 'changePassword']);
         Route::post('/logout', [AdminAuthController::class, 'logout']);
         Route::get('/dashboard', [DashboardController::class, 'summary'])->middleware('permission:report.view');
         Route::get('/dashboard/summary', [DashboardController::class, 'summary'])->middleware('permission:report.view');
@@ -125,8 +131,10 @@ Route::prefix('admin')->group(function () {
         Route::get('/dashboard/near-expiry', [DashboardController::class, 'nearExpiry'])->middleware('permission:report.view');
 
         Route::get('/users', [UserManagementController::class, 'index'])->middleware('permission:user.view');
+        Route::get('/users/customers', [UserManagementController::class, 'customers'])->middleware('permission:user.view');
         Route::get('/users/{id}', [UserManagementController::class, 'show'])->middleware('permission:user.view');
         Route::patch('/users/{id}/status', [UserManagementController::class, 'status'])->middleware('permission:user.manage');
+        Route::delete('/users/{id}', [UserManagementController::class, 'destroy'])->middleware('permission:user.manage');
         Route::get('/users/{id}/orders', [UserManagementController::class, 'orders'])->middleware('permission:user.view');
         Route::get('/users/{id}/prescriptions', [UserManagementController::class, 'prescriptions'])->middleware('permission:user.view');
         Route::get('/users/{id}/support-tickets', [UserManagementController::class, 'supportTickets'])->middleware('permission:user.view');
@@ -146,6 +154,8 @@ Route::prefix('admin')->group(function () {
         Route::delete('/roles/{id}', [RolePermissionController::class, 'destroyRole'])->middleware('permission:role.manage');
         Route::get('/permissions', [RolePermissionController::class, 'permissions'])->middleware('permission:role.manage');
         Route::post('/roles/{id}/permissions', [RolePermissionController::class, 'syncPermissions'])->middleware('permission:role.manage');
+        Route::get('/site-settings', [AdminSiteSettingsController::class, 'show'])->middleware('permission:role.manage');
+        Route::put('/site-settings', [AdminSiteSettingsController::class, 'update'])->middleware('permission:role.manage');
 
         Route::get('/categories', [CategoryController::class, 'index'])->middleware('permission:product.view');
         Route::post('/categories', [CategoryController::class, 'store'])->middleware('permission:product.create');
@@ -245,8 +255,8 @@ Route::prefix('admin')->group(function () {
         Route::get('/reports/deliveries', [ReportController::class, 'deliveries'])->middleware('permission:report.view');
         Route::get('/reports/refunds', [ReportController::class, 'refunds'])->middleware('permission:report.view');
 
-        Route::get('/admin_activity_logs', [CrudController::class, 'index'])->defaults('table', 'admin_activity_logs')->middleware('permission:activity-log.view');
-        Route::get('/admin_activity_logs/{id}', [CrudController::class, 'show'])->defaults('table', 'admin_activity_logs')->middleware('permission:activity-log.view');
+        Route::get('/admin_activity_logs', [AdminActivityLogController::class, 'index'])->middleware('permission:activity-log.view');
+        Route::get('/admin_activity_logs/{id}', [AdminActivityLogController::class, 'show'])->middleware('permission:activity-log.view');
 
     });
 });

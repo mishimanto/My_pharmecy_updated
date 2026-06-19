@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Services\StaffAuthService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class AdminAuthController extends Controller
 {
@@ -37,6 +39,43 @@ class AdminAuthController extends Controller
     public function me(Request $request, StaffAuthService $auth)
     {
         return $this->profile($request, $auth);
+    }
+
+    public function updateProfile(Request $request, StaffAuthService $auth)
+    {
+        $staff = $request->user();
+
+        $data = $request->validate([
+            'full_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', Rule::unique('staffs', 'email')->ignore($staff->id)],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'license_no' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $staff->update($data);
+
+        return $this->ok($auth->profile($staff->fresh()), 'প্রোফাইল আপডেট হয়েছে।');
+    }
+
+    public function changePassword(Request $request)
+    {
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'new_password' => ['required', 'string', 'min:8', 'different:current_password'],
+            'new_password_confirmation' => ['required', 'same:new_password'],
+        ]);
+
+        $staff = $request->user();
+
+        if (! Hash::check($data['current_password'], $staff->password)) {
+            return $this->fail('Current password is incorrect.', 422);
+        }
+
+        $staff->update([
+            'password' => $data['new_password'],
+        ]);
+
+        return $this->ok(null, 'পাসওয়ার্ড পরিবর্তন হয়েছে।');
     }
 
     public function logout(Request $request)

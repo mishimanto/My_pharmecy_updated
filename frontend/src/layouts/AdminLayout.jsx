@@ -16,6 +16,7 @@ import {
   FiPieChart,
   FiShield,
   FiShoppingBag,
+  FiSettings,
   FiTag,
   FiTruck,
   FiUser,
@@ -66,7 +67,7 @@ const navigationGroups = [
   {
     title: 'Operations',
     items: [
-      { to: '/admin/users', label: 'Customers', permission: 'user.view', icon: FiUser },
+      { to: '/admin/users', label: 'Users', permission: 'user.view', icon: FiUser },
       { to: '/admin/delivery-areas', label: 'Delivery Areas', permission: 'delivery.manage', icon: FiMapPin },
       { to: '/admin/riders', label: 'Riders', permission: 'delivery.manage', icon: FiTruck },
       { to: '/admin/support', label: 'Support', permission: 'support.manage', icon: FiHeadphones },
@@ -78,6 +79,7 @@ const navigationGroups = [
 
 const settingsItems = [
   { to: '/admin/profile', label: 'My Profile', permission: null, icon: FiUser },
+  { to: '/admin/site-settings', label: 'Site Settings', permission: 'role.manage', icon: FiSettings },
   { to: '/admin/staff', label: 'Staff', permission: 'staff.view', icon: FiUsers },
   { to: '/admin/roles', label: 'Roles & Permissions', permission: 'role.manage', icon: FiShield },
   { to: '/admin/reports', label: 'Reports', permission: 'report.view', icon: FiPieChart },
