@@ -17,17 +17,16 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { productApi } from '../../api/productApi'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
-import { useSiteSettings } from '../../context/SiteSettingsContext'
 import { useStorefront } from '../../context/StorefrontContext'
 import { getCategoryName } from '../../utils/categoryNames'
 import { getProductImage, handleImageFallback } from '../../utils/imageUrl'
 import { getProductPath, getProductRouteKey } from '../../utils/productRouting'
+import CustomerLogo from './CustomerLogo'
 
 export default function CustomerHeader() {
   const { customer, loading: authLoading, logout } = useCustomerAuth()
   const { cartCount, wishlistCount, refreshCart } = useStorefront()
   const { language, setLanguage, isBangla } = useLanguage()
-  const { settings } = useSiteSettings()
   const navigate = useNavigate()
   const location = useLocation()
   const searchContainerRef = useRef(null)
@@ -206,7 +205,7 @@ export default function CustomerHeader() {
       <div className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/92 backdrop-blur supports-backdrop-filter:bg-white/78">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:flex-nowrap lg:gap-4 lg:px-8 lg:py-4">
           <Link to="/" onClick={closeMenus} className="order-1 shrink-0 lg:order-1" aria-label="My Pharmecy home">
-            <BrandMark logoUrl={settings?.logo_url} siteName={settings?.site_name} />
+            <CustomerLogo />
           </Link>
 
           <div className="order-2 ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2 lg:hidden">
@@ -545,25 +544,6 @@ function UserAvatar({ customer, fallbackName }) {
     <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-[linear-gradient(135deg,#ffffff,#dfe8ef)] text-sm font-bold uppercase text-slate-700">
       {initials(name)}
     </span>
-  )
-}
-
-function BrandMark({ logoUrl, siteName }) {
-  if (logoUrl) {
-    return (
-      <div className="flex h-11 max-w-[150px] items-center sm:h-12 sm:max-w-[180px]">
-        <img src={logoUrl} alt={siteName || 'Site logo'} className="max-h-full max-w-full object-contain" />
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex items-center">
-      <svg viewBox="0 0 74 44" className="h-9 w-15 shrink-0 sm:h-11 sm:w-18.5" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M35.5 40.5C29.6 35.9 15.5 25.4 8.7 17.2C4.5 12.2 4.6 4.9 10.4 2.1C16.3 -0.6 23.3 1.2 27.3 6.5L31.4 11.9L35.8 6.7C40.1 1.5 47.3 -0.1 53.1 2.8C58.6 5.5 60.2 12.4 56.5 17.3C49.9 25.8 41.3 33 35.5 40.5Z" stroke="#ef4444" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M22 22H28L30.6 16L34.1 28L37.3 18.5L40.1 22H47" stroke="#26b0af" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </div>
   )
 }
 

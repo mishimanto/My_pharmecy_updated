@@ -3,6 +3,7 @@ import { siteSettingsApi } from '../api/siteSettingsApi'
 
 const SITE_SETTINGS_CACHE_KEY = 'site_settings_payload_v1'
 const SITE_SETTINGS_CACHE_TTL = 5 * 60 * 1000
+const SITE_SETTINGS_UPDATED_EVENT = 'site-settings-updated'
 
 const defaultSettings = {
   site_name: 'My Pharmecy',
@@ -27,7 +28,7 @@ function readCache() {
   if (typeof window === 'undefined') return null
 
   try {
-    const cached = JSON.parse(window.sessionStorage.getItem(SITE_SETTINGS_CACHE_KEY) || 'null')
+    const cached = JSON.parse(window.localStorage.getItem(SITE_SETTINGS_CACHE_KEY) || 'null')
     if (!cached || Date.now() - cached.cachedAt > SITE_SETTINGS_CACHE_TTL) return null
     return cached.payload
   } catch {
@@ -39,7 +40,7 @@ function writeCache(payload) {
   if (typeof window === 'undefined') return
 
   try {
-    window.sessionStorage.setItem(SITE_SETTINGS_CACHE_KEY, JSON.stringify({
+    window.localStorage.setItem(SITE_SETTINGS_CACHE_KEY, JSON.stringify({
       payload,
       cachedAt: Date.now(),
     }))
@@ -61,6 +62,7 @@ export function SiteSettingsProvider({ children }) {
     const merged = mergeSettings(payload)
     setSettings(merged)
     writeCache(merged)
+    window.dispatchEvent(new CustomEvent(SITE_SETTINGS_UPDATED_EVENT, { detail: merged }))
     setLoading(false)
     return merged
   }, [])
@@ -93,6 +95,33 @@ export function SiteSettingsProvider({ children }) {
   }, [cached, updateSettingsState])
 
   useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key !== SITE_SETTINGS_CACHE_KEY || !event.newValue) return
+
+      try {
+        const cachedSettings = JSON.parse(event.newValue)
+        setSettings(mergeSettings(cachedSettings.payload))
+        setLoading(false)
+      } catch {
+        // Ignore malformed cache payloads.
+      }
+    }
+
+    const handleSettingsUpdated = (event) => {
+      setSettings(mergeSettings(event.detail))
+      setLoading(false)
+    }
+
+    window.addEventListener('storage', handleStorage)
+    window.addEventListener(SITE_SETTINGS_UPDATED_EVENT, handleSettingsUpdated)
+
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener(SITE_SETTINGS_UPDATED_EVENT, handleSettingsUpdated)
+    }
+  }, [])
+
+  useEffect(() => {
     if (typeof document === 'undefined') return
     document.title = settings?.site_name || defaultSettings.site_name
   }, [settings?.site_name])
@@ -107,6 +136,7 @@ export function SiteSettingsProvider({ children }) {
   return <SiteSettingsContext.Provider value={value}>{children}</SiteSettingsContext.Provider>
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useSiteSettings() {
   const context = useContext(SiteSettingsContext)
 

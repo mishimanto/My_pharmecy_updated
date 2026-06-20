@@ -1,10 +1,11 @@
-import { FiGlobe, FiMapPin, FiPhoneCall } from 'react-icons/fi'
+import { FiMapPin, FiPhoneCall } from 'react-icons/fi'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
 import { useSiteSettings } from '../../context/SiteSettingsContext'
+import CustomerLogo from './CustomerLogo'
 
 export default function CustomerFooter() {
-  const { language, setLanguage, isBangla } = useLanguage()
+  const { isBangla } = useLanguage()
   const { settings } = useSiteSettings()
   const t = (bn, en) => (isBangla ? bn : en)
   const banglaFontClass = isBangla ? "[font-family:'Hind_Siliguri','Noto_Sans_Bengali','SolaimanLipi','Vrinda',sans-serif]" : ''
@@ -33,33 +34,7 @@ export default function CustomerFooter() {
     <footer className={`border-t border-[#0b5f69] bg-[linear-gradient(135deg,#0d4b59_0%,#0f766e_52%,#13b8b0_100%)] text-white ${banglaFontClass}`}>
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[0.85fr_0.75fr_0.95fr] lg:items-start lg:px-8">
         <div className="space-y-5">
-          <div className="flex items-center justify-between gap-4">
-            {settings?.logo_url ? (
-              <img src={settings.logo_url} alt={settings.site_name || 'Site logo'} className="max-h-14 max-w-[180px] bg-white object-contain p-1 shadow-[0_18px_35px_-20px_rgba(15,23,42,0.55)]" />
-            ) : (
-              <span className="flex h-12 w-12 items-center justify-center bg-white text-sm font-bold uppercase tracking-[0.18em] text-[#0f766e] shadow-[0_18px_35px_-20px_rgba(15,23,42,0.55)]">
-                Rx
-              </span>
-            )}
-
-            <div className="inline-flex items-center border border-white/20 bg-white/10 p-1">
-              <FiGlobe className="ml-2 h-4 w-4 text-white/80" />
-              <button
-                type="button"
-                onClick={() => setLanguage('bn')}
-                className={`px-3 py-1.5 text-xs font-semibold transition ${language === 'bn' ? 'bg-white text-[#0f766e]' : 'text-white/75 hover:text-white'}`}
-              >
-                বাংলা
-              </button>
-              <button
-                type="button"
-                onClick={() => setLanguage('en')}
-                className={`px-3 py-1.5 text-xs font-semibold transition ${language === 'en' ? 'bg-white text-[#0f766e]' : 'text-white/75 hover:text-white'}`}
-              >
-                EN
-              </button>
-            </div>
-          </div>
+          <CustomerLogo variant="footer" />
 
           <div className="space-y-3 text-sm text-white/82">
             <div className="flex items-start gap-3 border border-white/18 bg-white/10 px-4 py-3 backdrop-blur-sm">

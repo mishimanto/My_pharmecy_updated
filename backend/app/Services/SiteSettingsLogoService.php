@@ -42,7 +42,7 @@ class SiteSettingsLogoService
 
         try {
             $image = $decoder(new ImageManager(new Driver()))
-                ->coverDown(512, 512)
+                ->scaleDown(512, 512)
                 ->encode(new WebpEncoder(84));
         } catch (Throwable) {
             throw ValidationException::withMessages([
