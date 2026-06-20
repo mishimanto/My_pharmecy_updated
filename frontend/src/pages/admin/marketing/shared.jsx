@@ -20,11 +20,13 @@ export function MarketingList({ title, items, emptyText, onEdit, onRemove, rende
           <div key={item.id} className={`grid gap-4 px-5 py-4 ${image ? 'lg:grid-cols-[120px_minmax(0,1fr)_auto]' : 'lg:grid-cols-[minmax(0,1fr)_auto]'} lg:items-center`}>
             {image ? <img src={item.image_src || item.image_url} alt="" className="h-20 w-full rounded-md bg-slate-100 object-cover" /> : null}
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${item.status === 'active' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
-                  {item.status}
-                </span>
-              </div>
+              {item.status ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${item.status === 'active' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
+                    {item.status}
+                  </span>
+                </div>
+              ) : null}
               <h3 className="mt-2 truncate text-sm font-semibold text-slate-950">{renderTitle(item)}</h3>
               <p className="mt-1 truncate text-xs text-slate-500">{renderMeta(item)}</p>
             </div>
