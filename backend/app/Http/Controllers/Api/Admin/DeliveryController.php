@@ -51,7 +51,7 @@ class DeliveryController extends Controller
         );
     }
 
-    public function createForOrder(Request $request, int $id, AdminActivityService $activity)
+    public function createForOrder(Request $request, int $id, AdminActivityService $activity, OrderStatusService $orders)
     {
         $order = Order::query()->with('delivery')->findOrFail($id);
 
@@ -63,6 +63,10 @@ class DeliveryController extends Controller
 
         if ($order->delivery) {
             return $this->ok($order->delivery->load('order.user', 'rider'), 'A delivery record already exists for this order.');
+        }
+
+        if ($order->order_status === 'confirmed') {
+            $order = $orders->updateByStaff($order, 'processing', $request->user(), 'Delivery created.', $request->ip());
         }
 
         $delivery = $order->delivery()->create([
@@ -91,6 +95,11 @@ class DeliveryController extends Controller
         );
 
         if ($data['delivery_status'] === 'delivered' && $delivery->order->order_status !== 'delivered') {
+            if ($delivery->order->order_status === 'confirmed') {
+                $orders->updateByStaff($delivery->order, 'processing', $request->user(), 'Delivery started.', $request->ip());
+                $delivery->load('order.payment');
+            }
+
             abort_unless(
                 in_array('delivered', $orders->allowedNextStatuses($delivery->order->order_status), true),
                 422,
@@ -113,6 +122,7 @@ class DeliveryController extends Controller
         $activity->log($request, 'status_update', 'deliveries', $delivery->id, $old, $delivery->fresh()->toArray());
 
         if ($data['delivery_status'] === 'delivered' && $delivery->order->order_status !== 'delivered') {
+            $delivery->load('order.payment', 'order.delivery');
             $orders->updateByStaff($delivery->order, 'delivered', $request->user(), null, $request->ip());
         }
 

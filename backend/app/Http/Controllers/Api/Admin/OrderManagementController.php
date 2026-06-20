@@ -111,9 +111,18 @@ class OrderManagementController extends Controller
         abort_unless($order->prescription, 422, 'No prescription is linked to this order yet.');
 
         $updatedOrder = DB::transaction(function () use ($order, $request, $data, $orders) {
+            $nextOrderStatus = $order->order_status;
+
+            if ($data['prescription_match_status'] !== 'matched') {
+                $nextOrderStatus = 'prescription_review';
+            } elseif ($order->order_status === 'prescription_review' && $order->prescription?->status === 'approved') {
+                $nextOrderStatus = 'pending_confirmation';
+            }
+
             $oldValue = [
                 'prescription_match_status' => $order->prescription_match_status,
                 'prescription_match_note' => $order->prescription_match_note,
+                'order_status' => $order->order_status,
             ];
 
             $order->update([
@@ -121,9 +130,7 @@ class OrderManagementController extends Controller
                 'prescription_match_note' => $data['prescription_match_note'] ?? null,
                 'prescription_matched_by_staff_id' => $request->user()->id,
                 'prescription_matched_at' => now(),
-                'order_status' => $data['prescription_match_status'] === 'matched'
-                    ? $order->order_status
-                    : 'prescription_review',
+                'order_status' => $nextOrderStatus,
             ]);
 
             DB::table('admin_activity_logs')->insert([
@@ -135,6 +142,7 @@ class OrderManagementController extends Controller
                 'new_value' => json_encode([
                     'prescription_match_status' => $data['prescription_match_status'],
                     'prescription_match_note' => $data['prescription_match_note'] ?? null,
+                    'order_status' => $nextOrderStatus,
                 ], JSON_UNESCAPED_UNICODE),
                 'ip_address' => $request->ip(),
                 'created_at' => now(),

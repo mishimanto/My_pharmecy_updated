@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
+import { FiAlertCircle } from 'react-icons/fi'
 import { adminApi } from '../../api/adminApi'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import PageHeader from '../../components/common/PageHeader'
@@ -11,7 +12,7 @@ import { getDeliveryStatusLabel, getOrderStatusLabel, getPaymentStatusLabel } fr
 const orderStatuses = ['pending_confirmation', 'prescription_review', 'confirmed', 'processing', 'delivered', 'cancelled', 'returned', 'refunded']
 const statusTransitions = {
   pending_confirmation: ['confirmed', 'cancelled'],
-  prescription_review: ['pending_confirmation', 'confirmed', 'cancelled'],
+  prescription_review: ['pending_confirmation', 'cancelled'],
   confirmed: ['processing', 'cancelled'],
   processing: ['delivered'],
   delivered: ['returned', 'refunded'],
@@ -118,18 +119,25 @@ export default function OrderDetails() {
 
   const canConfirmPrescription = !requiresPrescription
     || (order?.prescription_match_status === 'matched' && order?.prescription?.status === 'approved')
+  const hasPendingPrescriptionReview = order?.prescription?.status === 'pending'
   const requiresPaidVerification = ['BKASH', 'NAGAD'].includes(String(order?.payment_method || '').toUpperCase())
   const canConfirmPayment = !requiresPaidVerification || order?.payment_status === 'paid'
   const canConfirmOrder = canConfirmPrescription && canConfirmPayment
 
   const nextStatuses = useMemo(() => {
     const allowed = statusTransitions[order?.order_status] || []
+
+    if (requiresPrescription && !canConfirmPrescription) {
+      return []
+    }
+
     return allowed.filter((item) => {
+      if (requiresPrescription && order?.order_status === 'prescription_review' && item !== 'pending_confirmation') return false
       if (item === 'confirmed' && !canConfirmOrder) return false
       if (item === 'delivered' && !canMarkOrderDelivered(order)) return false
       return true
     })
-  }, [canConfirmOrder, order])
+  }, [canConfirmOrder, canConfirmPrescription, order, requiresPrescription])
 
   const selectableStatuses = useMemo(
     () => [order?.order_status, ...nextStatuses].filter(Boolean),
@@ -303,6 +311,108 @@ export default function OrderDetails() {
             ))}
           </div>
 
+          {requiresPrescription ? (
+            <div className="overflow-hidden rounded-lg border border-violet-200 bg-violet-50/40 shadow-sm">
+              <div className="flex items-center justify-between gap-3 border-b border-violet-100 bg-white/80 px-5 py-4">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-950">Prescription review</h2>
+                  
+                </div>
+                <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${getMatchTone(order.prescription_match_status)}`}>
+                  {matchLabels[order.prescription_match_status] || 'Pending match check'}
+                </span>
+              </div>
+
+              <div className="p-5">
+                {!canConfirmPrescription ? (
+                  <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium leading-6 text-amber-800">
+                    <FiAlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span>{getPrescriptionBlockMessage(order)}</span>
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-800">
+                    This RX order is ready for confirmation.
+                  </div>
+                )}
+
+                {order.prescription ? (
+                  <div className="mt-4 rounded-md border border-slate-200 bg-white">
+                    <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-950">{order.prescription.prescription_code || `Linked prescription #${order.prescription.id}`}</p>
+                        <p className="mt-1 text-xs text-slate-500">Uploaded {date(order.prescription.uploaded_at || order.prescription.created_at, 'en-US')}</p>
+                      </div>
+                      <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${getPrescriptionTone(order.prescription.status)}`}>
+                        {prescriptionLabels[order.prescription.status] || order.prescription.status}
+                      </span>
+                    </div>
+                    <div className="grid gap-3 px-4 py-3 text-sm text-slate-700 sm:grid-cols-2">
+                      <Info label="Patient" value={order.prescription.patient_name || '-'} />
+                      <Info label="Doctor" value={order.prescription.doctor_name || '-'} />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 px-4 py-3">
+                      {hasPendingPrescriptionReview ? (
+                        <Link to={`/admin/prescriptions/${order.prescription.id}`} className="inline-flex items-center justify-center rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-800 transition hover:border-amber-300 hover:bg-amber-100">
+                          Review prescription
+                        </Link>
+                      ) : null}
+                      {order.prescription.file_url ? (
+                        <a href={order.prescription.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300">
+                          View file
+                        </a>
+                      ) : null}
+                      <Link to={`/admin/prescriptions/${order.prescription.id}`} className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
+                        Open details
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-700">
+                    No prescription is linked to this RX order yet.
+                  </div>
+                )}
+
+                {order.prescription_match_note ? (
+                  <div className="mt-4 rounded-md border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-700">
+                    <span className="font-semibold text-slate-950">Latest review note:</span> {order.prescription_match_note}
+                  </div>
+                ) : null}
+
+                <div className="mt-5 grid gap-3 border-t border-violet-100 pt-5 lg:grid-cols-[240px_minmax(0,1fr)]">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Match decision</label>
+                    <select
+                      value={reviewForm.prescription_match_status}
+                      onChange={(event) => setReviewForm((current) => ({ ...current, prescription_match_status: event.target.value }))}
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    >
+                      <option value="matched">Matched with ordered items</option>
+                      <option value="mismatch">Prescription does not match</option>
+                      <option value="need_clarification">Need clarification</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Internal note</label>
+                    <textarea
+                      value={reviewForm.prescription_match_note}
+                      onChange={(event) => setReviewForm((current) => ({ ...current, prescription_match_note: event.target.value }))}
+                      className="min-h-28 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                      placeholder="Add why it mismatches, what needs clarification, or any internal note."
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={savePrescriptionReview}
+                    disabled={!order.prescription || savingReview}
+                    className="w-full rounded-md bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 lg:col-span-2"
+                  >
+                    {savingReview ? 'Saving...' : 'Save Prescription Review'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           <div className="rounded-lg border border-slate-200 bg-white p-5 text-sm shadow-sm">
             <div className="border-b border-slate-300 pb-4">
               <h2 className="text-base font-semibold text-slate-950">Customer and delivery info</h2>
@@ -338,92 +448,6 @@ export default function OrderDetails() {
         </section>
 
         <aside className="space-y-4">
-          {requiresPrescription ? (
-            <div className="rounded-lg border border-violet-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-950">Prescription review</h2>
-                </div>
-                <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${getMatchTone(order.prescription_match_status)}`}>
-                  {matchLabels[order.prescription_match_status] || 'Pending match check'}
-                </span>
-              </div>
-
-              {!canConfirmPrescription ? (
-                <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                  {getPrescriptionBlockMessage(order)}
-                </div>
-              ) : (
-                <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-                  This RX order is ready for confirmation.
-                </div>
-              )}
-
-              {order.prescription ? (
-                <div className="mt-4 space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-slate-950">{order.prescription.prescription_code || `Linked prescription #${order.prescription.id}`}</p>
-                      <p className="text-xs text-slate-500">Uploaded {date(order.prescription.uploaded_at || order.prescription.created_at, 'en-US')}</p>
-                    </div>
-                    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${getPrescriptionTone(order.prescription.status)}`}>
-                      {prescriptionLabels[order.prescription.status] || order.prescription.status}
-                    </span>
-                  </div>
-                  <div className="grid gap-2 text-sm sm:grid-cols-2">
-                    <div><span className="font-semibold">Patient:</span> {order.prescription.patient_name || '-'}</div>
-                    <div><span className="font-semibold">Doctor:</span> {order.prescription.doctor_name || '-'}</div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    {order.prescription.file_url ? (
-                      <a href={order.prescription.file_url} target="_blank" rel="noreferrer" className="inline-flex text-emerald-700 underline">
-                        View prescription file
-                      </a>
-                    ) : null}
-                    <Link to={`/admin/prescriptions/${order.prescription.id}`} className="inline-flex text-slate-700 underline">
-                      Open prescription details
-                    </Link>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
-                  No prescription is linked to this RX order yet.
-                </div>
-              )}
-
-              {order.prescription_match_note ? (
-                <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                  <span className="font-semibold">Latest review note:</span> {order.prescription_match_note}
-                </div>
-              ) : null}
-
-              <div className="mt-4 space-y-3">
-                <select
-                  value={reviewForm.prescription_match_status}
-                  onChange={(event) => setReviewForm((current) => ({ ...current, prescription_match_status: event.target.value }))}
-                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                >
-                  <option value="matched">Matched with ordered items</option>
-                  <option value="mismatch">Prescription does not match</option>
-                  <option value="need_clarification">Need clarification</option>
-                </select>
-                <textarea
-                  value={reviewForm.prescription_match_note}
-                  onChange={(event) => setReviewForm((current) => ({ ...current, prescription_match_note: event.target.value }))}
-                  className="min-h-28 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                  placeholder="Add why it mismatches, what needs clarification, or any internal note."
-                />
-                <button
-                  onClick={savePrescriptionReview}
-                  disabled={!order.prescription || savingReview}
-                  className="w-full rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-300"
-                >
-                  {savingReview ? 'Saving...' : 'Save Prescription Review'}
-                </button>
-              </div>
-            </div>
-          ) : null}
-
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3 border-b border-slate-300 pb-4">
               <div>
@@ -479,7 +503,9 @@ export default function OrderDetails() {
               </>
             ) : (
               <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-                {deliveryFlowMessage
+                {requiresPrescription && !canConfirmPrescription
+                  ? 'Complete prescription review before updating this order status.'
+                  : deliveryFlowMessage
                   ? 'This order is waiting for the delivery step before the next status can be used.'
                   : 'This order is in a final state. No further status action is available.'}
               </div>
@@ -710,11 +736,11 @@ function getPrescriptionBlockMessage(order) {
   }
 
   if (order.prescription?.status !== 'approved') {
-    return 'Approve the linked prescription first. After that, mark whether it actually matches the ordered medicines.'
+    return 'Approve prescription first.'
   }
 
   if (order.prescription_match_status !== 'matched') {
-    return 'This order stays in prescription review until staff marks the linked prescription as matched with the ordered medicines.'
+    return 'Mark the prescription as matched first.'
   }
 
   return 'This order is ready for confirmation.'

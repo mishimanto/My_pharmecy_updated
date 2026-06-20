@@ -12,7 +12,7 @@ class OrderStatusService
 
     private const TRANSITIONS = [
         'pending_confirmation' => ['confirmed', 'cancelled'],
-        'prescription_review' => ['pending_confirmation', 'confirmed', 'cancelled'],
+        'prescription_review' => ['pending_confirmation', 'cancelled'],
         'confirmed' => ['processing', 'cancelled'],
         'processing' => ['delivered'],
         'delivered' => ['returned', 'refunded'],
@@ -60,6 +60,7 @@ class OrderStatusService
 
         abort_unless(in_array($status, $this->allowedNextStatuses($order->order_status), true), 422, 'The requested order status transition is not allowed.');
         abort_if($status === 'cancelled' && blank($note), 422, 'A cancellation reason is required.');
+        abort_if($status === 'pending_confirmation' && $order->order_status === 'prescription_review' && ! $this->canConfirmPrescriptionOrder($order), 422, $this->prescriptionConfirmationMessage($order));
         abort_if($status === 'confirmed' && ! $this->canConfirmOrder($order), 422, $this->confirmationBlockMessage($order));
         abort_if($status === 'delivered' && ! $this->canMarkOrderDelivered($order), 422, $this->deliveredBlockMessage($order));
 

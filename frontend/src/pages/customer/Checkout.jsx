@@ -539,7 +539,7 @@ export default function Checkout() {
                         writePreferredPrescriptionId(nextValue)
                       }}
                       required
-                      className="mt-4 w-72 border border-amber-300 bg-white px-4 py-2 text-sm text-slate-900 outline-none"
+                      className="mt-4 block w-72 border border-amber-300 bg-white px-4 py-2 text-sm text-slate-900 outline-none"
                     >
                       <option value="">{loading ? t('প্রেসক্রিপশন লোড হচ্ছে...', 'Loading prescriptions...') : t('একটি প্রেসক্রিপশন বাছুন', 'Select a prescription')}</option>
                       {prescriptions.map((item, index) => (
@@ -554,7 +554,7 @@ export default function Checkout() {
                         )}
                       </p>
                     ) : null}
-                    <Link to={`/upload-prescription?returnTo=${encodeURIComponent('/checkout')}`} className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-amber-700">
+                    <Link to={`/upload-prescription?returnTo=${encodeURIComponent('/checkout')}`} className="mt-4 flex w-fit items-center gap-2 text-sm font-semibold text-amber-700">
                       {t('নতুন প্রেসক্রিপশন আপলোড করুন', 'Upload a new prescription')}
                       <FiArrowRight className="h-4 w-4" />
                     </Link>
