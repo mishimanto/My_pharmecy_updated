@@ -8,6 +8,14 @@ export default function CustomerFooter() {
   const { isBangla } = useLanguage()
   const { settings } = useSiteSettings()
   const t = (bn, en) => (isBangla ? bn : en)
+  const currentYear = new Date().getFullYear().toLocaleString(isBangla ? 'bn-BD' : 'en-US', { useGrouping: false })
+  const localizedSetting = (key, fallbackBn, fallbackEn) => {
+    if (isBangla) {
+      return settings?.[`${key}_bn`] || fallbackBn || settings?.[key]
+    }
+
+    return settings?.[key] || fallbackEn
+  }
   const banglaFontClass = isBangla ? "[font-family:'Hind_Siliguri','Noto_Sans_Bengali','SolaimanLipi','Vrinda',sans-serif]" : ''
   const footerGroups = [
     {
@@ -41,15 +49,15 @@ export default function CustomerFooter() {
               <FiPhoneCall className="mt-0.5 h-4 w-4 text-white" />
               <div>
                 <div className="font-medium text-white">{settings?.support_phone || '09610-001122'}</div>
-                <div>{settings?.support_hours || t('সকাল ৮টা থেকে রাত ১১টা', '8AM to 11PM')}</div>
+                <div>{localizedSetting('support_hours', 'সকাল ৮টা থেকে রাত ১১টা সাপোর্ট', '8AM to 11PM support')}</div>
                 <div className="mt-1">{settings?.support_email || 'support@mypharmecy.test'}</div>
               </div>
             </div>
             <div className="flex items-start gap-3 border border-white/18 bg-white/10 px-4 py-3 backdrop-blur-sm">
               <FiMapPin className="mt-0.5 h-4 w-4 text-white" />
               <div>
-                <div className="font-medium text-white">{settings?.address || t('ঢাকা সার্ভিস পয়েন্ট', 'Dhaka service point')}</div>
-                <div>{settings?.city || t('দ্রুত ওষুধ ডেলিভারি ও প্রেসক্রিপশন সহায়তা', 'Fast medicine delivery and prescription assistance')}</div>
+                <div className="font-medium text-white">{localizedSetting('address', 'ঢাকা সার্ভিস পয়েন্ট', 'Dhaka service point')}</div>
+                <div>{localizedSetting('city', 'ঢাকা', 'Dhaka')}</div>
               </div>
             </div>
           </div>
@@ -87,9 +95,9 @@ export default function CustomerFooter() {
       <div className="border-t border-white/12 bg-[#093540]/25">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-5 text-sm text-white/76 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
           <div className="flex flex-wrap items-center gap-4">
-            <span>(c) {new Date().getFullYear()}</span>
+            <span>&copy; {currentYear}</span>
             <span className="hidden text-white/25 lg:inline">|</span>
-            <span>{settings?.footer_note || t('প্রেসক্রিপশন-সচেতন অনলাইন ফার্মেসি অভিজ্ঞতা', 'Prescription-aware online pharmacy experience')}</span>
+            <span>{localizedSetting('footer_note', 'প্রেসক্রিপশন-সচেতন অনলাইন ফার্মেসি অভিজ্ঞতা', 'Prescription-aware online pharmacy experience')}</span>
           </div>
           <div className="flex flex-wrap gap-4">
             <Link to="/privacy-policy" className="transition hover:text-white">{t('প্রাইভেসি পলিসি', 'Privacy policy')}</Link>

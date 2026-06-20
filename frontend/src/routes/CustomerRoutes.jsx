@@ -4,6 +4,7 @@ import ProtectedCustomerRoute from './ProtectedCustomerRoute'
 import Home from '../pages/customer/Home'
 import Products from '../pages/customer/Products'
 import ProductDetails from '../pages/customer/ProductDetails'
+import Offers from '../pages/customer/Offers'
 import Cart from '../pages/customer/Cart'
 import Checkout from '../pages/customer/Checkout'
 import TrackOrder from '../pages/customer/TrackOrder'
@@ -35,6 +36,7 @@ export default function CustomerRoutes() {
         <Route index element={<Home />} />
         <Route path="products" element={<Products />} />
         <Route path="products/:slug" element={<ProductDetails />} />
+        <Route path="offers" element={<Offers />} />
         <Route path="wishlist" element={<Wishlist />} />
         <Route path="cart" element={<Cart />} />
         <Route path="checkout" element={<Checkout />} />

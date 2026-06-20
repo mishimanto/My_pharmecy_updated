@@ -2,14 +2,19 @@
 
 use App\Http\Controllers\Api\Admin\AdminAuthController;
 use App\Http\Controllers\Api\Admin\AdminActivityLogController;
+use App\Http\Controllers\Api\Admin\BannerImageController as AdminBannerImageController;
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\DeliveryAreaController;
 use App\Http\Controllers\Api\Admin\DeliveryController;
+use App\Http\Controllers\Api\Admin\HeroSlideController as AdminHeroSlideController;
 use App\Http\Controllers\Api\Admin\InventoryBatchController;
 use App\Http\Controllers\Api\Admin\InventoryTransactionController;
 use App\Http\Controllers\Api\Admin\ManufacturerController;
+use App\Http\Controllers\Api\Admin\MarketingPopupController as AdminMarketingPopupController;
 use App\Http\Controllers\Api\Admin\NotificationManagementController;
+use App\Http\Controllers\Api\Admin\CouponController;
+use App\Http\Controllers\Api\Admin\OfferController as AdminOfferController;
 use App\Http\Controllers\Api\Admin\OrderManagementController;
 use App\Http\Controllers\Api\Admin\PaymentManagementController;
 use App\Http\Controllers\Api\Admin\ProductController;
@@ -27,12 +32,17 @@ use App\Http\Controllers\Api\Admin\SupportManagementController;
 use App\Http\Controllers\Api\Admin\UserManagementController;
 use App\Http\Controllers\Api\Customer\AddressController;
 use App\Http\Controllers\Api\Customer\AuthController;
+use App\Http\Controllers\Api\Customer\BannerImageController;
 use App\Http\Controllers\Api\Customer\CartController;
 use App\Http\Controllers\Api\Customer\CategoryBrowseController;
 use App\Http\Controllers\Api\Customer\CheckoutController;
 use App\Http\Controllers\Api\Customer\DeliveryTrackingController;
+use App\Http\Controllers\Api\Customer\GuestSessionController;
+use App\Http\Controllers\Api\Customer\HeroSlideController;
+use App\Http\Controllers\Api\Customer\MarketingPopupController;
 use App\Http\Controllers\Api\Customer\NotificationController;
 use App\Http\Controllers\Api\Customer\OrderController;
+use App\Http\Controllers\Api\Customer\OfferController;
 use App\Http\Controllers\Api\Customer\PaymentController;
 use App\Http\Controllers\Api\Customer\PrescriptionController;
 use App\Http\Controllers\Api\Customer\ProductBrowseController;
@@ -66,10 +76,15 @@ Route::get('/manufacturers', fn () => [
 ]);
 
 Route::get('/site-settings', [SiteSettingsController::class, 'show']);
+Route::get('/hero-slides', [HeroSlideController::class, 'index']);
+Route::get('/banner-images', [BannerImageController::class, 'index']);
+Route::get('/offers', [OfferController::class, 'index']);
+Route::get('/marketing-popup', [MarketingPopupController::class, 'show']);
 
 Route::prefix('customer')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/guest-session', [GuestSessionController::class, 'store']);
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
     Route::get('/products', [ProductBrowseController::class, 'index']);
@@ -156,6 +171,11 @@ Route::prefix('admin')->group(function () {
         Route::post('/roles/{id}/permissions', [RolePermissionController::class, 'syncPermissions'])->middleware('permission:role.manage');
         Route::get('/site-settings', [AdminSiteSettingsController::class, 'show'])->middleware('permission:role.manage');
         Route::put('/site-settings', [AdminSiteSettingsController::class, 'update'])->middleware('permission:role.manage');
+        Route::apiResource('hero-slides', AdminHeroSlideController::class)->except(['show']);
+        Route::apiResource('banner-images', AdminBannerImageController::class)->except(['show']);
+        Route::apiResource('coupons', CouponController::class)->except(['show']);
+        Route::apiResource('offers', AdminOfferController::class)->except(['show']);
+        Route::apiResource('marketing-popups', AdminMarketingPopupController::class)->except(['show']);
 
         Route::get('/categories', [CategoryController::class, 'index'])->middleware('permission:product.view');
         Route::post('/categories', [CategoryController::class, 'store'])->middleware('permission:product.create');

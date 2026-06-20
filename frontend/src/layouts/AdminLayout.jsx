@@ -56,6 +56,7 @@ const navigationGroups = [
     items: [
       { to: '/admin/coupons', label: 'Coupons', permission: null, icon: FiPercent },
       { to: '/admin/offers', label: 'Offers', permission: null, icon: FiGift },
+      { to: '/admin/popups', label: 'Popups', permission: null, icon: FiGift },
       { to: '/admin/hero-images', label: 'Hero Images', permission: null, icon: FiImage },
       { to: '/admin/banner-images', label: 'Banner Images', permission: null, icon: FiImage },
     ],

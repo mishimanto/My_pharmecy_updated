@@ -63,26 +63,50 @@ function cartCountFromPayload(cart) {
   return (cart?.items || []).reduce((total, item) => total + Number(item.quantity || 0), 0)
 }
 
+function storageScope(customer, guestToken) {
+  if (customer?.id) return `customer:${customer.id}`
+  if (guestToken) return `guest:${guestToken}`
+  return 'guest:anonymous'
+}
+
+function scopedStorageKey(key, scope) {
+  return `${key}:${scope}`
+}
+
 export function StorefrontProvider({ children }) {
-  const { customer, loading: authLoading, ensureGuestToken } = useCustomerAuth()
-  const [cart, setCart] = useState(() => readStorage(CART_CACHE_KEY, null))
-  const [cartLoading, setCartLoading] = useState(() => !readStorage(CART_CACHE_KEY, null))
-  const [cartReady, setCartReady] = useState(() => Boolean(readStorage(CART_CACHE_KEY, null)))
-  const [wishlist, setWishlist] = useState(() => readStorage(WISHLIST_CACHE_KEY, []))
+  const { customer, guestToken, loading: authLoading, ensureGuestToken } = useCustomerAuth()
+  const scope = useMemo(() => storageScope(customer, guestToken), [customer, guestToken])
+  const cartCacheKey = useMemo(() => scopedStorageKey(CART_CACHE_KEY, scope), [scope])
+  const wishlistCacheKey = useMemo(() => scopedStorageKey(WISHLIST_CACHE_KEY, scope), [scope])
+  const [cart, setCart] = useState(() => readStorage(cartCacheKey, null))
+  const [cartLoading, setCartLoading] = useState(() => !readStorage(cartCacheKey, null))
+  const [cartReady, setCartReady] = useState(() => Boolean(readStorage(cartCacheKey, null)))
+  const [wishlist, setWishlist] = useState(() => readStorage(wishlistCacheKey, []))
   const cartRef = useRef(cart)
   const cartPromiseRef = useRef(null)
+
+  useEffect(() => {
+    const cachedCart = readStorage(cartCacheKey, null)
+
+    cartPromiseRef.current = null
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCart(cachedCart)
+    setCartLoading(!cachedCart)
+    setCartReady(Boolean(cachedCart))
+    setWishlist(readStorage(wishlistCacheKey, []))
+  }, [cartCacheKey, wishlistCacheKey])
 
   useEffect(() => {
     cartRef.current = cart
 
     if (cart) {
-      writeSession(CART_CACHE_KEY, cart)
+      writeSession(cartCacheKey, cart)
     }
-  }, [cart])
+  }, [cart, cartCacheKey])
 
   useEffect(() => {
-    writeLocal(WISHLIST_CACHE_KEY, wishlist)
-  }, [wishlist])
+    writeLocal(wishlistCacheKey, wishlist)
+  }, [wishlist, wishlistCacheKey])
 
   const updateCartState = useCallback((nextCart) => {
     setCart(nextCart)
@@ -96,7 +120,7 @@ export function StorefrontProvider({ children }) {
     }
 
     if (!customer) {
-      ensureGuestToken()
+      await ensureGuestToken()
     }
 
     if (!force && cartPromiseRef.current) {
@@ -133,7 +157,7 @@ export function StorefrontProvider({ children }) {
   }, [authLoading, customer, refreshCart])
 
   const addToCart = useCallback(async (payload) => {
-    ensureGuestToken()
+    await ensureGuestToken()
     const { data } = await cartApi.add(payload)
     updateCartState(data.data.cart)
     return data.data.cart

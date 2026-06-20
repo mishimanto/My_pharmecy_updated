@@ -16,7 +16,7 @@ class ProductBrowseController extends Controller
     {
         $products = $catalog->customerQuery($request)->paginate($request->integer('per_page', 12));
 
-        return $this->ok($catalog->appendCollection($products), 'à¦ªà§à¦°à§‹à¦¡à¦¾à¦•à§à¦Ÿ à¦¤à¦¾à¦²à¦¿à¦•à¦¾ à¦ªà¦¾à¦“à§Ÿà¦¾ à¦—à§‡à¦›à§‡à¥¤');
+        return $this->ok($catalog->appendCollection($products), 'Products loaded successfully.');
     }
 
     public function show(string $slugOrId, ProductCatalogService $catalog)
@@ -53,6 +53,6 @@ class ProductBrowseController extends Controller
             })
             ->firstOrFail();
 
-        return $this->ok($catalog->appendComputedFields($product), 'à¦ªà§à¦°à§‹à¦¡à¦¾à¦•à§à¦Ÿ à¦¤à¦¥à§à¦¯ à¦ªà¦¾à¦“à§Ÿà¦¾ à¦—à§‡à¦›à§‡à¥¤');
+        return $this->ok($catalog->appendComputedFields($product), 'Product loaded successfully.');
     }
 }

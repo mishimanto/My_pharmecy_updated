@@ -7,6 +7,7 @@ import {
   FiMenu,
   FiMessageSquare,
   FiPackage,
+  FiPercent,
   FiSearch,
   FiShoppingCart,
   FiTruck,
@@ -14,12 +15,14 @@ import {
   FiX,
 } from 'react-icons/fi'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { offerApi, readCachedOffers } from '../../api/offerApi'
 import { productApi } from '../../api/productApi'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
 import { getCategoryName } from '../../utils/categoryNames'
 import { getProductImage, handleImageFallback } from '../../utils/imageUrl'
+import { getLocalizedOffer, getOfferTimeLeft } from '../../utils/offerDisplay'
 import { getProductPath, getProductRouteKey } from '../../utils/productRouting'
 import CustomerLogo from './CustomerLogo'
 
@@ -38,6 +41,9 @@ export default function CustomerHeader() {
   const [isSearching, setIsSearching] = useState(false)
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [offerRecords, setOfferRecords] = useState(() => readCachedOffers() || [])
+  const [isOfferBarHidden, setIsOfferBarHidden] = useState(false)
+  const [nowTick, setNowTick] = useState(0)
   const trimmedSearch = search.trim()
   const cachedSearchResults =
     trimmedSearch.length >= 2
@@ -52,11 +58,26 @@ export default function CustomerHeader() {
       productApi.prefetchList({ per_page: 6 })
       productApi.prefetchCategories()
       productApi.prefetchManufacturers()
+      offerApi.list().then((response) => setOfferRecords(response.data.data || [])).catch(() => {})
       refreshCart().catch(() => {})
     }, 0)
 
     return () => window.clearTimeout(timeoutId)
   }, [refreshCart])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowTick((current) => current + 1), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    const handleScroll = () => setIsOfferBarHidden(window.scrollY > 24)
+
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const closeMenus = () => {
     setIsAccountMenuOpen(false)
@@ -172,12 +193,17 @@ export default function CustomerHeader() {
 
   const trackOrdersTo = customer ? '/orders' : '/track-order'
   const t = (bn, en) => (isBangla ? bn : en)
+  const liveOffers = offerRecords.filter((offer) => getOfferTimeLeft(offer.ends_at)?.expired !== true)
+  const activeOffer = liveOffers.find((offer) => offer.show_in_nav) || liveOffers[0] || offerRecords[0]
+  const offerBar = activeOffer ? getLocalizedOffer(activeOffer, isBangla) : null
+  const offerTimeLeft = nowTick >= 0 ? getOfferTimeLeft(offerBar?.endsAt) : null
   const customerName = customer?.full_name?.trim() || t('সাইন ইন', 'Sign in')
   const displayCustomerName = customerName.length > 12 ? `${customerName.slice(0, 12)}...` : customerName
   const avatarName = customer?.full_name?.trim() || t('গেস্ট', 'Guest')
   const nav = [
     ['/', t('হোম', 'Home')],
     ['/products', t('ওষুধ', 'Medicines')],
+    ['/offers', t('অফার', 'Offers')],
     ['/upload-prescription', t('প্রেসক্রিপশন আপলোড', 'Upload Prescription')],
     ['/orders', t('অর্ডার', 'Orders')],
     ['/account', t('অ্যাকাউন্ট', 'Account')],
@@ -187,6 +213,7 @@ export default function CustomerHeader() {
   const subNav = [
     ['/', t('হোম', 'Home')],
     ['/products', t('ওষুধ', 'Medicines')],
+    ['/offers', t('অফার', 'Offers')],
     
     ['/track-order', t('ট্র্যাক অর্ডার', 'Track Order')],
     ['/faq', t('জিজ্ঞাসা', 'FAQ')],
@@ -202,7 +229,21 @@ export default function CustomerHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-[#f4f7fa]">
-      <div className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/92 backdrop-blur supports-backdrop-filter:bg-white/78">
+      {offerBar ? (
+        <div className={`border-b border-[#9de8e1]/35 bg-[linear-gradient(90deg,#0e6574,#13b8b0)] text-white shadow-[0_10px_30px_-26px_rgba(14,101,116,0.9)] transition-all duration-300 ${isOfferBarHidden ? 'max-h-0 -translate-y-full overflow-hidden opacity-0' : 'max-h-12 translate-y-0 opacity-100'}`}>
+          <Link to="/offers" onClick={closeMenus} className="mx-auto flex max-w-7xl items-center justify-center gap-2 px-4 py-2 text-center text-xs font-semibold sm:text-sm">
+            <FiPercent className="h-4 w-4 shrink-0 text-cyan-100" />
+            <span className="shrink-0">{t('অফার দেখুন', 'Explore offers')}</span>
+            <span className="hidden h-1 w-1 rounded-full bg-cyan-100 sm:inline-flex" />
+            <span className="min-w-0 truncate text-cyan-50">{offerBar.title}</span>
+            <span className="hidden h-1 w-1 rounded-full bg-cyan-100 sm:inline-flex" />
+            <span className="shrink-0 rounded-full bg-white/14 px-2 py-0.5 text-[11px] text-cyan-50 sm:text-xs">
+              {offerTimeLeft?.label ? `${t('শেষ হতে', 'Ends in')} ${offerTimeLeft.label}` : t('সীমিত সময়', 'Limited time')}
+            </span>
+          </Link>
+        </div>
+      ) : null}
+      <div className="relative z-50 border-b border-slate-200/80 bg-white/92 backdrop-blur supports-backdrop-filter:bg-white/78">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:flex-nowrap lg:gap-4 lg:px-8 lg:py-4">
           <Link to="/" onClick={closeMenus} className="order-1 shrink-0 lg:order-1" aria-label="My Pharmecy home">
             <CustomerLogo />

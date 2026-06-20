@@ -13,12 +13,12 @@ use Throwable;
 
 class SiteSettingsLogoService
 {
-    public function store(UploadedFile $file, ?string $previousPath = null): array
+    public function store(UploadedFile $file, ?string $previousPath = null, string $directory = 'site-settings'): array
     {
-        return $this->storeImage(fn (ImageManager $manager) => $manager->decodePath($file->getRealPath()), $previousPath);
+        return $this->storeImage(fn (ImageManager $manager) => $manager->decodePath($file->getRealPath()), $previousPath, $directory);
     }
 
-    public function storeDataUri(string $dataUri, ?string $previousPath = null): array
+    public function storeDataUri(string $dataUri, ?string $previousPath = null, string $directory = 'site-settings'): array
     {
         if (! preg_match('/^data:image\/[a-zA-Z0-9.+-]+;base64,(.+)$/', $dataUri, $matches)) {
             throw ValidationException::withMessages([
@@ -33,12 +33,12 @@ class SiteSettingsLogoService
             ]);
         }
 
-        return $this->storeImage(fn (ImageManager $manager) => $manager->decodeBinary($binary), $previousPath);
+        return $this->storeImage(fn (ImageManager $manager) => $manager->decodeBinary($binary), $previousPath, $directory);
     }
 
-    private function storeImage(callable $decoder, ?string $previousPath = null): array
+    private function storeImage(callable $decoder, ?string $previousPath = null, string $directory = 'site-settings'): array
     {
-        $path = 'site-settings/' . Str::uuid() . '.webp';
+        $path = trim($directory, '/') . '/' . Str::uuid() . '.webp';
 
         try {
             $image = $decoder(new ImageManager(new Driver()))

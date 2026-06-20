@@ -68,7 +68,7 @@ class CheckoutService
             $prescription = $this->resolvePrescription($cart->user_id, $guestToken, $requiresPrescription, $prescriptionId);
             $subtotal = Currency::whole($orderItems->sum('subtotal'));
             $delivery = Currency::whole($deliveryArea->delivery_charge);
-            $pricing = $this->coupons->buildSummary($subtotal, $delivery, $couponCode);
+            $pricing = $this->coupons->buildSummary($subtotal, $delivery, $couponCode, true);
             $order = Order::create([
                 'user_id' => $cart->user_id,
                 'address_id' => $addressId,
@@ -129,6 +129,8 @@ class CheckoutService
             if ($prescription) {
                 $prescription->update(['order_id' => $order->id]);
             }
+
+            $this->coupons->markUsed($pricing['coupon'] ?? null);
 
             $this->communication->notify(
                 $order,

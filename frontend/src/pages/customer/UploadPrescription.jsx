@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { FiFileText, FiUpload, FiX } from 'react-icons/fi'
@@ -39,6 +39,12 @@ export default function UploadPrescription() {
   }, [file])
   const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : ''), [file])
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
+
   const updateField = (key) => (event) => {
     setForm((current) => ({ ...current, [key]: event.target.value }))
   }
@@ -75,7 +81,7 @@ export default function UploadPrescription() {
     Object.entries(form).forEach(([key, value]) => body.append(key, value || ''))
 
     try {
-      ensureGuestToken()
+      await ensureGuestToken()
       await prescriptionApi.create(body)
       toast.success(t('প্রেসক্রিপশন সফলভাবে আপলোড হয়েছে।', 'Prescription uploaded successfully.'))
       navigate(searchParams.get('returnTo') || '/prescriptions')

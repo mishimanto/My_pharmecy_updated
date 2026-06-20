@@ -10,8 +10,11 @@ import {
   FiShield,
   FiTruck,
 } from 'react-icons/fi'
+import { bannerImageApi, readCachedBannerImages } from '../../api/bannerImageApi'
+import { heroSlideApi, readCachedHeroSlides } from '../../api/heroSlideApi'
 import { productApi } from '../../api/productApi'
 import HomeCategoriesSection from '../../components/customer/home/HomeCategoriesSection'
+import HomeBannerSection from '../../components/customer/home/HomeBannerSection'
 import HomeFeaturedProductsSection from '../../components/customer/home/HomeFeaturedProductsSection'
 import HomeHeroSection from '../../components/customer/home/HomeHeroSection'
 import HomeProductPanelsSection from '../../components/customer/home/HomeProductPanelsSection'
@@ -30,13 +33,40 @@ export default function Home() {
   const { addToCart } = useStorefront()
   const { customer } = useCustomerAuth()
   const { isBangla } = useLanguage()
-  const heroSlides = useMemo(() => getHeroSlides(isBangla), [isBangla])
+  const fallbackHeroSlides = useMemo(() => getHeroSlides(isBangla), [isBangla])
+  const [heroSlideRecords, setHeroSlideRecords] = useState(() => readCachedHeroSlides() || [])
+  const [bannerRecords, setBannerRecords] = useState(() => readCachedBannerImages() || [])
+  const heroSlides = useMemo(() => {
+    if (!heroSlideRecords.length) return fallbackHeroSlides
+
+    const mappedSlides = heroSlideRecords.map((item) => ({
+      id: item.id,
+      eyebrow: isBangla ? item.eyebrow_bn || item.eyebrow : item.eyebrow,
+      title: isBangla ? item.title_bn || item.title : item.title,
+      image: item.image_src || item.image_url,
+      primaryLabel: isBangla ? item.primary_label_bn || item.primary_label : item.primary_label,
+      primaryUrl: item.primary_url || '/products',
+      secondaryLabel: isBangla ? item.secondary_label_bn || item.secondary_label : item.secondary_label,
+      secondaryUrl: item.secondary_url || '/upload-prescription',
+    })).filter((item) => item.title && item.image)
+
+    return mappedSlides.length ? mappedSlides : fallbackHeroSlides
+  }, [fallbackHeroSlides, heroSlideRecords, isBangla])
   const trustItems = useMemo(() => ([
     { icon: FiShield, label: isBangla ? 'লাইসেন্সপ্রাপ্ত ফার্মেসি সেবা' : 'Licensed pharmacy service', detail: isBangla ? 'প্রেসক্রিপশন রিভিউসহ' : 'With prescription review' },
     { icon: FiTruck, label: isBangla ? 'ঢাকাজুড়ে হোম ডেলিভারি' : 'Doorstep delivery in Dhaka', detail: isBangla ? 'অর্ডারের প্রতিটি ধাপ ট্র্যাক করুন' : 'Track every order step' },
     { icon: FiCreditCard, label: isBangla ? 'ক্যাশ অন ডেলিভারি' : 'Cash on delivery', detail: isBangla ? 'পণ্য হাতে পেয়ে পেমেন্ট করুন' : 'Pay when you receive' },
     { icon: FiPhoneCall, label: '09610-001122', detail: isBangla ? 'সকাল ৮টা - রাত ১১টা সহায়তা' : '8AM - 11PM support' },
   ]), [isBangla])
+  const banners = useMemo(() => bannerRecords.map((item) => ({
+    id: item.id,
+    label: isBangla ? item.label_bn || item.label : item.label,
+    title: isBangla ? item.title_bn || item.title : item.title,
+    body: isBangla ? item.body_bn || item.body : item.body,
+    buttonLabel: isBangla ? item.button_label_bn || item.button_label : item.button_label,
+    linkUrl: item.link_url || '/products',
+    image: item.image_src || item.image_url,
+  })).filter((item) => item.title && item.image), [bannerRecords, isBangla])
   // const quickPaths = useMemo(() => ([
   //   {
   //     to: '/upload-prescription',
@@ -116,11 +146,19 @@ export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0)
 
   useEffect(() => {
-    Promise.all([productApi.list({ per_page: 12 }), productApi.categories(), productApi.manufacturers()])
-      .then(([productRes, categoryRes, manufacturerRes]) => {
+    Promise.all([
+      productApi.list({ per_page: 12 }),
+      productApi.categories(),
+      productApi.manufacturers(),
+      heroSlideApi.list(),
+      bannerImageApi.list(),
+    ])
+      .then(([productRes, categoryRes, manufacturerRes, heroSlideRes, bannerRes]) => {
         setProducts(productRes.data.data?.data || [])
         setCategories(categoryRes.data.data || [])
         setManufacturers(manufacturerRes.data.data || [])
+        setHeroSlideRecords(heroSlideRes.data.data || [])
+        setBannerRecords(bannerRes.data.data || [])
       })
       .catch(() => toast.error(isBangla ? 'এই মুহূর্তে স্টোরফ্রন্ট লোড করা যাচ্ছে না।' : 'Unable to load the storefront right now.'))
       .finally(() => setLoading(false))
@@ -134,14 +172,12 @@ export default function Home() {
     return () => clearInterval(timer)
   }, [heroSlides.length])
 
-  const slide = heroSlides[currentSlide]
+  const slide = heroSlides[currentSlide] || heroSlides[0]
   const featuredProducts = useMemo(() => products.slice(0, 8), [products])
   const otcProducts = useMemo(() => products.filter((product) => !product.requires_prescription).slice(0, 4), [products])
   const prescriptionProducts = useMemo(() => products.filter((product) => product.requires_prescription).slice(0, 4), [products])
   const categoryHighlights = useMemo(() => categories.slice(0, 8), [categories])
   const manufacturerHighlights = useMemo(() => manufacturers.slice(0, 8), [manufacturers])
-  const spotlightProduct = featuredProducts[0]
-
   const add = async (product) => {
     const option = getDefaultPurchaseOption(product)
     const unitCode = option?.code || 'piece'
@@ -176,6 +212,7 @@ export default function Home() {
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* <HomeQuickPathsSection quickPaths={quickPaths} /> */}
+        <HomeBannerSection banners={banners} />
         <HomeCategoriesSection isBangla={isBangla} categories={categoryHighlights} />
         <HomeProductPanelsSection isBangla={isBangla} prescriptionProducts={prescriptionProducts} otcProducts={otcProducts} />
         <HomeFeaturedProductsSection isBangla={isBangla} loading={loading} featuredProducts={featuredProducts} onAdd={add} />

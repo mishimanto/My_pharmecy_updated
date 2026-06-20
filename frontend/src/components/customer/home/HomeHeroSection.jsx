@@ -26,33 +26,19 @@ export default function HomeHeroSection({ heroSlides, currentSlide, slide, isBan
             {slide.eyebrow}
           </div>
 
-          <h1 key={slide.id} className="mt-3 max-w-3xl text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-[3.25rem] animate-in">
+          <h1 key={slide.id} className="mt-3 max-w-3xl animate-in text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-[3.25rem]">
             {slide.title}
           </h1>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/products" className="inline-flex items-center gap-2 bg-[#13b8b0] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-teal-900/30 transition hover:bg-[#0ea8a1]">
-              {isBangla ? 'ওষুধ দেখুন' : 'Shop medicines'}
+            <Link to={slide.primaryUrl || '/products'} className="inline-flex items-center gap-2 bg-[#13b8b0] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-teal-900/30 transition hover:bg-[#0ea8a1]">
+              {slide.primaryLabel || (isBangla ? 'ওষুধ দেখুন' : 'Shop medicines')}
               <FiArrowRight className="h-4 w-4" />
             </Link>
-            <Link to="/upload-prescription" className="inline-flex items-center gap-2 border border-white/25 bg-white/10 px-6 py-3.5 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/15">
-              {isBangla ? 'প্রেসক্রিপশন আপলোড' : 'Upload prescription'}
+            <Link to={slide.secondaryUrl || '/upload-prescription'} className="inline-flex items-center gap-2 border border-white/25 bg-white/10 px-6 py-3.5 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/15">
+              {slide.secondaryLabel || (isBangla ? 'প্রেসক্রিপশন আপলোড' : 'Upload prescription')}
             </Link>
           </div>
-
-          {/* <div className="mt-10 flex items-center gap-3">
-            {heroSlides.map((item, index) => (
-              <button
-                key={item.id}
-                type="button"
-                aria-label={isBangla ? `স্লাইড ${index + 1} এ যান` : `Go to slide ${index + 1}`}
-                onClick={() => setCurrentSlide(index)}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  index === currentSlide ? 'w-10 bg-[#13b8b0]' : 'w-3 bg-white/30 hover:bg-white/50'
-                }`}
-              />
-            ))}
-          </div> */}
         </div>
       </div>
     </section>

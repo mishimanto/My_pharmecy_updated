@@ -38,6 +38,7 @@ export default function OrderPayment() {
 
   useEffect(() => {
     let mounted = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading((prev) => (prev || readCustomerCache(cacheKey, null) === null))
 
     orderApi.show(id)
@@ -54,6 +55,13 @@ export default function OrderPayment() {
   }, [id, t, cacheKey])
 
   const screenshotUrl = useMemo(() => (screenshot ? URL.createObjectURL(screenshot) : ''), [screenshot])
+
+  useEffect(() => {
+    return () => {
+      if (screenshotUrl) URL.revokeObjectURL(screenshotUrl)
+    }
+  }, [screenshotUrl])
+
   const isBkash = order?.payment_method === 'BKASH'
   const paymentLabel = isBkash ? 'bKash' : 'Nagad'
   const paymentNumber = order?.payment_number || '01700000000'

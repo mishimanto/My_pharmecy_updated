@@ -41,6 +41,38 @@ export const adminApi = {
   show: (resource, id) => cachedGet(`/admin/${resource}/${id}`),
   create: (resource, payload) => clearAfter(api.post(`/admin/${resource}`, payload)),
   update: (resource, id, payload) => clearAfter(api.put(`/admin/${resource}/${id}`, payload)),
+  createHeroSlide: (payload) => clearAfter(api.post('/admin/hero-slides', payload, { headers: { 'Content-Type': 'multipart/form-data' } })),
+  updateHeroSlide: (id, payload) => {
+    if (payload instanceof FormData && !payload.has('_method')) {
+      payload.append('_method', 'PUT')
+    }
+
+    return clearAfter(api.post(`/admin/hero-slides/${id}`, payload, { headers: { 'Content-Type': 'multipart/form-data' } }))
+  },
+  createBannerImage: (payload) => clearAfter(api.post('/admin/banner-images', payload, { headers: { 'Content-Type': 'multipart/form-data' } })),
+  updateBannerImage: (id, payload) => {
+    if (payload instanceof FormData && !payload.has('_method')) {
+      payload.append('_method', 'PUT')
+    }
+
+    return clearAfter(api.post(`/admin/banner-images/${id}`, payload, { headers: { 'Content-Type': 'multipart/form-data' } }))
+  },
+  createOffer: (payload) => clearAfter(api.post('/admin/offers', payload, { headers: { 'Content-Type': 'multipart/form-data' } })),
+  updateOffer: (id, payload) => {
+    if (payload instanceof FormData && !payload.has('_method')) {
+      payload.append('_method', 'PUT')
+    }
+
+    return clearAfter(api.post(`/admin/offers/${id}`, payload, { headers: { 'Content-Type': 'multipart/form-data' } }))
+  },
+  createMarketingPopup: (payload) => clearAfter(api.post('/admin/marketing-popups', payload, { headers: { 'Content-Type': 'multipart/form-data' } })),
+  updateMarketingPopup: (id, payload) => {
+    if (payload instanceof FormData && !payload.has('_method')) {
+      payload.append('_method', 'PUT')
+    }
+
+    return clearAfter(api.post(`/admin/marketing-popups/${id}`, payload, { headers: { 'Content-Type': 'multipart/form-data' } }))
+  },
   createManufacturer: (payload) => clearAfter(api.post('/admin/manufacturers', payload)),
   updateManufacturer: (id, payload) => clearAfter(api.post(`/admin/manufacturers/${id}`, payload)),
   patch: (resource, id, action, payload) => clearAfter(api.patch(`/admin/${resource}/${id}/${action}`, payload)),

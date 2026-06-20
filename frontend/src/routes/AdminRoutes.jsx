@@ -76,6 +76,7 @@ export default function AdminRoutes() {
           <Route path="products/:id/edit" element={<ProductEdit />} />
           <Route path="coupons" element={<MarketingTools type="coupons" />} />
           <Route path="offers" element={<MarketingTools type="offers" />} />
+          <Route path="popups" element={<MarketingTools type="popups" />} />
           <Route path="hero-images" element={<MarketingTools type="heroImages" />} />
           <Route path="banner-images" element={<MarketingTools type="bannerImages" />} />
           <Route path="suppliers" element={<Suppliers />} />

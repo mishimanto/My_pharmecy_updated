@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import CustomerFooter from '../components/customer/CustomerFooter'
 import CustomerHeader from '../components/customer/CustomerHeader'
+import CustomerMarketingPopup from '../components/customer/CustomerMarketingPopup'
 
 export default function CustomerLayout() {
   const location = useLocation()
@@ -15,6 +16,7 @@ export default function CustomerLayout() {
       </main>
 
       <CustomerFooter />
+      <CustomerMarketingPopup />
     </div>
   )
 }

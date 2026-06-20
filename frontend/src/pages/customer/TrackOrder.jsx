@@ -19,10 +19,10 @@ export default function TrackOrder() {
     event.preventDefault()
     if (!orderId.trim()) return
 
-    ensureGuestToken()
     setLoading(true)
 
     try {
+      await ensureGuestToken()
       const res = await orderApi.tracking(orderId.trim())
       setTracking(res.data.data)
     } catch (error) {

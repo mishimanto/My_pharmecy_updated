@@ -1,39 +1,35 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import Swal from 'sweetalert2'
-import { FiCalendar, FiEye, FiFileText, FiTrash2, FiUploadCloud, FiUser } from 'react-icons/fi'
+import { FiCalendar, FiEye, FiFileText, FiTrash2, FiUploadCloud } from 'react-icons/fi'
 import EmptyState from '../../components/common/EmptyState'
 import { prescriptionApi } from '../../api/prescriptionApi'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
-import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
 import { date } from '../../utils/formatters'
 import { prescriptionDisplayName, prescriptionSlug } from '../../utils/prescriptionDisplay'
-
-const PRESCRIPTIONS_CACHE_KEY = 'prescriptions_list'
 
 export default function Prescriptions() {
   const { loading: authLoading, ensureGuestToken } = useCustomerAuth()
   const { isBangla } = useLanguage()
-  const [items, setItems] = useState(() => readCustomerCache(PRESCRIPTIONS_CACHE_KEY, []))
-  const [loading, setLoading] = useState(() => readCustomerCache(PRESCRIPTIONS_CACHE_KEY, null) === null)
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState(null)
-  const t = (bn, en) => (isBangla ? bn : en)
+  const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
 
   useEffect(() => {
     if (authLoading) return
 
     ensureGuestToken()
-    prescriptionApi.list()
+      .then(() => prescriptionApi.list())
       .then(({ data }) => {
         const nextItems = data.data.data || []
         setItems(nextItems)
-        writeCustomerCache(PRESCRIPTIONS_CACHE_KEY, nextItems)
       })
       .catch(() => toast.error(t('প্রেসক্রিপশন লোড করা যায়নি।', 'Prescriptions could not be loaded.')))
       .finally(() => setLoading(false))
-  }, [authLoading, ensureGuestToken])
+  }, [authLoading, ensureGuestToken, t])
 
   const canUpload = items.length < 10
 
@@ -56,7 +52,6 @@ export default function Prescriptions() {
       await prescriptionApi.destroy(item.id)
       const nextItems = items.filter((current) => String(current.id) !== String(item.id))
       setItems(nextItems)
-      writeCustomerCache(PRESCRIPTIONS_CACHE_KEY, nextItems)
       toast.success(t('প্রেসক্রিপশন ডিলিট হয়েছে।', 'Prescription deleted successfully.'))
     } catch (error) {
       toast.error(error.response?.data?.message || t('প্রেসক্রিপশন ডিলিট করা যায়নি।', 'Prescription could not be deleted.'))
@@ -156,18 +151,6 @@ export default function Prescriptions() {
           ))}
         </div>
       )}
-    </div>
-  )
-}
-
-function InfoTile({ icon: Icon, label, value }) {
-  return (
-    <div className="border border-slate-100 bg-slate-50 p-4">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-        <Icon className="h-4 w-4" />
-        {label}
-      </div>
-      <div className="mt-2 text-sm font-semibold text-slate-800">{value}</div>
     </div>
   )
 }

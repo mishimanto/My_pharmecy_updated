@@ -38,9 +38,8 @@ function readCache() {
   if (typeof window === 'undefined') return null
 
   try {
-    const raw =
-      window.localStorage.getItem(PRESCRIPTION_CACHE_KEY)
-      || window.sessionStorage.getItem(PRESCRIPTION_CACHE_KEY)
+    window.localStorage.removeItem(PRESCRIPTION_CACHE_KEY)
+    const raw = window.sessionStorage.getItem(PRESCRIPTION_CACHE_KEY)
 
     if (!raw) return null
 
@@ -69,7 +68,6 @@ function writeCache() {
 
     const serialized = JSON.stringify(payload)
     window.sessionStorage.setItem(PRESCRIPTION_CACHE_KEY, serialized)
-    window.localStorage.setItem(PRESCRIPTION_CACHE_KEY, serialized)
   } catch {
     // Ignore storage quota and serialization failures.
   }

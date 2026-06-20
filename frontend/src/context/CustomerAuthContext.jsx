@@ -5,13 +5,19 @@ import { clearCustomerCaches, readCustomerCache, writeCustomerCache } from '../u
 
 const CustomerAuthContext = createContext(null)
 const CUSTOMER_PROFILE_CACHE_KEY = 'auth_profile'
+const SIGNED_GUEST_TOKEN_PATTERN = /^gst\.[A-Za-z0-9_-]{32,}\.\d+\.[a-f0-9]{64}$/
 
-function generateGuestToken() {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return `guest-${crypto.randomUUID()}`
-  }
+function readGuestToken() {
+  if (typeof window === 'undefined') return null
 
-  return `guest-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  const token = localStorage.getItem('guest_token')
+  return token && SIGNED_GUEST_TOKEN_PATTERN.test(token) ? token : null
+}
+
+function clearGuestToken() {
+  if (typeof window === 'undefined') return
+
+  localStorage.removeItem('guest_token')
 }
 
 function isAuthFailure(error) {
@@ -22,6 +28,7 @@ function isAuthFailure(error) {
 
 export function CustomerAuthProvider({ children }) {
   const [customer, setCustomer] = useState(() => readCustomerCache(CUSTOMER_PROFILE_CACHE_KEY, null))
+  const [guestToken, setGuestToken] = useState(() => readGuestToken())
   const [loading, setLoading] = useState(() => {
     const hasToken = Boolean(localStorage.getItem('customer_token'))
     const cachedCustomer = readCustomerCache(CUSTOMER_PROFILE_CACHE_KEY, null)
@@ -40,6 +47,7 @@ export function CustomerAuthProvider({ children }) {
 
   useEffect(() => {
     if (!localStorage.getItem('customer_token')) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(false)
       setCustomer(null)
       clearCustomerCaches()
@@ -73,6 +81,8 @@ export function CustomerAuthProvider({ children }) {
   const login = useCallback(async (payload) => {
     const { data } = await customerAuthApi.login(payload)
     localStorage.setItem('customer_token', data.data.token)
+    clearGuestToken()
+    setGuestToken(null)
     setCustomer(data.data.user)
     writeCustomerCache(CUSTOMER_PROFILE_CACHE_KEY, data.data.user)
   }, [])
@@ -80,6 +90,8 @@ export function CustomerAuthProvider({ children }) {
   const register = useCallback(async (payload) => {
     const { data } = await customerAuthApi.register(payload)
     localStorage.setItem('customer_token', data.data.token)
+    clearGuestToken()
+    setGuestToken(null)
     setCustomer(data.data.user)
     writeCustomerCache(CUSTOMER_PROFILE_CACHE_KEY, data.data.user)
   }, [])
@@ -91,17 +103,24 @@ export function CustomerAuthProvider({ children }) {
     return data.data
   }, [])
 
-  const ensureGuestToken = useCallback(() => {
+  const ensureGuestToken = useCallback(async () => {
     if (localStorage.getItem('customer_token')) {
       return null
     }
 
-    let token = localStorage.getItem('guest_token')
+    const existingToken = readGuestToken()
 
-    if (!token) {
-      token = generateGuestToken()
-      localStorage.setItem('guest_token', token)
+    if (existingToken) {
+      setGuestToken(existingToken)
+      return existingToken
     }
+
+    clearGuestToken()
+
+    const { data } = await customerAuthApi.guestSession()
+    const token = data.data.guest_token
+    localStorage.setItem('guest_token', token)
+    setGuestToken(token)
 
     return token
   }, [])
@@ -109,12 +128,14 @@ export function CustomerAuthProvider({ children }) {
   const logout = useCallback(async () => {
     await customerAuthApi.logout().catch(() => {})
     localStorage.removeItem('customer_token')
+    clearGuestToken()
+    setGuestToken(null)
     setCustomer(null)
     clearCustomerCaches()
   }, [])
 
   return (
-    <CustomerAuthContext.Provider value={{ customer, loading, login, register, updateProfile, refreshProfile, ensureGuestToken, logout }}>
+    <CustomerAuthContext.Provider value={{ customer, guestToken, loading, login, register, updateProfile, refreshProfile, ensureGuestToken, logout }}>
       {children}
     </CustomerAuthContext.Provider>
   )

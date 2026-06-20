@@ -20,6 +20,9 @@ const defaultSettings = {
   map_embed_url: 'https://www.google.com/maps?q=Dhaka%2C%20Bangladesh&z=12&output=embed',
   footer_note: 'Prescription-aware online pharmacy experience',
   logo_url: '',
+  logo_path: '',
+  favicon_url: '',
+  favicon_path: '',
 }
 
 const SiteSettingsContext = createContext(null)
@@ -125,6 +128,19 @@ export function SiteSettingsProvider({ children }) {
     if (typeof document === 'undefined') return
     document.title = settings?.site_name || defaultSettings.site_name
   }, [settings?.site_name])
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+
+    let favicon = document.querySelector('link[rel="icon"]')
+    if (!favicon) {
+      favicon = document.createElement('link')
+      favicon.rel = 'icon'
+      document.head.appendChild(favicon)
+    }
+
+    favicon.href = settings?.favicon_url || '/favicon.ico'
+  }, [settings?.favicon_url])
 
   const value = useMemo(() => ({
     settings,

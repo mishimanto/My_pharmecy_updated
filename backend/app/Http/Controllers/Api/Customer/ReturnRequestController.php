@@ -37,6 +37,18 @@ class ReturnRequestController extends Controller
             abort_unless($order->items->contains('id', (int) $data['order_item_id']), 403);
         }
 
+        $hasActiveReturn = $request->user()->returnRequests()
+            ->where('order_id', $order->id)
+            ->when(
+                !empty($data['order_item_id']),
+                fn ($query) => $query->where('order_item_id', (int) $data['order_item_id']),
+                fn ($query) => $query->whereNull('order_item_id')
+            )
+            ->whereNotIn('status', ['rejected', 'closed'])
+            ->exists();
+
+        abort_if($hasActiveReturn, 422, 'An active return request already exists for this order.');
+
         $return = ReturnRequest::create([
             'order_id' => $order->id,
             'order_item_id' => $data['order_item_id'] ?? null,

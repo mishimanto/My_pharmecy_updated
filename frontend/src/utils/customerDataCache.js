@@ -1,6 +1,22 @@
 const CACHE_PREFIX = 'customer_data_cache_v1:'
 const DEFAULT_TTL = 1000 * 60 * 10
 
+function currentScope() {
+  if (typeof window === 'undefined') return 'server'
+
+  const customerToken = window.localStorage.getItem('customer_token')
+  if (customerToken) return `customer:${customerToken.slice(-24)}`
+
+  const guestToken = window.localStorage.getItem('guest_token')
+  if (guestToken) return `guest:${guestToken.slice(-48)}`
+
+  return 'guest:anonymous'
+}
+
+function cacheKey(key) {
+  return `${CACHE_PREFIX}${currentScope()}:${key}`
+}
+
 function readStorage(key) {
   if (typeof window === 'undefined') return null
 
@@ -23,7 +39,7 @@ function removeStorage(key) {
 
 export function readCustomerCache(key, fallback = null, ttl = DEFAULT_TTL) {
   try {
-    const raw = readStorage(`${CACHE_PREFIX}${key}`)
+    const raw = readStorage(cacheKey(key))
 
     if (!raw) {
       return fallback
@@ -45,7 +61,7 @@ export function readCustomerCache(key, fallback = null, ttl = DEFAULT_TTL) {
 
 export function writeCustomerCache(key, value) {
   try {
-    writeStorage(`${CACHE_PREFIX}${key}`, JSON.stringify({
+    writeStorage(cacheKey(key), JSON.stringify({
       savedAt: Date.now(),
       value,
     }))
@@ -55,7 +71,7 @@ export function writeCustomerCache(key, value) {
 }
 
 export function removeCustomerCache(key) {
-  removeStorage(`${CACHE_PREFIX}${key}`)
+  removeStorage(cacheKey(key))
 }
 
 export function clearCustomerCaches() {

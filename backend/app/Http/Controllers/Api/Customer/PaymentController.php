@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Services\ShopperContextService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class PaymentController extends Controller
 {
@@ -35,21 +36,32 @@ class PaymentController extends Controller
         $order = $this->customerOrder($request, $id, $shopper);
 
         abort_if($order->payment_method === 'COD', 422, 'Payment proof is only required for full-payment orders.');
+        abort_unless(
+            in_array($order->order_status, ['pending', 'confirmed'], true),
+            422,
+            'Payment proof can only be submitted before the order is shipped.'
+        );
+        abort_unless(
+            in_array($order->payment_status, ['pending', 'awaiting_proof', 'rejected'], true),
+            422,
+            'Payment proof is not ready for resubmission.'
+        );
 
         $data = $request->validate([
             'transaction_id' => ['required', 'string', 'max:255'],
             'payment_screenshot' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
-        $path = $request->hasFile('payment_screenshot')
-            ? $request->file('payment_screenshot')->store('payment-proofs', 'public')
-            : null;
-
         $payment = $order->payment ?: $order->payment()->create([
             'payment_method' => $order->payment_method,
             'amount' => $order->total_amount,
             'payment_status' => 'awaiting_proof',
         ]);
+
+        $oldProofPath = $payment->payment_proof_path;
+        $path = $request->hasFile('payment_screenshot')
+            ? $request->file('payment_screenshot')->store('payment-proofs', 'public')
+            : $oldProofPath;
 
         $payment->update([
             'transaction_id' => $data['transaction_id'],
@@ -62,6 +74,10 @@ class PaymentController extends Controller
         ]);
 
         $order->update(['payment_status' => 'under_review']);
+
+        if ($request->hasFile('payment_screenshot') && $oldProofPath && $oldProofPath !== $path) {
+            Storage::disk('public')->delete($oldProofPath);
+        }
 
         return $this->ok(
             $order->fresh()->load('payment'),
