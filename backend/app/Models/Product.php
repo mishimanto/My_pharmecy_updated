@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RoundsCurrencyAttributes;
 use Illuminate\Support\Str;
 
 class Product extends PharmacyModel
 {
+    use RoundsCurrencyAttributes;
+
     protected static function booted(): void
     {
         static::saving(function (Product $product) {
@@ -25,6 +28,11 @@ class Product extends PharmacyModel
             'strip_price' => 'float',
             'box_price' => 'float',
         ];
+    }
+
+    protected function roundedCurrencyAttributes(): array
+    {
+        return ['strip_price', 'box_price'];
     }
 
     private static function uniqueSlug(string $name, ?int $ignoreId = null): string

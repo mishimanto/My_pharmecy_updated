@@ -426,7 +426,7 @@ export default function CustomerHeader() {
       </div>
 
       {isMobileMenuOpen ? (
-        <div className="absolute inset-x-0 top-[4.25rem] z-[70] border-t border-[#d4dde7] bg-white shadow-[0_24px_60px_-32px_rgba(15,23,42,0.38)] sm:top-[4.75rem] lg:hidden">
+        <div className="absolute inset-x-0 top-17 z-70 border-t border-[#d4dde7] bg-white shadow-[0_24px_60px_-32px_rgba(15,23,42,0.38)] sm:top-19 lg:hidden">
           <div className="mx-auto max-w-7xl space-y-5 px-4 py-4 sm:px-6">
             <div className="border-b border-slate-100 pb-4">
               {customer ? (
@@ -511,8 +511,8 @@ function HeaderActionLink({ to, label, count, icon: Icon, mobileOnly = false, co
       ) : null}
       {count > 0 ? (
         <span
-          className={`absolute inline-flex min-w-[22px] items-center justify-center rounded-full border border-white/85 bg-[linear-gradient(135deg,#0f766e,#13b8b0)] px-1.5 text-[10px] font-extrabold leading-none text-white shadow-[0_14px_28px_-12px_rgba(15,118,110,0.9)] ring-2 ring-[#e7f8f6] ${
-            mobileOnly ? '-right-1.5 -top-1.5 h-[22px]' : compact ? '-right-1.5 -top-1.5 h-[22px]' : 'left-4 top-0 h-[22px]'
+          className={`absolute inline-flex min-w-5.5 items-center justify-center rounded-full border border-white/85 bg-[linear-gradient(135deg,#0f766e,#13b8b0)] px-1.5 text-[12px] font-extrabold leading-none text-white shadow-[0_14px_28px_-12px_rgba(15,118,110,0.9)] ring-2 ring-[#e7f8f6] ${
+            mobileOnly ? '-right-1.5 -top-1.5 h-5.5' : compact ? '-right-1.5 -top-1.5 h-5.5' : 'left-4 top-0 h-5.5'
           }`}
         >
           {count > 99 ? '99+' : count}
@@ -524,7 +524,7 @@ function HeaderActionLink({ to, label, count, icon: Icon, mobileOnly = false, co
 
 function AccountMenuLink({ to, label, icon: Icon, onClick }) {
   return (
-    <NavLink to={to} onClick={onClick} className="flex items-center gap-3 rounded-[12px] px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 hover:text-slate-950">
+    <NavLink to={to} onClick={onClick} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 hover:text-slate-950">
       <Icon className="h-4 w-4 text-slate-400" />
       {label}
     </NavLink>
@@ -549,7 +549,7 @@ function UserAvatar({ customer, fallbackName }) {
 function BrandMark() {
   return (
     <div className="flex items-center">
-      <svg viewBox="0 0 74 44" className="h-9 w-[60px] shrink-0 sm:h-11 sm:w-[74px]" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <svg viewBox="0 0 74 44" className="h-9 w-15 shrink-0 sm:h-11 sm:w-18.5" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M35.5 40.5C29.6 35.9 15.5 25.4 8.7 17.2C4.5 12.2 4.6 4.9 10.4 2.1C16.3 -0.6 23.3 1.2 27.3 6.5L31.4 11.9L35.8 6.7C40.1 1.5 47.3 -0.1 53.1 2.8C58.6 5.5 60.2 12.4 56.5 17.3C49.9 25.8 41.3 33 35.5 40.5Z" stroke="#ef4444" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M22 22H28L30.6 16L34.1 28L37.3 18.5L40.1 22H47" stroke="#26b0af" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
       </svg>

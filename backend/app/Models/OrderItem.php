@@ -4,6 +4,8 @@ namespace App\Models;
 
 class OrderItem extends PharmacyModel
 {
+    use Concerns\RoundsCurrencyAttributes;
+
     protected function casts(): array
     {
         return [
@@ -14,6 +16,11 @@ class OrderItem extends PharmacyModel
             'discount' => 'float',
             'subtotal' => 'float',
         ];
+    }
+
+    protected function roundedCurrencyAttributes(): array
+    {
+        return ['unit_price', 'discount', 'subtotal'];
     }
 
     public function product() { return $this->belongsTo(Product::class); }

@@ -39,11 +39,11 @@ class AuthService
             ->first();
 
         if (! $user || ! Hash::check($password, $user->password)) {
-            return ['ok' => false, 'status' => 401, 'message' => 'ইমেইল/ফোন অথবা পাসওয়ার্ড সঠিক নয়।'];
+            return ['ok' => false, 'status' => 401, 'message' => 'The email/phone or password is incorrect.'];
         }
 
         if ($user->status !== 'active') {
-            return ['ok' => false, 'status' => 403, 'message' => 'কাস্টমার অ্যাকাউন্ট সক্রিয় নয়।'];
+            return ['ok' => false, 'status' => 403, 'message' => 'The customer account is not active.'];
         }
 
         return $this->issueToken($user, $request, 'কাস্টমার লগইন সফল হয়েছে।');

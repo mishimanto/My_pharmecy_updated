@@ -6,6 +6,7 @@ use App\Models\Cart;
 use App\Models\DeliveryArea;
 use App\Models\Order;
 use App\Models\Prescription;
+use App\Support\Currency;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -42,13 +43,13 @@ class CheckoutService
                 abort_unless($cartItem->product->is_active, 422, "{$cartItem->product->product_name} is not active.");
 
                 $pieceQuantity = max(1, (int) ($cartItem->piece_quantity ?: ($cartItem->quantity * max(1, $cartItem->pieces_per_unit))));
-                $subtotal = round($cartItem->quantity * $cartItem->unit_price, 2);
+                $subtotal = Currency::whole($cartItem->quantity * $cartItem->unit_price);
 
                 $allocations = $this->inventory->selectBatchesByFEFO($cartItem->product_id, $pieceQuantity)
                     ->map(fn ($allocation) => [
                         'batch' => $allocation['batch'],
                         'quantity' => $allocation['quantity'],
-                        'unit_price' => $allocation['batch']->selling_price,
+                        'unit_price' => Currency::whole($allocation['batch']->selling_price),
                     ]);
 
                 $orderItems->push([
@@ -58,15 +59,15 @@ class CheckoutService
                     'purchase_quantity' => $cartItem->quantity,
                     'pieces_per_unit' => max(1, (int) $cartItem->pieces_per_unit),
                     'piece_quantity' => $pieceQuantity,
-                    'unit_price' => (float) $cartItem->unit_price,
+                    'unit_price' => Currency::whole($cartItem->unit_price),
                     'subtotal' => $subtotal,
                 ]);
             }
 
             $requiresPrescription = $cart->items->contains(fn ($item) => (bool) $item->product->requires_prescription);
             $prescription = $this->resolvePrescription($cart->user_id, $guestToken, $requiresPrescription, $prescriptionId);
-            $subtotal = $orderItems->sum('subtotal');
-            $delivery = (float) $deliveryArea->delivery_charge;
+            $subtotal = Currency::whole($orderItems->sum('subtotal'));
+            $delivery = Currency::whole($deliveryArea->delivery_charge);
             $pricing = $this->coupons->buildSummary($subtotal, $delivery, $couponCode);
             $order = Order::create([
                 'user_id' => $cart->user_id,
@@ -112,7 +113,7 @@ class CheckoutService
                         'batch_id' => $allocation['batch']->id,
                         'quantity' => $allocation['quantity'],
                         'unit_price' => $allocation['unit_price'],
-                        'subtotal' => $allocation['quantity'] * $allocation['unit_price'],
+                        'subtotal' => Currency::whole($allocation['quantity'] * $allocation['unit_price']),
                     ]);
 
                     $this->inventory->reserveStock($allocation['batch']->id, $allocation['quantity'], 'order_item', $orderItem->id);

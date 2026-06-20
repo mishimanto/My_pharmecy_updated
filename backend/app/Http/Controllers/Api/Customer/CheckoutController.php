@@ -9,6 +9,7 @@ use App\Services\CouponService;
 use App\Services\CheckoutService;
 use App\Services\ShopperContextService;
 use App\Support\ApiResponse;
+use App\Support\Currency;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -32,7 +33,7 @@ class CheckoutController extends Controller
 
         $cart->load('items');
 
-        $subtotal = (float) $cart->items->sum(fn ($item) => (float) $item->quantity * (float) $item->unit_price);
+        $subtotal = Currency::whole($cart->items->sum(fn ($item) => (float) $item->quantity * (float) $item->unit_price));
         $deliveryArea = ! empty($data['delivery_area_id'])
             ? DeliveryArea::query()->where('status', 'active')->find($data['delivery_area_id'])
             : null;
@@ -42,7 +43,7 @@ class CheckoutController extends Controller
         try {
             $summary = $coupons->buildSummary(
                 $subtotal,
-                (float) ($deliveryArea?->delivery_charge ?? 0),
+                Currency::whole($deliveryArea?->delivery_charge ?? 0),
                 $data['coupon_code'] ?? null,
             );
         } catch (ValidationException $exception) {
@@ -50,7 +51,7 @@ class CheckoutController extends Controller
 
             $summary = $coupons->buildSummary(
                 $subtotal,
-                (float) ($deliveryArea?->delivery_charge ?? 0),
+                Currency::whole($deliveryArea?->delivery_charge ?? 0),
             );
         }
 

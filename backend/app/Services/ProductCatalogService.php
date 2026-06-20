@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Product;
+use App\Support\Currency;
 use Illuminate\Http\Request;
 
 class ProductCatalogService
@@ -117,7 +118,7 @@ class ProductCatalogService
 
     public function purchaseOptions(Product $product): array
     {
-        $piecePrice = round((float) ($product->display_price ?? 0), 2);
+        $piecePrice = Currency::whole($product->display_price ?? 0);
         $availableStock = max(0, (int) ($product->available_stock ?? 0));
         $config = $this->unitConfig($product);
 
@@ -126,14 +127,14 @@ class ProductCatalogService
         ];
 
         if ($config['pieces_per_strip'] > 1) {
-            $stripCompare = round($piecePrice * $config['pieces_per_strip'], 2);
-            $stripPrice = round((float) ($product->strip_price ?? $stripCompare), 2);
+            $stripCompare = Currency::whole($piecePrice * $config['pieces_per_strip']);
+            $stripPrice = Currency::whole($product->strip_price ?? $stripCompare);
             $options[] = $this->buildOption('strip', $config['pieces_per_strip'], $stripPrice, $stripCompare, $availableStock, true);
         }
 
         if ($config['pieces_per_box'] > 1) {
-            $boxCompare = round($piecePrice * $config['pieces_per_box'], 2);
-            $boxPrice = round((float) ($product->box_price ?? $boxCompare), 2);
+            $boxCompare = Currency::whole($piecePrice * $config['pieces_per_box']);
+            $boxPrice = Currency::whole($product->box_price ?? $boxCompare);
             $options[] = $this->buildOption('box', $config['pieces_per_box'], $boxPrice, $boxCompare, $availableStock);
         }
 
@@ -174,14 +175,14 @@ class ProductCatalogService
         bool $mostPopular = false
     ): array {
         $availableQuantity = intdiv($availableStock, max(1, $piecesPerUnit));
-        $savings = max(0, round($comparePrice - $unitPrice, 2));
+        $savings = max(0, Currency::whole($comparePrice - $unitPrice));
 
         return [
             'code' => $code,
             'label' => $this->unitLabel($code),
             'pieces_per_unit' => $piecesPerUnit,
-            'unit_price' => round($unitPrice, 2),
-            'compare_price' => round($comparePrice, 2),
+            'unit_price' => Currency::whole($unitPrice),
+            'compare_price' => Currency::whole($comparePrice),
             'savings' => $savings,
             'available_quantity' => $availableQuantity,
             'is_available' => $availableQuantity > 0,

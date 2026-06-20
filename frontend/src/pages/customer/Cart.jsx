@@ -11,6 +11,7 @@ import EmptyState from '../../components/common/EmptyState'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useStorefront } from '../../context/StorefrontContext'
 import { useLanguage } from '../../context/LanguageContext'
+import { money } from '../../utils/formatters'
 import { getLocalizedConversionLabel, getUnitLabel } from '../../utils/purchaseUnits'
 import { readCheckoutDraft, writeCheckoutDraft } from '../../utils/checkoutDraft'
 import { handleImageFallback, resolveImageUrl } from '../../utils/imageUrl'
@@ -41,14 +42,7 @@ export default function Cart() {
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
   const locale = isBangla ? 'bn-BD' : 'en-US'
 
-  const formatMoney = useCallback((value) => {
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: 'BDT',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(Number(value || 0))
-  }, [locale])
+  const formatMoney = useCallback((value) => money(value, locale), [locale])
 
   const formatNumber = useCallback((value) => new Intl.NumberFormat(locale).format(Number(value || 0)), [locale])
   const parseNumber = useCallback((value) => {

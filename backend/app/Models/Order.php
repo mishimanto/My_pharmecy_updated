@@ -4,7 +4,14 @@ namespace App\Models;
 
 class Order extends PharmacyModel
 {
+    use Concerns\RoundsCurrencyAttributes;
+
     protected $appends = ['customer_name', 'customer_phone', 'customer_email', 'shipping_address', 'payment_number', 'payment_account_name', 'payment_dial_code'];
+
+    protected function roundedCurrencyAttributes(): array
+    {
+        return ['subtotal_amount', 'discount_amount', 'delivery_charge', 'total_amount', 'cod_fee'];
+    }
 
     public function items() { return $this->hasMany(OrderItem::class); }
     public function user() { return $this->belongsTo(User::class); }

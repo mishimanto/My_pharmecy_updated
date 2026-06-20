@@ -15,7 +15,7 @@ import {
 import { orderApi } from '../../api/orderApi'
 import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
-import { date } from '../../utils/formatters'
+import { date, money } from '../../utils/formatters'
 import { getOrderPath } from '../../utils/orderRouting'
 import { getDeliveryStatusLabel, getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
 import { getUnitLabel } from '../../utils/purchaseUnits'
@@ -76,10 +76,7 @@ export default function OrderDetails() {
     [locale, order?.order_date],
   )
 
-  const formatMoney = useCallback((value) => `৳${new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0))}`, [locale])
+  const formatMoney = useCallback((value) => money(value, locale), [locale])
 
   const formatNumber = useCallback((value) => new Intl.NumberFormat(locale).format(Number(value || 0)), [locale])
 
@@ -100,12 +97,13 @@ export default function OrderDetails() {
 
   const canOpenPaymentPage = ['BKASH', 'NAGAD'].includes(order.payment_method)
     && ['awaiting_proof', 'under_review', 'failed'].includes(order.payment_status)
+  const hasSubmittedTransaction = Boolean(String(order.payment?.transaction_id || '').trim())
 
   const paymentOverview = getPaymentOverview(order.payment_status, isBangla)
   const paymentMethod = getPaymentMethodLabel(order.payment_method, isBangla)
   const deliveryStatus = getDeliveryStatusLabel(order.delivery?.delivery_status, isBangla)
   const orderStatus = getOrderStatusLabel(order.order_status, isBangla)
-  const showMakePayment = !paymentOverview.isSettled && canOpenPaymentPage
+  const showMakePayment = !paymentOverview.isSettled && canOpenPaymentPage && !hasSubmittedTransaction
 
   return (
     <>

@@ -2,12 +2,15 @@
 
 namespace App\Services;
 
+use App\Support\Currency;
 use Illuminate\Validation\ValidationException;
 
 class CouponService
 {
     public function buildSummary(float $subtotal, float $deliveryCharge, ?string $couponCode = null): array
     {
+        $subtotal = Currency::whole($subtotal);
+        $deliveryCharge = Currency::whole($deliveryCharge);
         $normalizedCode = $this->normalize($couponCode);
         $coupon = null;
         $discountAmount = 0.0;
@@ -30,9 +33,9 @@ class CouponService
             }
 
             $discountAmount = match ($coupon['type'] ?? 'fixed') {
-                'percent' => round($subtotal * ((float) ($coupon['amount'] ?? 0) / 100), 2),
-                'free_delivery' => round($deliveryCharge, 2),
-                default => round((float) ($coupon['amount'] ?? 0), 2),
+                'percent' => Currency::whole($subtotal * ((float) ($coupon['amount'] ?? 0) / 100)),
+                'free_delivery' => Currency::whole($deliveryCharge),
+                default => Currency::whole($coupon['amount'] ?? 0),
             };
 
             if (($coupon['type'] ?? 'fixed') !== 'free_delivery') {
@@ -40,19 +43,19 @@ class CouponService
             }
 
             if (isset($coupon['max_discount'])) {
-                $discountAmount = min($discountAmount, (float) $coupon['max_discount']);
+                $discountAmount = min($discountAmount, Currency::whole($coupon['max_discount']));
             }
 
-            $discountAmount = max(0, round($discountAmount, 2));
+            $discountAmount = max(0, Currency::whole($discountAmount));
         }
 
-        $totalAmount = max(0, round($subtotal + $deliveryCharge - $discountAmount, 2));
+        $totalAmount = max(0, Currency::whole($subtotal + $deliveryCharge - $discountAmount));
 
         return [
-            'subtotal_amount' => round($subtotal, 2),
-            'delivery_charge' => round($deliveryCharge, 2),
-            'discount_amount' => $discountAmount,
-            'total_amount' => $totalAmount,
+            'subtotal_amount' => Currency::whole($subtotal),
+            'delivery_charge' => Currency::whole($deliveryCharge),
+            'discount_amount' => Currency::whole($discountAmount),
+            'total_amount' => Currency::whole($totalAmount),
             'coupon' => $coupon && $normalizedCode ? [
                 'code' => $normalizedCode,
                 'label' => $coupon['label'] ?? $normalizedCode,

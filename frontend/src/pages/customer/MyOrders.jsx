@@ -6,7 +6,7 @@ import { orderApi } from '../../api/orderApi'
 import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
 import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
-import { date } from '../../utils/formatters'
+import { date, money } from '../../utils/formatters'
 import { getOrderPath } from '../../utils/orderRouting'
 import { getDeliveryStatusLabel, getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
 
@@ -69,10 +69,7 @@ export default function MyOrders() {
   }
 
   const formatNumber = (value) => new Intl.NumberFormat(locale).format(Number(value || 0))
-  const formatMoney = (value) => `৳${new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0))}`
+  const formatMoney = (value) => money(value, locale)
 
   return (
     <>

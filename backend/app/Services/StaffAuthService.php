@@ -13,11 +13,11 @@ class StaffAuthService
         $staff = Staff::where('email', $email)->first();
 
         if (! $staff || ! Hash::check($password, $staff->password)) {
-            return ['ok' => false, 'status' => 401, 'message' => 'ইমেইল অথবা পাসওয়ার্ড সঠিক নয়।'];
+            return ['ok' => false, 'status' => 401, 'message' => 'The email or password is incorrect.'];
         }
 
         if ($staff->status !== 'active') {
-            return ['ok' => false, 'status' => 403, 'message' => 'স্টাফ অ্যাকাউন্ট সক্রিয় নয়।'];
+            return ['ok' => false, 'status' => 403, 'message' => 'The staff account is not active.'];
         }
 
         $staff->forceFill(['last_login_at' => now()])->save();
@@ -48,4 +48,3 @@ class StaffAuthService
         return $staff;
     }
 }
-

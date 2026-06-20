@@ -55,9 +55,7 @@ export default function AuthLayout({ title, children }) {
         <section className="flex items-center px-4 py-10 sm:px-6 lg:px-8">
           <div className="mx-auto w-full max-w-xl border border-slate-200 bg-white p-6 shadow-[0_24px_70px_-46px_rgba(15,23,42,0.22)] sm:p-8">
             <div className="pb-5">
-              
               <h1 className="mt-2 text-3xl text-center font-semibold tracking-tight text-slate-950">{title}</h1>
-              
             </div>
             <div className="mt-2">{children}</div>
           </div>

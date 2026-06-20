@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Services\InventoryService;
 use App\Services\ProductCatalogService;
 use App\Services\ShopperContextService;
+use App\Support\Currency;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 
@@ -140,7 +141,7 @@ class CartController extends Controller
         return [
             'cart_id' => $cart->id,
             'items' => $items,
-            'subtotal' => $items->sum('subtotal'),
+            'subtotal' => Currency::whole($items->sum('subtotal')),
             'requires_prescription' => $requiresPrescription,
             'warnings' => array_values(array_unique($warnings)),
         ];
@@ -173,8 +174,8 @@ class CartController extends Controller
             'pieces_per_unit' => $piecesPerUnit,
             'piece_quantity' => (int) $item->piece_quantity,
             'conversion_label' => "1 {$unitLabel} = {$piecesPerUnit} pieces",
-            'unit_price' => (float) $item->unit_price,
-            'subtotal' => (float) ($item->quantity * $item->unit_price),
+            'unit_price' => Currency::whole($item->unit_price),
+            'subtotal' => Currency::whole($item->quantity * $item->unit_price),
             'available_stock' => $availableStock,
             'available_quantity' => intdiv($availableStock, $piecesPerUnit),
         ];

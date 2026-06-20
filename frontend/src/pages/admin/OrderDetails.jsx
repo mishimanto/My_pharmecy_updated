@@ -272,7 +272,7 @@ export default function OrderDetails() {
         <Metric label="Order status" value={getOrderStatusLabel(order.order_status)} tone={statusTones[order.order_status]} variant="status" />
         <Metric label="Payment" value={getPaymentStatusLabel(order.payment_status)} tone={getPaymentStatusTextColor(order.payment_status)} variant="payment" />
         <Metric label="Total" value={money(order.total_amount)} variant="total" />
-        <Metric label="Prescription" value={requiresPrescription ? 'Review required' : 'Not required'} tone={requiresPrescription ? 'text-violet-600' : 'text-emerald-600'} variant="prescription" />
+        <Metric label="Prescription" value={requiresPrescription ? 'Review required' : 'Not required'} tone={requiresPrescription ? 'text-red-600' : 'text-emerald-600'} variant="prescription" />
       </div>
       <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
         <section className="space-y-6">
@@ -404,7 +404,7 @@ export default function OrderDetails() {
                     type="button"
                     onClick={savePrescriptionReview}
                     disabled={!order.prescription || savingReview}
-                    className="w-full rounded-md bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 lg:col-span-2"
+                    className="w-72 rounded-md bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 lg:col-span-2"
                   >
                     {savingReview ? 'Saving...' : 'Save Prescription Review'}
                   </button>
@@ -609,7 +609,7 @@ function Metric({ label, value, tone = 'text-slate-950', variant = 'status' }) {
         <span className="absolute left-5 top-5 h-5 w-5 rounded-full bg-white/70 blur-[1px]" />
       </span>
       <p className="relative text-xs font-medium text-slate-500">{label}</p>
-      <p className={`relative mt-2 text-base font-semibold ${tone}`}>{value}</p>
+      <p className={`relative mt-2 text-2xl font-semibold ${tone}`}>{value}</p>
     </div>
   )
 }
