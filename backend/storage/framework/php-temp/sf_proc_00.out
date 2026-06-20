@@ -2024,3 +2024,10 @@
 [Sat Jun 20 07:39:02 2026] 127.0.0.1:51696 [GET] URI: /api/customer/cart
 [Sat Jun 20 07:39:02 2026] 127.0.0.1:60211 [OPTIONS] URI: /api/customer/cart
 [Sat Jun 20 07:39:02 2026] 127.0.0.1:63503 [GET] URI: /api/customer/cart
+[Sat Jun 20 07:41:11 2026] 127.0.0.1:58434 [OPTIONS] URI: /api/categories
+[Sat Jun 20 07:41:12 2026] 127.0.0.1:53546 [OPTIONS] URI: /api/manufacturers
+[Sat Jun 20 07:41:12 2026] 127.0.0.1:59655 [OPTIONS] URI: /api/products
+[Sat Jun 20 07:41:12 2026] 127.0.0.1:55324 [GET] URI: /storage/products/placeholders/medicine.webp
+[Sat Jun 20 07:41:12 2026] 127.0.0.1:63543 [GET] URI: /api/categories
+[Sat Jun 20 07:41:12 2026] 127.0.0.1:60091 [GET] URI: /api/manufacturers
+[Sat Jun 20 07:41:12 2026] 127.0.0.1:60517 [GET] URI: /api/products
