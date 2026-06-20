@@ -1671,3 +1671,7 @@
 [Sat Jun 20 07:06:42 2026] 127.0.0.1:64160 [GET] URI: /api/customer/orders/ORD-AALJAJ
 [Sat Jun 20 07:09:44 2026] 127.0.0.1:49674 [OPTIONS] URI: /api/customer/orders/ORD-AALJAJ
 [Sat Jun 20 07:09:44 2026] 127.0.0.1:53060 [GET] URI: /api/customer/orders/ORD-AALJAJ
+[Sat Jun 20 07:15:23 2026] 127.0.0.1:51617 [OPTIONS] URI: /api/admin/site-settings
+[Sat Jun 20 07:15:23 2026] 127.0.0.1:54495 [OPTIONS] URI: /api/admin/site-settings
+[Sat Jun 20 07:15:23 2026] 127.0.0.1:60944 [GET] URI: /api/admin/site-settings
+[Sat Jun 20 07:15:24 2026] 127.0.0.1:54059 [GET] URI: /api/admin/site-settings
