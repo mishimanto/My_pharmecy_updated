@@ -46,6 +46,7 @@ import Refunds from '../pages/admin/Refunds'
 import Reports from '../pages/admin/Reports'
 import ReportDetails from '../pages/admin/ReportDetails'
 import ActivityLogs from '../pages/admin/ActivityLogs'
+import MarketingTools from '../pages/admin/MarketingTools'
 
 export default function AdminRoutes() {
   return (
@@ -73,6 +74,10 @@ export default function AdminRoutes() {
           <Route path="products" element={<Products />} />
           <Route path="products/create" element={<ProductCreate />} />
           <Route path="products/:id/edit" element={<ProductEdit />} />
+          <Route path="coupons" element={<MarketingTools type="coupons" />} />
+          <Route path="offers" element={<MarketingTools type="offers" />} />
+          <Route path="hero-images" element={<MarketingTools type="heroImages" />} />
+          <Route path="banner-images" element={<MarketingTools type="bannerImages" />} />
           <Route path="suppliers" element={<Suppliers />} />
           <Route path="suppliers/create" element={<SupplierCreate />} />
           <Route path="suppliers/:id/edit" element={<SupplierEdit />} />

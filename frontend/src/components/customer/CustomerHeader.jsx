@@ -17,6 +17,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { productApi } from '../../api/productApi'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
+import { useSiteSettings } from '../../context/SiteSettingsContext'
 import { useStorefront } from '../../context/StorefrontContext'
 import { getCategoryName } from '../../utils/categoryNames'
 import { getProductImage, handleImageFallback } from '../../utils/imageUrl'
@@ -26,6 +27,7 @@ export default function CustomerHeader() {
   const { customer, loading: authLoading, logout } = useCustomerAuth()
   const { cartCount, wishlistCount, refreshCart } = useStorefront()
   const { language, setLanguage, isBangla } = useLanguage()
+  const { settings } = useSiteSettings()
   const navigate = useNavigate()
   const location = useLocation()
   const searchContainerRef = useRef(null)
@@ -204,7 +206,7 @@ export default function CustomerHeader() {
       <div className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/92 backdrop-blur supports-backdrop-filter:bg-white/78">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:flex-nowrap lg:gap-4 lg:px-8 lg:py-4">
           <Link to="/" onClick={closeMenus} className="order-1 shrink-0 lg:order-1" aria-label="My Pharmecy home">
-            <BrandMark />
+            <BrandMark logoUrl={settings?.logo_url} siteName={settings?.site_name} />
           </Link>
 
           <div className="order-2 ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2 lg:hidden">
@@ -256,11 +258,11 @@ export default function CustomerHeader() {
               <div className="absolute left-0 right-0 top-full z-90 mt-2 overflow-hidden border border-slate-200 bg-white shadow-[0_30px_60px_-30px_rgba(15,23,42,0.32)]">
                 {trimmedSearch.length < 2 ? (
                   <div className="px-4 py-3 text-sm text-slate-500">
-                    {t('লাইভ ফলাফলের জন্য কমপক্ষে ২টি অক্ষর লিখুন।', 'Type at least 2 characters to see live results.')}
+                    {t('ফলাফলের জন্য কমপক্ষে ২টি অক্ষর লিখুন।', 'Type at least 2 characters to see results.')}
                   </div>
                 ) : (
                   <>
-                    <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-4 py-2.5">
+                    {/* <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-4 py-2.5">
                       <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                         {t('সার্চ ফলাফল', 'Live results')}
                       </div>
@@ -270,7 +272,7 @@ export default function CustomerHeader() {
                           {t('খোঁজা হচ্ছে...', 'Searching...')}
                         </div>
                       ) : null}
-                    </div>
+                    </div> */}
 
                     {visibleSearchResults.length > 0 ? (
                       <div className="max-h-85 overflow-y-auto">
@@ -546,7 +548,15 @@ function UserAvatar({ customer, fallbackName }) {
   )
 }
 
-function BrandMark() {
+function BrandMark({ logoUrl, siteName }) {
+  if (logoUrl) {
+    return (
+      <div className="flex h-11 max-w-[150px] items-center sm:h-12 sm:max-w-[180px]">
+        <img src={logoUrl} alt={siteName || 'Site logo'} className="max-h-full max-w-full object-contain" />
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center">
       <svg viewBox="0 0 74 44" className="h-9 w-15 shrink-0 sm:h-11 sm:w-18.5" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">

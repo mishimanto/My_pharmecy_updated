@@ -11,7 +11,6 @@ function initials(name = '') {
 }
 
 export default function AdminHeader({
-  sidebarOpen,
   setSidebarOpen,
   settingsOpen,
   setSettingsOpen,
@@ -62,7 +61,7 @@ export default function AdminHeader({
             </button>
 
             {settingsOpen ? (
-              <div className="absolute right-0 mt-3 w-58 overflow-hidden rounded-md border border-slate-200 bg-white p-2 shadow-[0_24px_70px_-28px_rgba(15,23,42,0.35)]">
+              <div className="absolute right-0 mt-3 w-64 overflow-hidden rounded-md border border-slate-200 bg-white p-2 shadow-[0_24px_70px_-28px_rgba(15,23,42,0.35)]">
                 <div className="mt-2 space-y-1">
                   {visibleSettings.map((item) => (
                     <Link

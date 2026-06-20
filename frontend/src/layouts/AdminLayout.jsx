@@ -6,14 +6,18 @@ import {
   FiBox,
   FiCreditCard,
   FiFileText,
+  FiGift,
   FiGrid,
   FiHeadphones,
   FiHome,
+  FiImage,
   FiLayers,
   FiList,
   FiMapPin,
   FiPackage,
+  FiPercent,
   FiPieChart,
+  FiLock,
   FiShield,
   FiShoppingBag,
   FiSettings,
@@ -48,6 +52,15 @@ const navigationGroups = [
     ],
   },
   {
+    title: 'Marketing',
+    items: [
+      { to: '/admin/coupons', label: 'Coupons', permission: null, icon: FiPercent },
+      { to: '/admin/offers', label: 'Offers', permission: null, icon: FiGift },
+      { to: '/admin/hero-images', label: 'Hero Images', permission: null, icon: FiImage },
+      { to: '/admin/banner-images', label: 'Banner Images', permission: null, icon: FiImage },
+    ],
+  },
+  {
     title: 'Inventory',
     items: [
       { to: '/admin/suppliers', label: 'Suppliers', permission: 'inventory.view', icon: FiUsers },
@@ -75,15 +88,21 @@ const navigationGroups = [
       { to: '/admin/refunds', label: 'Refunds', permission: 'refund.approve', icon: FiCreditCard },
     ],
   },
+  {
+    title: 'Administration',
+    items: [
+      { to: '/admin/site-settings', label: 'Site Settings', permission: 'role.manage', icon: FiSettings },
+      { to: '/admin/staff', label: 'Staff', permission: 'staff.view', icon: FiUsers },
+      { to: '/admin/roles', label: 'Roles & Permissions', permission: 'role.manage', icon: FiShield },
+      { to: '/admin/reports', label: 'Reports', permission: 'report.view', icon: FiPieChart },
+      { to: '/admin/activity-logs', label: 'Activity Logs', permission: 'activity-log.view', icon: FiActivity },
+    ],
+  },
 ]
 
 const settingsItems = [
   { to: '/admin/profile', label: 'My Profile', permission: null, icon: FiUser },
-  { to: '/admin/site-settings', label: 'Site Settings', permission: 'role.manage', icon: FiSettings },
-  { to: '/admin/staff', label: 'Staff', permission: 'staff.view', icon: FiUsers },
-  { to: '/admin/roles', label: 'Roles & Permissions', permission: 'role.manage', icon: FiShield },
-  { to: '/admin/reports', label: 'Reports', permission: 'report.view', icon: FiPieChart },
-  { to: '/admin/activity-logs', label: 'Activity Logs', permission: 'activity-log.view', icon: FiActivity },
+  { to: '/admin/profile/password', label: 'Change Password', permission: null, icon: FiLock },
 ]
 
 function matchesPath(pathname, item) {
@@ -114,14 +133,6 @@ function filterNavItem(item, staff) {
 
 function flattenNavItems(items) {
   return items.flatMap((item) => [item, ...(item.children ? flattenNavItems(item.children) : [])])
-}
-
-function formatToday() {
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  }).format(new Date())
 }
 
 export default function AdminLayout() {
@@ -155,9 +166,6 @@ export default function AdminLayout() {
   )
 
   const roleNames = staff?.roles?.map((role) => role.name).join(', ') || 'Staff Access'
-  const statusLabel = staff?.status ? staff.status[0].toUpperCase() + staff.status.slice(1) : 'Unknown'
-  const todayLabel = useMemo(() => formatToday(), [])
-
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       setSidebarOpen(false)
@@ -174,7 +182,6 @@ export default function AdminLayout() {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <AdminHeader
-            sidebarOpen={sidebarOpen}
             setSidebarOpen={setSidebarOpen}
             settingsOpen={settingsOpen}
             setSettingsOpen={setSettingsOpen}

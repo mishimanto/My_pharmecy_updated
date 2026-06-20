@@ -1,25 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
-import { FiGlobe, FiImage, FiMail, FiMapPin, FiPhone, FiSave, FiUploadCloud, FiX } from 'react-icons/fi'
+import { useEffect, useState } from 'react'
+import { FiMail, FiMapPin, FiPhone, FiSave, FiUploadCloud, FiX } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import { useSiteSettings } from '../../context/SiteSettingsContext'
-
-const initialForm = {
-  site_name: '',
-  site_tagline: '',
-  support_phone: '',
-  support_email: '',
-  address: '',
-  city: '',
-  support_hours: '',
-  whatsapp_number: '',
-  facebook_url: '',
-  instagram_url: '',
-  youtube_url: '',
-  map_embed_url: '',
-  footer_note: '',
-}
 
 function formFromSettings(settings) {
   return {
@@ -54,44 +38,24 @@ async function resizeLogoToDataUri(file) {
   return new Promise((resolve, reject) => {
     const image = new Image()
     image.onload = () => {
-      const size = 256
+      const maxSize = 512
+      const sourceWidth = image.naturalWidth || image.width
+      const sourceHeight = image.naturalHeight || image.height
+      const ratio = Math.min(maxSize / sourceWidth, maxSize / sourceHeight, 1)
+      const width = Math.max(1, Math.round(sourceWidth * ratio))
+      const height = Math.max(1, Math.round(sourceHeight * ratio))
       const canvas = document.createElement('canvas')
       const context = canvas.getContext('2d')
-      const sourceSize = Math.min(image.naturalWidth || image.width, image.naturalHeight || image.height)
-      const sx = ((image.naturalWidth || image.width) - sourceSize) / 2
-      const sy = ((image.naturalHeight || image.height) - sourceSize) / 2
 
-      canvas.width = size
-      canvas.height = size
-      context.drawImage(image, sx, sy, sourceSize, sourceSize, 0, 0, size, size)
-      resolve(canvas.toDataURL('image/webp', 0.82))
+      canvas.width = width
+      canvas.height = height
+      context.clearRect(0, 0, width, height)
+      context.drawImage(image, 0, 0, sourceWidth, sourceHeight, 0, 0, width, height)
+      resolve(canvas.toDataURL('image/png'))
     }
     image.onerror = reject
     image.src = source
   })
-}
-
-function StatCard({ icon: Icon, label, value, tone = 'slate' }) {
-  const tones = {
-    slate: 'border-slate-200 bg-white text-slate-700',
-    emerald: 'border-emerald-200 bg-emerald-50/70 text-emerald-700',
-    sky: 'border-sky-200 bg-sky-50/70 text-sky-700',
-    violet: 'border-violet-200 bg-violet-50/70 text-violet-700',
-  }
-
-  return (
-    <div className={`rounded-lg border px-4 py-4 ${tones[tone] || tones.slate}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em]">{label}</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-950">{value}</p>
-        </div>
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-sm">
-          <Icon className="h-4 w-4" />
-        </span>
-      </div>
-    </div>
-  )
 }
 
 export default function SiteSettings() {
@@ -119,13 +83,6 @@ export default function SiteSettings() {
 
     return () => { active = false }
   }, [updateSettingsState])
-
-  const stats = useMemo(() => ({
-    hasLogo: preview && !removeLogo ? 'Yes' : 'No',
-    contactReady: form.support_phone && form.support_email ? 'Ready' : 'Partial',
-    mapReady: form.map_embed_url ? 'Embedded' : 'Missing',
-    brandName: form.site_name || 'Not set',
-  }), [form.map_embed_url, form.site_name, form.support_email, form.support_phone, preview, removeLogo])
 
   const handleLogoChange = (event) => {
     const file = event.target.files?.[0] || null
