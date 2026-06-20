@@ -3,7 +3,7 @@ import toast from 'react-hot-toast'
 import { FiArrowRight, FiClock, FiGift } from 'react-icons/fi'
 import { Link } from 'react-router-dom'
 import { offerApi, readCachedOffers } from '../../api/offerApi'
-import PageHeader from '../../components/common/PageHeader'
+// import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
 import { getLocalizedOffer, getOfferTimeLeft } from '../../utils/offerDisplay'
 
@@ -32,11 +32,6 @@ export default function Offers() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={t('অফার', 'Offers')}
-        subtitle={t('চলমান সব অফার, ডিসকাউন্ট ও ক্যাম্পেইন এক জায়গায় দেখুন।', 'Browse all active promotions, discounts, and campaigns in one place.')}
-      />
-
       {loading ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {[1, 2, 3].map((item) => (
@@ -74,7 +69,7 @@ function OfferCard({ offer, isBangla, nowTick }) {
             <FiGift className="h-14 w-14" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-slate-950/5 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-slate-950/55 via-slate-950/5 to-transparent" />
         <div className="absolute left-4 right-4 top-4 flex items-start justify-between gap-3">
           <span className="inline-flex max-w-[65%] items-center gap-2 rounded-full bg-white/92 px-3 py-1 text-xs font-bold text-[#0e6574] shadow-sm">
             <FiGift className="h-3.5 w-3.5 shrink-0" />

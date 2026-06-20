@@ -7,7 +7,6 @@ import {
   FiMenu,
   FiMessageSquare,
   FiPackage,
-  FiPercent,
   FiSearch,
   FiShoppingCart,
   FiTruck,
@@ -232,14 +231,11 @@ export default function CustomerHeader() {
       {offerBar ? (
         <div className={`border-b border-[#9de8e1]/35 bg-[linear-gradient(90deg,#0e6574,#13b8b0)] text-white shadow-[0_10px_30px_-26px_rgba(14,101,116,0.9)] transition-all duration-300 ${isOfferBarHidden ? 'max-h-0 -translate-y-full overflow-hidden opacity-0' : 'max-h-12 translate-y-0 opacity-100'}`}>
           <Link to="/offers" onClick={closeMenus} className="mx-auto flex max-w-7xl items-center justify-center gap-2 px-4 py-2 text-center text-xs font-semibold sm:text-sm">
-            <FiPercent className="h-4 w-4 shrink-0 text-cyan-100" />
             <span className="shrink-0">{t('অফার দেখুন', 'Explore offers')}</span>
             <span className="hidden h-1 w-1 rounded-full bg-cyan-100 sm:inline-flex" />
             <span className="min-w-0 truncate text-cyan-50">{offerBar.title}</span>
-            <span className="hidden h-1 w-1 rounded-full bg-cyan-100 sm:inline-flex" />
-            <span className="shrink-0 rounded-full bg-white/14 px-2 py-0.5 text-[11px] text-cyan-50 sm:text-xs">
-              {offerTimeLeft?.label ? `${t('শেষ হতে', 'Ends in')} ${offerTimeLeft.label}` : t('সীমিত সময়', 'Limited time')}
-            </span>
+            
+            <span className="min-w-0 truncate underline text-cyan-200 hover:text-white">See more</span>
           </Link>
         </div>
       ) : null}

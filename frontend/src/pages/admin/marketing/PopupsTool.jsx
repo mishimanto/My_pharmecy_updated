@@ -150,9 +150,9 @@ export default function PopupsTool() {
           <UploadField label="Upload popup image" onChange={(file) => { setImageFile(file); setField('image_url', '') }} />
           {preview ? <img src={preview} alt="" className="h-36 w-full rounded-md border border-slate-200 object-cover" /> : null}
           <div className="grid gap-3 sm:grid-cols-2"><Field label="Starts at" type="datetime-local" value={form.starts_at} onChange={(value) => setField('starts_at', value)} /><Field label="Ends at" type="datetime-local" value={form.ends_at} onChange={(value) => setField('ends_at', value)} /></div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <ToggleField label="Active popup" checked={form.is_active} onChange={(value) => setField('is_active', value)} />
+          <div className="grid gap-3">
             <StatusField value={form.is_active ? 'active' : 'inactive'} onChange={(value) => setField('is_active', value === 'active')} />
+            <ToggleField label="Active popup" checked={form.is_active} onChange={(value) => setField('is_active', value)} />            
           </div>
           <SaveButton saving={saving} label={editingId ? 'Update Popup' : 'Create Popup'} />
         </form>
