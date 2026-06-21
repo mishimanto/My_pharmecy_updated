@@ -95,12 +95,12 @@ export default function OrderDetails() {
     return <p className="text-sm text-slate-500">{t('অর্ডার পাওয়া যায়নি।', 'Order not found.')}</p>
   }
 
-  const canOpenPaymentPage = ['BKASH', 'NAGAD'].includes(order.payment_method)
+  const canOpenPaymentPage = Boolean(order.payment_requires_proof)
     && ['awaiting_proof', 'under_review', 'failed'].includes(order.payment_status)
   const hasSubmittedTransaction = Boolean(String(order.payment?.transaction_id || '').trim())
 
   const paymentOverview = getPaymentOverview(order.payment_status, isBangla)
-  const paymentMethod = getPaymentMethodLabel(order.payment_method, isBangla)
+  const paymentMethod = order.payment_method_label || getPaymentMethodLabel(order.payment_method, isBangla)
   const deliveryStatus = getDeliveryStatusLabel(order.delivery?.delivery_status, isBangla)
   const orderStatus = getOrderStatusLabel(order.order_status, isBangla)
   const showMakePayment = !paymentOverview.isSettled && canOpenPaymentPage && !hasSubmittedTransaction

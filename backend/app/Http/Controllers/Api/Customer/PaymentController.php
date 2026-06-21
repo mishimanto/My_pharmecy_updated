@@ -35,7 +35,7 @@ class PaymentController extends Controller
     {
         $order = $this->customerOrder($request, $id, $shopper);
 
-        abort_if($order->payment_method === 'COD', 422, 'Payment proof is only required for full-payment orders.');
+        abort_unless($order->payment_requires_proof, 422, 'Payment proof is only required for full-payment orders.');
         abort_unless(
             in_array($order->order_status, ['pending', 'confirmed'], true),
             422,

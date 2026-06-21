@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\DeliveryArea;
+use App\Models\PaymentMethod;
 use App\Services\CouponService;
 use App\Services\CheckoutService;
 use App\Services\ShopperContextService;
@@ -69,7 +70,7 @@ class CheckoutController extends Controller
         $data = $request->validate([
             'address_id' => ['nullable', 'exists:user_addresses,id'],
             'delivery_area_id' => ['required', 'exists:delivery_areas,id'],
-            'payment_method' => ['nullable', 'in:COD,BKASH,NAGAD'],
+            'payment_method' => ['nullable', Rule::exists('payment_methods', 'code')->where('is_active', true)],
             'prescription_id' => ['nullable', 'exists:prescriptions,id'],
             'coupon_code' => ['nullable', 'string', 'max:50'],
             'notes' => ['nullable', 'string'],
@@ -116,7 +117,7 @@ class CheckoutController extends Controller
             $cart,
             $addressId,
             (int) $data['delivery_area_id'],
-            $data['payment_method'] ?? 'COD',
+            $data['payment_method'] ?? PaymentMethod::query()->active()->orderBy('sort_order')->value('code') ?? 'COD',
             $data['notes'] ?? null,
             $data['prescription_id'] ?? null,
             $data['coupon_code'] ?? null,

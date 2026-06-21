@@ -40,6 +40,7 @@ const navigationGroups = [
       { to: '/admin/orders', label: 'Orders', permission: 'order.view', icon: FiShoppingBag },
       { to: '/admin/prescriptions', label: 'Prescriptions', permission: 'prescription.view', icon: FiFileText },
       { to: '/admin/payments', label: 'Payments', permission: 'payment.view', icon: FiCreditCard },
+      { to: '/admin/payment-methods', label: 'Payment Methods', permission: null, icon: FiCreditCard },
       { to: '/admin/deliveries', label: 'Deliveries', permission: 'delivery.manage', icon: FiTruck },
     ],
   },

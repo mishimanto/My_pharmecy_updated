@@ -1,14 +1,14 @@
 import { getProductImage as getProductImageFromUrl, resolveImageUrl } from '../../../utils/imageUrl'
 
 export const categoryTints = [
-  'from-teal-50 via-white to-white',
-  'from-sky-50 via-white to-white',
-  'from-emerald-50 via-white to-white',
-  'from-amber-50 via-white to-white',
-  'from-cyan-50 via-white to-white',
-  'from-rose-50 via-white to-white',
-  'from-violet-50 via-white to-white',
-  'from-lime-50 via-white to-white',
+  'from-[#dff8f4] via-[#f4fffd] to-[#eaf7f4]',
+  'from-[#e6f4ff] via-[#f8fcff] to-[#e9f7fb]',
+  'from-[#e5f8ed] via-[#fbfffd] to-[#eaf8f0]',
+  'from-[#fff4dd] via-[#fffdf8] to-[#f6f0e4]',
+  'from-[#dff7fb] via-[#f7fffd] to-[#e7f7f8]',
+  'from-[#fce8ee] via-[#fffafa] to-[#f6eef1]',
+  'from-[#eeeaff] via-[#fbfaff] to-[#f0f4fb]',
+  'from-[#edf8d8] via-[#fdfff8] to-[#eef7e5]',
 ]
 
 export function resolveImage(path) {

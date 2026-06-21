@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\Admin\CouponController;
 use App\Http\Controllers\Api\Admin\OfferController as AdminOfferController;
 use App\Http\Controllers\Api\Admin\OrderManagementController;
 use App\Http\Controllers\Api\Admin\PaymentManagementController;
+use App\Http\Controllers\Api\Admin\PaymentMethodController as AdminPaymentMethodController;
 use App\Http\Controllers\Api\Admin\ProductController;
 use App\Http\Controllers\Api\Admin\ProductImageController;
 use App\Http\Controllers\Api\Admin\PrescriptionReviewController;
@@ -44,6 +45,7 @@ use App\Http\Controllers\Api\Customer\NotificationController;
 use App\Http\Controllers\Api\Customer\OrderController;
 use App\Http\Controllers\Api\Customer\OfferController;
 use App\Http\Controllers\Api\Customer\PaymentController;
+use App\Http\Controllers\Api\Customer\PaymentMethodController;
 use App\Http\Controllers\Api\Customer\PrescriptionController;
 use App\Http\Controllers\Api\Customer\ProductBrowseController;
 use App\Http\Controllers\Api\Customer\ReturnRequestController;
@@ -80,6 +82,7 @@ Route::get('/hero-slides', [HeroSlideController::class, 'index']);
 Route::get('/banner-images', [BannerImageController::class, 'index']);
 Route::get('/offers', [OfferController::class, 'index']);
 Route::get('/marketing-popup', [MarketingPopupController::class, 'show']);
+Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
 
 Route::prefix('customer')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
@@ -176,6 +179,7 @@ Route::prefix('admin')->group(function () {
         Route::apiResource('coupons', CouponController::class)->except(['show']);
         Route::apiResource('offers', AdminOfferController::class)->except(['show']);
         Route::apiResource('marketing-popups', AdminMarketingPopupController::class)->except(['show']);
+        Route::apiResource('payment-methods', AdminPaymentMethodController::class)->except(['show']);
 
         Route::get('/categories', [CategoryController::class, 'index'])->middleware('permission:product.view');
         Route::post('/categories', [CategoryController::class, 'store'])->middleware('permission:product.create');

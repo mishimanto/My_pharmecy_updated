@@ -147,7 +147,6 @@ export default function BannerImagesTool() {
         <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
             <h2 className="text-base font-semibold text-slate-950">Homepage banner images</h2>
-            <p className="mt-1 text-xs text-slate-500">These banners appear below the homepage trust strip.</p>
           </div>
           <div className="divide-y divide-slate-100">
             {items.map((item) => (

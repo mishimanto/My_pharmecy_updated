@@ -36,23 +36,23 @@ function ProductListPanel({ variant, title, products, emptyMessage, actionTo, ac
   const isRx = variant === 'prescription'
 
   return (
-    <div className="overflow-hidden border border-slate-200/80 bg-white shadow-sm">
-      <div className={`border-b px-6 py-5 ${isRx ? 'border-amber-100 bg-amber-50/50' : 'border-teal-100 bg-teal-50/50'}`}>
+    <div className="overflow-hidden border border-[#b7e5df]/75 bg-[#f7fffd] shadow-[0_22px_60px_-44px_rgba(8,63,73,0.45)]">
+      <div className={`border-b px-6 py-5 ${isRx ? 'border-amber-200/70 bg-[#fff5df]' : 'border-[#b7e5df] bg-[#e8f7f4]'}`}>
         {/* <p className={`text-xs font-bold uppercase tracking-[0.22em] ${isRx ? 'text-amber-700' : 'text-[#0e6574]'}`}>
           {isRx ? (isBangla ? 'প্রেসক্রিপশন প্রয়োজন' : 'Prescription required') : (isBangla ? 'সরাসরি কিনুন' : 'Direct purchase')}
         </p> */}
-        <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">{title}</h2>
+        <h2 className="mt-1 text-2xl font-bold tracking-tight text-[#07343d]">{title}</h2>
       </div>
 
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y divide-[#d7ebe7]">
         {products.length > 0 ? (
           products.map((product) => <MiniProductRow key={product.id} product={product} />)
         ) : (
-          <div className="px-6 py-8 text-sm text-slate-500">{emptyMessage}</div>
+          <div className="px-6 py-8 text-sm text-[#51727a]">{emptyMessage}</div>
         )}
       </div>
 
-      <div className="border-t border-slate-100 px-6 py-5">
+      <div className="border-t border-[#d7ebe7] bg-[#f1fbf8] px-6 py-5">
         <Link
           to={actionTo}
           className={`inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white transition ${
@@ -76,7 +76,7 @@ function MiniProductRow({ product }) {
     <Link
       to={getProductPath(product)}
       state={{ product }}
-      className="grid gap-4 px-6 py-4 transition hover:bg-slate-50/80 sm:grid-cols-[64px_minmax(0,1fr)_auto] sm:items-center"
+      className="grid gap-4 px-6 py-4 transition hover:bg-[#e8f7f4]/75 sm:grid-cols-[64px_minmax(0,1fr)_auto] sm:items-center"
     >
       <div className="overflow-hidden ">
         {image ? (
@@ -91,14 +91,14 @@ function MiniProductRow({ product }) {
         <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
           {product.manufacturer?.manufacturer_name || getCategoryName(product.category, isBangla)}
         </div>
-        <h3 className="mt-1 line-clamp-2 font-bold tracking-tight text-slate-950">{product.product_name}</h3>
-        <p className="mt-1 text-xs text-slate-500">
+        <h3 className="mt-1 line-clamp-2 font-bold tracking-tight text-[#07343d]">{product.product_name}</h3>
+        <p className="mt-1 text-xs text-[#51727a]">
           {product.requires_prescription ? (isBangla ? 'প্রেসক্রিপশন প্রয়োজন' : 'Prescription required') : (isBangla ? 'সরাসরি কিনুন' : 'Direct purchase')}
         </p>
       </div>
       <div className="text-left sm:text-right">
-        <div className="text-lg font-bold text-slate-950">{money(product.display_price, locale)}</div>
-        <div className="text-[11px] text-slate-500">{isBangla ? 'শুরুর মূল্য' : 'Starting price'}</div>
+        <div className="text-lg font-bold text-[#0b5d68]">{money(product.display_price, locale)}</div>
+        <div className="text-[11px] text-[#6d8a91]">{isBangla ? 'শুরুর মূল্য' : 'Starting price'}</div>
       </div>
     </Link>
   )

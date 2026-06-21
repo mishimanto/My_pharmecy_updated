@@ -6,7 +6,9 @@ class Order extends PharmacyModel
 {
     use Concerns\RoundsCurrencyAttributes;
 
-    protected $appends = ['customer_name', 'customer_phone', 'customer_email', 'shipping_address', 'payment_number', 'payment_account_name', 'payment_dial_code'];
+    protected static array $paymentMethodCache = [];
+
+    protected $appends = ['customer_name', 'customer_phone', 'customer_email', 'shipping_address', 'payment_number', 'payment_account_name', 'payment_dial_code', 'payment_method_label', 'payment_method_logo_url', 'payment_method_brand_color', 'payment_requires_proof'];
 
     protected function roundedCurrencyAttributes(): array
     {
@@ -19,6 +21,7 @@ class Order extends PharmacyModel
     public function deliveryArea() { return $this->belongsTo(DeliveryArea::class); }
     public function delivery() { return $this->hasOne(Delivery::class); }
     public function payment() { return $this->hasOne(Payment::class); }
+    public function paymentMethod() { return $this->belongsTo(PaymentMethod::class, 'payment_method', 'code'); }
     public function prescription() { return $this->hasOne(Prescription::class); }
     public function returns() { return $this->hasMany(ReturnRequest::class); }
 
@@ -60,16 +63,59 @@ class Order extends PharmacyModel
 
     public function getPaymentNumberAttribute(): ?string
     {
-        return config("payment.channels.{$this->payment_method}.number");
+        return $this->paymentMethodValue('number')
+            ?: config("payment.channels.{$this->payment_method}.number");
     }
 
     public function getPaymentAccountNameAttribute(): ?string
     {
-        return config("payment.channels.{$this->payment_method}.account_name");
+        return $this->paymentMethodValue('account_name')
+            ?: config("payment.channels.{$this->payment_method}.account_name");
     }
 
     public function getPaymentDialCodeAttribute(): ?string
     {
-        return config("payment.channels.{$this->payment_method}.dial_code");
+        return $this->paymentMethodValue('dial_code')
+            ?: config("payment.channels.{$this->payment_method}.dial_code");
+    }
+
+    public function getPaymentMethodLabelAttribute(): ?string
+    {
+        return $this->paymentMethodValue('label')
+            ?: config("payment.channels.{$this->payment_method}.label")
+            ?: $this->payment_method;
+    }
+
+    public function getPaymentMethodLogoUrlAttribute(): ?string
+    {
+        return $this->paymentMethodValue('logo_url');
+    }
+
+    public function getPaymentMethodBrandColorAttribute(): ?string
+    {
+        return $this->paymentMethodValue('brand_color');
+    }
+
+    public function getPaymentRequiresProofAttribute(): bool
+    {
+        $requiresProof = $this->paymentMethodValue('requires_proof');
+
+        return $requiresProof === null ? $this->payment_method !== 'COD' : (bool) $requiresProof;
+    }
+
+    private function paymentMethodValue(string $key): mixed
+    {
+        if (! $this->payment_method) {
+            return null;
+        }
+
+        if (! array_key_exists($this->payment_method, self::$paymentMethodCache)) {
+            self::$paymentMethodCache[$this->payment_method] = PaymentMethod::query()
+                ->where('code', $this->payment_method)
+                ->first()
+                ?->toArray();
+        }
+
+        return self::$paymentMethodCache[$this->payment_method][$key] ?? null;
     }
 }

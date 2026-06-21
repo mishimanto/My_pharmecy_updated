@@ -85,10 +85,10 @@ export default function OffersTool() {
           <UploadField label="Upload offer image" onChange={(file) => { setImageFile(file); setField('image_url', '') }} />
           {preview ? <img src={preview} alt="" className="h-36 w-full rounded-md border border-slate-200 object-cover" /> : null}
           <div className="grid gap-3 sm:grid-cols-2"><Field label="Starts at" type="datetime-local" value={form.starts_at} onChange={(value) => setField('starts_at', value)} /><Field label="Ends at" type="datetime-local" value={form.ends_at} onChange={(value) => setField('ends_at', value)} /></div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2"><Field label="Sort order" type="number" value={form.sort_order} onChange={(value) => setField('sort_order', value)} /><StatusField value={form.status} onChange={(value) => setField('status', value)} /></div>
+          <div className="grid gap-3">
             <ToggleField label="Show in top offer bar" checked={form.show_in_nav} onChange={(value) => setField('show_in_nav', value)} />
           </div>
-          <div className="grid gap-3 sm:grid-cols-2"><Field label="Sort order" type="number" value={form.sort_order} onChange={(value) => setField('sort_order', value)} /><StatusField value={form.status} onChange={(value) => setField('status', value)} /></div>
           <SaveButton saving={saving} label={editingId ? 'Update Offer' : 'Create Offer'} />
         </form>
       </div>

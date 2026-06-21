@@ -120,7 +120,7 @@ export default function OrderDetails() {
   const canConfirmPrescription = !requiresPrescription
     || (order?.prescription_match_status === 'matched' && order?.prescription?.status === 'approved')
   const hasPendingPrescriptionReview = order?.prescription?.status === 'pending'
-  const requiresPaidVerification = ['BKASH', 'NAGAD'].includes(String(order?.payment_method || '').toUpperCase())
+  const requiresPaidVerification = Boolean(order?.payment_requires_proof)
   const canConfirmPayment = !requiresPaidVerification || order?.payment_status === 'paid'
   const canConfirmOrder = canConfirmPrescription && canConfirmPayment
 
@@ -536,7 +536,7 @@ export default function OrderDetails() {
               />
               <div className="flex items-center justify-between gap-3 bg-slate-100 px-3 py-2 text-slate-600">
                 <span>Method</span>
-                <span className="font-semibold text-slate-900">{getPaymentMethodLabel(order.payment_method)}</span>
+                <span className="font-semibold text-slate-900">{order.payment_method_label || getPaymentMethodLabel(order.payment_method)}</span>
               </div>
               {order.payment?.payment_proof_url ? <a href={order.payment.payment_proof_url} target="_blank" rel="noreferrer" className="inline-flex text-emerald-700 underline">View payment screenshot</a> : null}
               {order.payment?.reviewed_note ? <div className="border border-slate-100 bg-slate-50 p-3 text-slate-600">Payment note: <span className="font-medium text-slate-900">{order.payment.reviewed_note}</span></div> : null}

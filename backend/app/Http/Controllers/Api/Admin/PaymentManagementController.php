@@ -57,11 +57,11 @@ class PaymentManagementController extends Controller
 
         abort_if(
             $payment->order
-            && $payment->order->payment_method === 'COD'
+            && ! $payment->order->payment_requires_proof
             && $data['payment_status'] === 'paid'
             && $payment->order->order_status !== 'delivered',
             422,
-            'Cash on delivery can be marked paid only after the order is delivered.'
+            'Delivery-time payments can be marked paid only after the order is delivered.'
         );
 
         $payment->update([
@@ -90,7 +90,7 @@ class PaymentManagementController extends Controller
             'updated_at' => now(),
         ]);
 
-        if ($payment->order && $data['payment_status'] === 'paid' && $payment->order->payment_method !== 'COD') {
+        if ($payment->order && $data['payment_status'] === 'paid' && $payment->order->payment_requires_proof) {
             $order = $this->communication->ensureMemo($payment->order, true);
             $this->communication->notify(
                 $order,

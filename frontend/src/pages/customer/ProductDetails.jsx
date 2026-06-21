@@ -1,7 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { FiArrowRight, FiHeart, FiPlus, FiMinus, FiShield, FiShoppingCart, FiUpload, FiLogIn } from 'react-icons/fi'
+import { FiArrowRight, FiHeart, FiPlus, FiMinus, FiShoppingCart, FiUpload, FiLogIn } from 'react-icons/fi'
 import { productApi } from '../../api/productApi'
 import { prescriptionApi } from '../../api/prescriptionApi'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
@@ -88,6 +88,7 @@ export default function ProductDetails() {
     if (authLoading) return
 
     if (!viewState.product?.requires_prescription) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPrescriptions([])
       setPrescriptionsLoading(false)
       setPrescriptionsReady(false)
@@ -184,11 +185,13 @@ export default function ProductDetails() {
     const matched = selectablePrescriptions.find((item) => String(item.id) === String(savedId))
 
     if (matched) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedPrescriptionId(String(matched.id))
       return
     }
 
     if (!selectablePrescriptions.find((item) => String(item.id) === String(selectedPrescriptionId))) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedPrescriptionId('')
     }
   }, [product?.requires_prescription, selectablePrescriptions, selectedPrescriptionId])
@@ -261,7 +264,7 @@ export default function ProductDetails() {
   if (isLoading) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="h-[560px] animate-pulse border border-slate-200 bg-white" />
+        <div className="h-[560px] animate-pulse border border-[#7dd3fc]/35 bg-[linear-gradient(135deg,#dbeafe,#ccfbf1)]" />
       </div>
     )
   }
@@ -270,7 +273,7 @@ export default function ProductDetails() {
     return (
       <div className="mx-auto max-w-7xl px-4 py-16 text-center sm:px-6 lg:px-8">
         <h1 className="text-3xl font-semibold text-slate-950">{t('পণ্যটি পাওয়া যায়নি।', 'Product not found.')}</h1>
-        <Link to="/products" className="mt-6 inline-flex items-center gap-2 bg-slate-950 px-5 py-3 text-sm font-semibold text-white">
+        <Link to="/products" className="mt-6 inline-flex items-center gap-2 bg-[#15324a] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1d4ed8]">
           {t('পণ্যের তালিকায় ফিরে যান', 'Back to catalog')}
           <FiArrowRight className="h-4 w-4" />
         </Link>
@@ -279,30 +282,30 @@ export default function ProductDetails() {
   }
 
   return (
-    <div className={`bg-[#f4f6f8] ${banglaFontClass}`}>
+    <div className={`bg-[linear-gradient(180deg,#eef7ff_0%,#f7fbff_45%,#eafbf8_100%)] ${banglaFontClass}`}>
       <div className="mx-auto max-w-7xl">
-        <section className="border border-slate-200 bg-white px-5 py-4">
-          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
-            <Link to="/" className="font-medium text-slate-700 transition hover:text-slate-950">
+        <section className="border border-[#7dd3fc]/35 bg-[linear-gradient(180deg,#dbeafe,#ccfbf1)] px-5 py-4">
+          <div className="flex flex-wrap items-center gap-3 text-sm text-[#486581]">
+            <Link to="/" className="font-medium text-[#1e3a5f] transition hover:text-[#1d4ed8]">
               {t('হোম', 'Home')}
             </Link>
             <span>/</span>
-            <Link to="/products" className="font-medium text-slate-700 transition hover:text-slate-950">
+            <Link to="/products" className="font-medium text-[#1e3a5f] transition hover:text-[#1d4ed8]">
               {t('ওষুধ', 'Medicines')}
             </Link>
             <span>/</span>
-            <span className="truncate text-slate-950">{productName}</span>
+            <span className="truncate text-[#102a43]">{productName}</span>
           </div>
         </section>
 
         <section className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <div className="space-y-4">
             <div>
-              <div className="overflow-hidden border border-slate-200 bg-slate-50">
+              <div className="overflow-hidden border border-[#7dd3fc]/35 bg-[linear-gradient(135deg,#bfdbfe_0%,#c7d2fe_48%,#99f6e4_100%)] shadow-[0_24px_64px_-48px_rgba(21,50,74,0.62)]">
                 <img
                   src={activeImage}
                   alt={productName || product?.product_name || 'Product image'}
-                  className="h-[360px] w-full bg-white object-contain p-6 sm:h-[500px]"
+                  className="h-[360px] w-full bg-white/20 object-contain p-6 sm:h-[500px]"
                   onError={handleImageFallback}
                 />
               </div>
@@ -314,8 +317,8 @@ export default function ProductDetails() {
                       key={image}
                       type="button"
                       onClick={() => setSelectedImageState({ routeKey, value: image })}
-                      className={`overflow-hidden border bg-white transition ${
-                        activeImage === image ? 'border-slate-950' : 'border-slate-200 hover:border-slate-400'
+                      className={`overflow-hidden border bg-[#dbeafe] transition ${
+                        activeImage === image ? 'border-[#1d4ed8]' : 'border-[#7dd3fc]/35 hover:border-[#38bdf8]'
                       }`}
                     >
                       <img src={image} alt={t('পণ্যের ছবি', 'Product thumbnail')} className="h-20 w-full object-cover" onError={handleImageFallback} />
@@ -326,7 +329,7 @@ export default function ProductDetails() {
             </div>
 
             <div>
-              <div className="grid gap-px border border-slate-200 bg-slate-200 sm:grid-cols-2">
+              <div className="grid gap-px border border-[#7dd3fc]/35 bg-[#7dd3fc]/35 sm:grid-cols-2">
                 {detailsRows.map((item) => (
                   <MetaRow key={item.label} label={item.label} value={item.value} />
                 ))}
@@ -334,18 +337,18 @@ export default function ProductDetails() {
             </div>
 
             {description ? (
-              <div className="border border-slate-200 bg-white p-5 sm:p-6">
-                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0e6574]">{t('পণ্যের বিবরণ', 'Description')}</div>
-                <p className="mt-3 text-sm leading-7 text-slate-600">{description}</p>
+              <div className="border border-[#7dd3fc]/35 bg-[linear-gradient(180deg,#dbeafe,#ccfbf1)] p-5 shadow-[0_22px_60px_-48px_rgba(21,50,74,0.48)] sm:p-6">
+                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#1d4ed8]">{t('পণ্যের বিবরণ', 'Description')}</div>
+                <p className="mt-3 text-sm leading-7 text-[#486581]">{description}</p>
               </div>
             ) : null}
           </div>
 
           <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
-            <section className="border border-slate-200 bg-white">
-              <div className="border-b border-slate-200 p-4 sm:p-5">
+            <section className="border border-[#7dd3fc]/35 bg-[linear-gradient(180deg,#dbeafe_0%,#ccfbf1_100%)] shadow-[0_24px_64px_-48px_rgba(21,50,74,0.62)]">
+              <div className="border-b border-[#7dd3fc]/35 p-4 sm:p-5">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
+                  <span className="border border-[#2563eb]/15 bg-white/45 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#1e3a5f]">
                     {categoryName || t('স্বাস্থ্যসেবা', 'Healthcare')}
                   </span>
                   {product.requires_prescription ? (
@@ -355,7 +358,7 @@ export default function ProductDetails() {
                   ) : null}
                 </div>
 
-                <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">{productName}</h1>
+                <h1 className="mt-4 text-3xl font-semibold tracking-tight text-[#102a43] sm:text-4xl">{productName}</h1>
 
                 {/* {product.requires_prescription ? (
                   <div className="mt-5 border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-7 text-amber-800">
@@ -371,7 +374,7 @@ export default function ProductDetails() {
                   </div>
                 ) : null} */}
 
-                <div className="mt-6 grid gap-px border border-slate-200 bg-slate-200 sm:grid-cols-3">
+                <div className="mt-6 grid gap-px border border-[#7dd3fc]/35 bg-[#7dd3fc]/35 sm:grid-cols-3">
                   <FactTile
                     label={t('শুরু মূল্য', 'Starts at')}
                     value={roundedMoney(product.display_price || batch?.selling_price, locale)}
@@ -484,8 +487,8 @@ export default function ProductDetails() {
                       </div>
                       </div>
                     ) : (
-                      <div className="mt-5 border border-amber-200 bg-white p-4 text-center">
-                        <p className="text-sm leading-6 text-slate-600">
+                      <div className="mt-5 border border-amber-200 bg-white/65 p-4 text-center">
+                        <p className="text-sm leading-6 text-[#486581]">
                           {t(
                             'প্রেসক্রিপশনের ওষুধ অর্ডার করতে আগে আপনার অ্যাকাউন্টে লগইন করুন।',
                             'Login to your account before uploading or selecting a prescription.',
@@ -503,9 +506,9 @@ export default function ProductDetails() {
                   </section>
                 ) : null}
 
-                <div className="border border-slate-200 bg-slate-50 p-3 sm:p-4">
+                <div className="border border-[#7dd3fc]/35 bg-[#e0f2fe]/70 p-3 sm:p-4">
                   <div className="flex items-center justify-center gap-4">
-                    <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0e6574]">
+                    <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#1d4ed8]">
                       {t('দরকারি ইউনিটটি বেছে নিন', 'Choose the unit you need')}
                     </div>
                   </div>
@@ -521,27 +524,27 @@ export default function ProductDetails() {
                           disabled={!option.is_available}
                           onClick={() => setSelectedUnitState({ routeKey, value: option.code })}
                           className={`grid w-full gap-4 border px-4 py-4 text-left transition sm:grid-cols-[minmax(0,1fr)_180px] ${
-                            isSelected ? 'border-slate-950 bg-white' : 'border-slate-200 bg-white'
-                          } ${!option.is_available ? 'cursor-not-allowed opacity-50' : 'hover:border-slate-400'}`}
+                            isSelected ? 'border-[#1d4ed8] bg-white/70 shadow-[0_18px_46px_-36px_rgba(37,99,235,0.38)]' : 'border-[#7dd3fc]/35 bg-white/45'
+                          } ${!option.is_available ? 'cursor-not-allowed opacity-50' : 'hover:border-[#38bdf8]'}`}
                         >
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-lg font-semibold text-slate-950">{getUnitLabel(option.code, isBangla)}</span>
+                              <span className="text-lg font-semibold text-[#102a43]">{getUnitLabel(option.code, isBangla)}</span>
                               {option.savings > 0 ? (
                                 <span className="border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">
                                   {t('সাশ্রয়', 'Save')} {roundedMoney(option.savings, locale)}
                                 </span>
                               ) : null}
                             </div>
-                            <div className="mt-2 text-sm text-slate-500">{getLocalizedConversionLabel(option, isBangla) || option.conversion_label}</div>
-                            <div className="mt-2 text-xs uppercase tracking-[0.16em] text-slate-400">
+                            <div className="mt-2 text-sm text-[#486581]">{getLocalizedConversionLabel(option, isBangla) || option.conversion_label}</div>
+                            <div className="mt-2 text-xs uppercase tracking-[0.16em] text-[#627d98]">
                               {t('স্টক', 'Stock')} {option.available_quantity.toLocaleString(isBangla ? 'bn-BD' : 'en-US')} {getUnitLabel(option.code, isBangla)}
                             </div>
                           </div>
 
-                          <div className="border-t border-slate-200 pt-4 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 sm:text-right">
-                            <div className="text-xl font-semibold text-slate-950">{roundedMoney(option.unit_price, locale)}</div>
-                            <div className="mt-1 text-xs text-slate-500">
+                          <div className="border-t border-[#7dd3fc]/35 pt-4 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 sm:text-right">
+                            <div className="text-xl font-semibold text-[#1d4ed8]">{roundedMoney(option.unit_price, locale)}</div>
+                            <div className="mt-1 text-xs text-[#486581]">
                               {option.savings > 0 ? t('পিসের তুলনায় কম', 'Better than piece price') : t('স্ট্যান্ডার্ড মূল্য', 'Standard price')}
                             </div>
                           </div>
@@ -551,26 +554,26 @@ export default function ProductDetails() {
                   </div>
                 </div>
 
-                <div className="border border-slate-200 bg-white p-3 sm:p-4">
+                <div className="border border-[#7dd3fc]/35 bg-white/45 p-3 sm:p-4">
                   <div className="grid gap-5">
                     <div>
                       <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">{t('পরিমাণ', 'Quantity')}</div>
+                        <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#486581]">{t('পরিমাণ', 'Quantity')}</div>
                         <div className="flex flex-wrap items-center gap-3">
                           <button
                             type="button"
-                            className="flex h-11 w-11 items-center justify-center border border-slate-300 text-lg font-semibold text-slate-900 disabled:opacity-40"
+                            className="flex h-11 w-11 items-center justify-center border border-[#7dd3fc]/55 bg-white/55 text-lg font-semibold text-[#102a43] disabled:opacity-40"
                             disabled={!activeOption || effectiveQuantity <= 1}
                             onClick={() => setQuantityState((current) => ({ routeKey, value: Math.max(1, (current.routeKey === routeKey ? current.value : 1) - 1) }))}
                           >
                             <FiMinus className="h-4 w-4" />
                           </button>
-                          <div className="flex h-11 min-w-21 items-center justify-center border border-slate-300 px-4 text-lg font-semibold text-slate-950">
+                          <div className="flex h-11 min-w-21 items-center justify-center border border-[#7dd3fc]/55 bg-white/65 px-4 text-lg font-semibold text-[#102a43]">
                             {effectiveQuantity.toLocaleString(locale)}
                           </div>
                           <button
                             type="button"
-                            className="flex h-11 w-11 items-center justify-center border border-slate-300 text-lg font-semibold text-slate-900 disabled:opacity-40"
+                            className="flex h-11 w-11 items-center justify-center border border-[#7dd3fc]/55 bg-white/55 text-lg font-semibold text-[#102a43] disabled:opacity-40"
                             disabled={!activeOption || effectiveQuantity >= (activeOption.available_quantity || 0)}
                             onClick={() => setQuantityState((current) => ({ routeKey, value: (current.routeKey === routeKey ? current.value : 1) + 1 }))}
                           >
@@ -579,7 +582,7 @@ export default function ProductDetails() {
                         </div>
                       </div>
 
-                      <div className="mt-5 grid gap-px border border-slate-200 bg-slate-200 sm:grid-cols-2 2xl:grid-cols-3">
+                      <div className="mt-5 grid gap-px border border-[#7dd3fc]/35 bg-[#7dd3fc]/35 sm:grid-cols-2 2xl:grid-cols-3">
                         <FactTile
                           label={t('ইউনিট', 'Unit')}
                           value={activeUnitLabel || t('নেই', 'None')}
@@ -623,7 +626,7 @@ export default function ProductDetails() {
                       <div className="space-y-3">
                         <div className="flex gap-2">
                         <button
-                          className="w-full bg-slate-950 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                          className="w-full bg-[#15324a] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:bg-slate-300"
                           onClick={add}
                           disabled={!activeOption?.is_available}
                         >
@@ -640,7 +643,7 @@ export default function ProductDetails() {
                           className={`w-full border px-5 py-3.5 text-sm font-semibold transition ${
                             saved
                               ? 'border-rose-200 bg-rose-50 text-rose-600'
-                              : 'border-slate-300 bg-white text-slate-800 hover:border-slate-400'
+                              : 'border-[#7dd3fc]/55 bg-white/50 text-[#1e3a5f] hover:border-[#38bdf8] hover:bg-white/75'
                           }`}
                           onClick={() => toggleWishlist(product)}
                         >
@@ -652,7 +655,7 @@ export default function ProductDetails() {
                         </div>
 
                         {!product.requires_prescription ? (
-                          <Link to="/products" className="flex w-full items-center justify-center gap-2 border border-slate-300 bg-white px-5 py-3.5 text-sm font-semibold text-slate-800 transition hover:border-slate-400">
+                          <Link to="/products" className="flex w-full items-center justify-center gap-2 border border-[#7dd3fc]/55 bg-white/50 px-5 py-3.5 text-sm font-semibold text-[#1e3a5f] transition hover:border-[#38bdf8] hover:bg-white/75">
                             {t('আরও দেখুন', 'Browse more')}
                             <FiArrowRight className="h-4 w-4" />
                           </Link>
@@ -673,19 +676,19 @@ export default function ProductDetails() {
 
 function FactTile({ label, value, meta }) {
   return (
-    <div className="min-w-0 bg-slate-50 p-4">
-      <div className="text-sm text-slate-500">{label}</div>
-      <div className="mt-2 break-words text-xl font-semibold text-slate-950">{value}</div>
-      <div className="mt-1 break-words text-sm leading-6 text-slate-500">{meta}</div>
+    <div className="min-w-0 bg-white/50 p-4">
+      <div className="text-sm text-[#486581]">{label}</div>
+      <div className="mt-2 break-words text-xl font-semibold text-[#102a43]">{value}</div>
+      <div className="mt-1 break-words text-sm leading-6 text-[#486581]">{meta}</div>
     </div>
   )
 }
 
 function MetaRow({ label, value }) {
   return (
-    <div className="bg-white px-4 py-4">
-      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</div>
-      <div className="mt-2 text-sm font-semibold text-slate-950">{value}</div>
+    <div className="bg-white/50 px-4 py-4">
+      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#486581]">{label}</div>
+      <div className="mt-2 text-sm font-semibold text-[#102a43]">{value}</div>
     </div>
   )
 }

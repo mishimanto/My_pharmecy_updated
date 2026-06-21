@@ -206,7 +206,7 @@ export default function Home() {
   }
 
   return (
-    <div className="bg-[#f4f6f8] text-slate-900">
+    <div className="bg-[linear-gradient(180deg,#edfdfa_0%,#f7fbfa_34%,#eef8f6_68%,#f7fbfa_100%)] text-slate-900">
       <HomeHeroSection heroSlides={heroSlides} currentSlide={currentSlide} setCurrentSlide={setCurrentSlide} slide={slide} isBangla={isBangla} />
       <HomeTrustStrip trustItems={trustItems} />
 

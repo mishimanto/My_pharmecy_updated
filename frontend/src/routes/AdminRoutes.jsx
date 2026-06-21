@@ -35,6 +35,7 @@ import PrescriptionDetails from '../pages/admin/PrescriptionDetails'
 import Orders from '../pages/admin/Orders'
 import OrderDetails from '../pages/admin/OrderDetails'
 import Payments from '../pages/admin/Payments'
+import PaymentMethods from '../pages/admin/PaymentMethods'
 import DeliveryAreas from '../pages/admin/DeliveryAreas'
 import Riders from '../pages/admin/Riders'
 import Deliveries from '../pages/admin/Deliveries'
@@ -94,6 +95,7 @@ export default function AdminRoutes() {
           <Route path="orders" element={<Orders />} />
           <Route path="orders/:id" element={<OrderDetails />} />
           <Route path="payments" element={<Payments />} />
+          <Route path="payment-methods" element={<PaymentMethods />} />
           <Route path="delivery-areas" element={<DeliveryAreas />} />
           <Route path="riders" element={<Riders />} />
           <Route path="deliveries" element={<Deliveries />} />

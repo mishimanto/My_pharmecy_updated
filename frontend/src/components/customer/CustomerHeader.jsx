@@ -230,13 +230,22 @@ export default function CustomerHeader() {
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-[#f4f7fa]">
       {offerBar ? (
         <div className={`border-b border-[#9de8e1]/35 bg-[linear-gradient(90deg,#0e6574,#13b8b0)] text-white shadow-[0_10px_30px_-26px_rgba(14,101,116,0.9)] transition-all duration-300 ${isOfferBarHidden ? 'max-h-0 -translate-y-full overflow-hidden opacity-0' : 'max-h-12 translate-y-0 opacity-100'}`}>
-          <Link to="/offers" onClick={closeMenus} className="mx-auto flex max-w-7xl items-center justify-center gap-2 px-4 py-2 text-center text-xs font-semibold sm:text-sm">
-            <span className="shrink-0">{t('অফার দেখুন', 'Explore offers')}</span>
-            <span className="hidden h-1 w-1 rounded-full bg-cyan-100 sm:inline-flex" />
-            <span className="min-w-0 truncate text-cyan-50">{offerBar.title}</span>
-            
-            <span className="min-w-0 truncate underline text-cyan-200 hover:text-white">See more</span>
-          </Link>
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 text-xs font-semibold sm:px-6 sm:text-sm lg:px-8">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="min-w-0 truncate text-cyan-50">{offerBar.title}</span>
+             
+              <Link to="/offers" onClick={closeMenus} className="shrink-0 underline text-cyan-200 hover:text-white">
+                {t('অফার দেখুন', 'Explore offers')}
+              </Link>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm text-gray-700 shrink-0">{t('অফার শেষ হতে', 'Offer ends in')}: </span>
+              <span className="text-sm text-gray-600">
+                {offerTimeLeft?.label || '00:00:00'}
+              </span>
+            </div>
+              
+          </div>          
         </div>
       ) : null}
       <div className="relative z-50 border-b border-slate-200/80 bg-white/92 backdrop-blur supports-backdrop-filter:bg-white/78">

@@ -44,6 +44,7 @@ export default function HomeWorkflowSpotlightSection({
 
   useEffect(() => {
     if (currentSpotlightIndex >= validSpotlightProducts.length) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentSpotlightIndex(0)
     }
   }, [currentSpotlightIndex, validSpotlightProducts.length])
@@ -54,7 +55,7 @@ export default function HomeWorkflowSpotlightSection({
 
   return (
     <section className="grid gap-6 pb-16 xl:grid-cols-[1.08fr_0.92fr]">
-      <div className="overflow-hidden border border-slate-200/80 bg-white shadow-sm">
+      <div className="overflow-hidden border border-[#b7e5df]/75 bg-[#f7fffd] shadow-[0_22px_60px_-44px_rgba(8,63,73,0.45)]">
         <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="relative min-h-75 lg:min-h-95">
             <img
@@ -88,7 +89,7 @@ export default function HomeWorkflowSpotlightSection({
             </div>
           </div>
 
-          <div className="p-6 sm:p-8">
+          <div className="bg-[#f7fffd] p-6 sm:p-8">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#0e6574]">{isBangla ? '৩ ধাপে আপনার অর্ডার' : 'Three steps to your order'}</p>
             {/* <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">{isBangla ? '৩ ধাপে আপনার অর্ডার' : 'Three steps to your order'}</h2> */}
             <div className="mt-6 space-y-4">
@@ -96,16 +97,16 @@ export default function HomeWorkflowSpotlightSection({
                 const Icon = item.icon
 
                 return (
-                  <div key={item.step} className="flex gap-4 border border-slate-100 bg-slate-50/80 p-4">
+                  <div key={item.step} className="flex gap-4 border border-[#d7ebe7] bg-[#e8f7f4]/80 p-4">
                     <div className="flex flex-col items-center gap-1">
                       <span className="text-[11px] font-bold text-[#13b8b0]">{item.step}</span>
-                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#0e6574] shadow-sm">
+                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f7fffd] text-[#0e6574] shadow-sm">
                         <Icon className="h-5 w-5" />
                       </span>
                     </div>
                     <div>
-                      <h3 className="font-bold text-slate-950">{item.title}</h3>
-                      <p className="mt-1 text-sm leading-7 text-slate-500">{item.body}</p>
+                      <h3 className="font-bold text-[#07343d]">{item.title}</h3>
+                      <p className="mt-1 text-sm leading-7 text-[#51727a]">{item.body}</p>
                     </div>
                   </div>
                 )
@@ -116,19 +117,19 @@ export default function HomeWorkflowSpotlightSection({
       </div>
 
       <div className="space-y-6">
-        <div className="border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
+        <div className="border border-[#b7e5df]/75 bg-[#f7fffd] p-6 shadow-[0_22px_60px_-44px_rgba(8,63,73,0.45)] sm:p-8">
           <HomeSectionHeader title={isBangla ? 'জনপ্রিয় প্রস্তুতকারক প্রতিষ্ঠান' : 'Popular manufacturers'} />
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             {manufacturerHighlights.map((manufacturer) => (
-              <div key={manufacturer.id} className="flex items-center gap-3 border border-slate-100 bg-slate-50/80 p-3">
+              <div key={manufacturer.id} className="flex items-center gap-3 border border-[#d7ebe7] bg-[#e8f7f4]/80 p-3">
                 <img
                   src={resolveImage(manufacturer.logo_url)}
                   alt={manufacturer.manufacturer_name}
-                  className="h-11 w-11 border border-slate-200 object-cover"
+                  className="h-11 w-11 border border-[#b7e5df] bg-[#f7fffd] object-cover"
                   onError={handleImageFallback}
                 />
                 <div className="min-w-0">
-                  <div className="truncate text-md font-semibold text-slate-950">{manufacturer.manufacturer_name}</div>                  
+                  <div className="truncate text-md font-semibold text-[#07343d]">{manufacturer.manufacturer_name}</div>                  
                 </div>
               </div>
             ))}

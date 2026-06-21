@@ -23,91 +23,86 @@ export default function ProductCard({ product, onAdd }) {
   }
 
   return (
-    <article className="group relative flex h-full flex-col overflow-hidden border border-slate-200 bg-white p-4 transition duration-200 hover:border-slate-300 hover:shadow-sm">
-      <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-3 bg-white/65 opacity-0 backdrop-blur-[2px] transition duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
+    <article className="group flex h-full flex-col overflow-hidden border border-[#7dd3fc]/35 bg-[#15324a] shadow-[0_18px_46px_-40px_rgba(21,50,74,0.62)] transition duration-200 hover:border-[#38bdf8] hover:shadow-[0_24px_64px_-42px_rgba(14,116,144,0.68)]">
+      <div className="relative bg-[linear-gradient(135deg,#bfdbfe_0%,#c7d2fe_48%,#99f6e4_100%)]">
         <Link
           to={productPath}
           state={{ product }}
           onMouseEnter={prefetch}
           onFocus={prefetch}
-          className="pointer-events-auto inline-flex h-10 w-10 items-center justify-center border border-slate-300 bg-white text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
-          aria-label={isBangla ? `${product.product_name} এর বিস্তারিত দেখুন` : `View ${product.product_name} details`}
+          className="flex h-44 w-full items-center justify-center sm:h-48"
         >
-          <FiArrowRight className="h-4 w-4" />
+          <img
+            src={productImage}
+            alt={product.product_name}
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+            loading="lazy"
+            onError={handleImageFallback}
+          />
         </Link>
-        <button
-          type="button"
-          className={`pointer-events-auto inline-flex h-10 w-10 items-center justify-center border transition ${
-            saved
-              ? 'border-rose-200 bg-rose-50 text-rose-600'
-              : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:text-slate-950'
-          }`}
-          onClick={() => toggleWishlist(product)}
-          aria-label={saved
-            ? (isBangla ? `${product.product_name} উইশলিস্ট থেকে সরান` : `Remove ${product.product_name} from wishlist`)
-            : (isBangla ? `${product.product_name} উইশলিস্টে রাখুন` : `Save ${product.product_name} to wishlist`)}
-        >
-          <FiHeart className={`h-4 w-4 ${saved ? 'fill-current' : ''}`} />
-        </button>
-        {onAdd ? (
+
+        <div className="absolute right-3 top-3 flex gap-2 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+          
           <button
             type="button"
-            className="pointer-events-auto inline-flex h-10 w-10 items-center justify-center border border-slate-300 bg-white text-slate-800 transition hover:border-slate-400"
-            onClick={() => onAdd(product)}
-            aria-label={isBangla ? `${product.product_name} দ্রুত কার্টে যোগ করুন` : `Quick add ${product.product_name} to cart`}
+            className={`inline-flex h-9 w-9 items-center justify-center border shadow-sm backdrop-blur transition ${
+              saved
+                ? 'border-rose-200 bg-rose-50/95 text-rose-600'
+                : 'border-sky-200/80 bg-white/95 text-[#1e3a5f] hover:border-[#38bdf8] hover:bg-[#2563eb] hover:text-white'
+            }`}
+            onClick={() => toggleWishlist(product)}
+            aria-label={saved
+              ? (isBangla ? `${product.product_name} উইশলিস্ট থেকে সরান` : `Remove ${product.product_name} from wishlist`)
+              : (isBangla ? `${product.product_name} উইশলিস্টে রাখুন` : `Save ${product.product_name} to wishlist`)}
           >
-            <FiShoppingCart className="h-4 w-4" />
+            <FiHeart className={`h-4 w-4 ${saved ? 'fill-current' : ''}`} />
           </button>
-        ) : null}
-      </div>
-
-      <Link
-        to={productPath}
-        state={{ product }}
-        onMouseEnter={prefetch}
-        onFocus={prefetch}
-        className="flex items-center justify-center border border-slate-100 bg-slate-50 p-5"
-      >
-        <img
-          src={productImage}
-          alt={product.product_name}
-          className="h-24 w-full object-contain"
-          loading="lazy"
-          onError={handleImageFallback}
-        />
-      </Link>
-
-      <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
-        <span className="bg-slate-100 px-2.5 py-1 text-slate-600">
-          {getCategoryName(product.category, isBangla, isBangla ? 'সাধারণ যত্ন' : 'General care')}
-        </span>
-        {product.requires_prescription ? (
-          <span className="bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
-            {isBangla ? 'প্রেসক্রিপশন' : 'Prescription'}
-          </span>
-        ) : null}
-      </div>
-
-      <div className="mt-3 min-w-0">
-        <Link to={productPath} state={{ product }} className="flex items-start justify-between gap-3" onMouseEnter={prefetch} onFocus={prefetch}>
-          <h3 className="line-clamp-2 min-w-0 flex-1 text-base font-semibold leading-6 text-slate-950">{product.product_name}</h3>
-          {manufacturerImage ? (
-            <img
-              src={manufacturerImage}
-              alt={product.manufacturer?.manufacturer_name || (isBangla ? 'ব্র্যান্ড লোগো' : 'Brand logo')}
-              className="h-10 w-10 shrink-0 border border-slate-200 object-contain"
-              loading="lazy"
-              onError={handleImageFallback}
-            />
+          {onAdd ? (
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center border border-sky-200/80 bg-white/95 text-[#1e3a5f] shadow-sm backdrop-blur transition hover:border-[#38bdf8] hover:bg-[#2563eb] hover:text-white"
+              onClick={() => onAdd(product)}
+              aria-label={isBangla ? `${product.product_name} দ্রুত কার্টে যোগ করুন` : `Quick add ${product.product_name} to cart`}
+            >
+              <FiShoppingCart className="h-4 w-4" />
+            </button>
           ) : null}
-        </Link>
+        </div>
       </div>
 
-      <div className="mt-auto pt-4">
-        <div className="flex items-end justify-between gap-3 border-t border-slate-100 pt-3">
-          <div className="min-w-0">
-            <div className="text-xs text-slate-500">{isBangla ? 'শুরু' : 'Starts at'}</div>
-            <div className="text-lg font-semibold text-slate-950">{money(product.display_price, isBangla ? 'bn-BD' : 'en-US')}</div>
+      <div className="flex flex-1 flex-col bg-[linear-gradient(180deg,#dbeafe_0%,#ccfbf1_100%)] p-4">
+        <div className="flex flex-wrap gap-2 text-[11px]">
+          <span className="border border-[#2563eb]/15 bg-white/45 px-2.5 py-1 font-medium text-[#1e3a5f]">
+            {getCategoryName(product.category, isBangla, isBangla ? 'সাধারণ যত্ন' : 'General care')}
+          </span>
+          {product.requires_prescription ? (
+            <span className="bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
+              {isBangla ? 'প্রেসক্রিপশন' : 'Prescription'}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="mt-3 min-w-0">
+          <Link to={productPath} state={{ product }} className="flex items-start justify-between gap-3" onMouseEnter={prefetch} onFocus={prefetch}>
+            <h3 className="line-clamp-2 min-w-0 flex-1 text-base font-semibold leading-6 text-[#102a43] transition group-hover:text-[#1d4ed8]">{product.product_name}</h3>
+            {manufacturerImage ? (
+              <img
+                src={manufacturerImage}
+                alt={product.manufacturer?.manufacturer_name || (isBangla ? 'ব্র্যান্ড লোগো' : 'Brand logo')}
+                className="h-10 w-10 shrink-0 border border-[#2563eb]/15 bg-white/55 object-contain"
+                loading="lazy"
+                onError={handleImageFallback}
+              />
+            ) : null}
+          </Link>
+        </div>
+
+        <div className="mt-auto pt-4">
+          <div className="flex items-end justify-between gap-3 border-t border-[#7dd3fc]/45 pt-3">
+            <div className="min-w-0">
+              <div className="text-xs text-[#486581]">{isBangla ? 'শুরু' : 'Starts at'}</div>
+              <div className="text-lg font-semibold text-[#1d4ed8]">{money(product.display_price, isBangla ? 'bn-BD' : 'en-US')}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -117,20 +112,22 @@ export default function ProductCard({ product, onAdd }) {
 
 export function ProductCardSkeleton() {
   return (
-    <div className="border border-slate-200 bg-white p-4">
+    <div className="overflow-hidden border border-[#7dd3fc]/35 bg-[#dbeafe]">
       <div className="animate-pulse">
-        <div className="flex h-[136px] items-center justify-center border border-slate-100 bg-slate-50">
-          <div className="h-20 w-20 bg-slate-200" />
+        <div className="flex h-44 items-center justify-center bg-[linear-gradient(135deg,#bfdbfe,#99f6e4)] sm:h-48">
+          <div className="h-24 w-24 bg-[#7dd3fc]/55" />
         </div>
-        <div className="mt-4 flex gap-2">
-          <div className="h-6 w-20 bg-slate-100" />
-          <div className="h-6 w-16 bg-slate-100" />
-        </div>
-        <div className="mt-4 h-5 w-4/5 bg-slate-200" />
-        <div className="mt-2 h-4 w-3/5 bg-slate-100" />
-        <div className="mt-4 border-t border-slate-100 pt-3">
-          <div className="h-3 w-16 bg-slate-100" />
-          <div className="mt-2 h-5 w-24 bg-slate-200" />
+        <div className="bg-[linear-gradient(180deg,#dbeafe,#ccfbf1)] p-4">
+          <div className="flex gap-2">
+            <div className="h-6 w-20 bg-[#7dd3fc]/45" />
+            <div className="h-6 w-16 bg-[#7dd3fc]/35" />
+          </div>
+          <div className="mt-4 h-5 w-4/5 bg-[#7dd3fc]/45" />
+          <div className="mt-2 h-4 w-3/5 bg-[#7dd3fc]/35" />
+          <div className="mt-4 border-t border-[#7dd3fc]/45 pt-3">
+            <div className="h-3 w-16 bg-[#7dd3fc]/35" />
+            <div className="mt-2 h-5 w-24 bg-[#7dd3fc]/45" />
+          </div>
         </div>
       </div>
     </div>

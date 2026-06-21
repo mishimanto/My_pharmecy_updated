@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Cart;
 use App\Models\DeliveryArea;
 use App\Models\Order;
+use App\Models\PaymentMethod;
 use App\Models\Prescription;
 use App\Support\Currency;
 use Illuminate\Support\Facades\DB;
@@ -69,6 +70,9 @@ class CheckoutService
             $subtotal = Currency::whole($orderItems->sum('subtotal'));
             $delivery = Currency::whole($deliveryArea->delivery_charge);
             $pricing = $this->coupons->buildSummary($subtotal, $delivery, $couponCode, true);
+            $paymentRequiresProof = PaymentMethod::query()
+                ->where('code', $paymentMethod)
+                ->value('requires_proof') ?? ($paymentMethod !== 'COD');
             $order = Order::create([
                 'user_id' => $cart->user_id,
                 'address_id' => $addressId,
@@ -86,7 +90,7 @@ class CheckoutService
                 'order_date' => now(),
                 'order_status' => $this->initialStatus($requiresPrescription, $prescription),
                 'payment_method' => $paymentMethod,
-                'payment_status' => $paymentMethod === 'COD' ? 'pending' : 'awaiting_proof',
+                'payment_status' => $paymentRequiresProof ? 'awaiting_proof' : 'pending',
                 'subtotal_amount' => $pricing['subtotal_amount'],
                 'discount_amount' => $pricing['discount_amount'],
                 'delivery_charge' => $pricing['delivery_charge'],
@@ -123,7 +127,7 @@ class CheckoutService
             $order->payment()->create([
                 'payment_method' => $paymentMethod,
                 'amount' => $order->total_amount,
-                'payment_status' => $paymentMethod === 'COD' ? 'pending' : 'awaiting_proof',
+                'payment_status' => $paymentRequiresProof ? 'awaiting_proof' : 'pending',
             ]);
 
             if ($prescription) {
@@ -140,8 +144,8 @@ class CheckoutService
                 'Order received',
                 [
                     "We received your order {$order->order_number}.",
-                    $paymentMethod === 'COD'
-                        ? 'Cash on delivery has been selected. No advance payment is required.'
+                    ! $paymentRequiresProof
+                        ? 'No advance payment is required for the selected payment method.'
                         : 'Please submit your payment proof from the payment page so the admin can review it.',
                     'The order will move forward after admin confirmation.',
                 ],

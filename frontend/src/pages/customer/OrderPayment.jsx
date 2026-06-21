@@ -23,19 +23,6 @@ export default function OrderPayment() {
   const [transactionId, setTransactionId] = useState('')
   const [screenshot, setScreenshot] = useState(null)
 
-  const PAYMENT_BRANDS = {
-    BKASH: {
-      logoUrl: 'https://cdn.brandfetch.io/id_4D40okd/w/400/h/400/theme/dark/icon.jpeg?c=1bxid64Mup7aczewSAYMX&t=1773019907118',
-      badge: 'bK',
-      brandClass: 'text-[#e2136e]',
-    },
-    NAGAD: {
-      logoUrl: 'https://cdn.brandfetch.io/idPKXOsXfF/w/512/h/512/theme/dark/logo.png?c=1bxid64Mup7aczewSAYMX&t=1778051284059',
-      badge: 'N',
-      brandClass: 'text-[#f28c16]',
-    },
-  }
-
   useEffect(() => {
     let mounted = true
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -62,25 +49,19 @@ export default function OrderPayment() {
     }
   }, [screenshotUrl])
 
-  const isBkash = order?.payment_method === 'BKASH'
-  const paymentLabel = isBkash ? 'bKash' : 'Nagad'
+  const paymentLabel = order?.payment_method_label || order?.payment_method || 'Payment'
   const paymentNumber = order?.payment_number || '01700000000'
-  const dialCode = order?.payment_dial_code || (isBkash ? '*247#' : '*167#')
-  const accent = isBkash
-    ? {
-      badge: 'text-[#e2136e]',
-      soft: 'bg-[linear-gradient(135deg,#fff1f7,#ffe3ef)]',
-      card: 'border-[#f7bfd6]',
-      strong: 'bg-[#e2136e] text-white',
-      muted: 'bg-[#fff4f8] text-[#b80f58]',
-    }
-    : {
-      badge: 'text-[#f28c16]',
-      soft: 'bg-[linear-gradient(135deg,#fff6e9,#ffe5c4)]',
-      card: 'border-[#f6cc95]',
-      strong: 'bg-[#f28c16] text-white',
-      muted: 'bg-[#fff7ed] text-[#c56d0d]',
-    }
+  const dialCode = order?.payment_dial_code || ''
+  const brandColor = order?.payment_method_brand_color || '#0e6574'
+  const accent = {
+    badge: '',
+    soft: 'bg-[linear-gradient(135deg,#eefbfa,#f8fafc)]',
+    card: 'border-[#9de8e1]',
+    strong: 'text-white',
+    muted: 'bg-[#e9fbf8] text-[#0e6574]',
+    style: { backgroundColor: brandColor },
+    textStyle: { color: brandColor },
+  }
 
   const appSteps = [
     t(`আপনার ${paymentLabel} app খুলুন।`, `Open your ${paymentLabel} app.`),
@@ -149,7 +130,7 @@ export default function OrderPayment() {
     return <p className="text-sm text-slate-500">{t('অর্ডার পাওয়া যায়নি।', 'Order not found.')}</p>
   }
 
-  if (order.payment_method === 'COD') {
+  if (!order.payment_requires_proof) {
     return (
       <>
         <PageHeader
@@ -183,14 +164,14 @@ export default function OrderPayment() {
                   {t('পেমেন্ট রিসিভার', 'Payment receiver')}
                 </div> */}
                 <h2 className="mt-2 flex items-center gap-3 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
-                  {order?.payment_method && PAYMENT_BRANDS[order.payment_method] ? (
-                    <img src={PAYMENT_BRANDS[order.payment_method].logoUrl} alt={order.payment_method} className="h-10 w-10" />
+                  {order?.payment_method_logo_url ? (
+                    <img src={order.payment_method_logo_url} alt={paymentLabel} className="h-10 w-10" />
                   ) : null}
                   {paymentLabel}
                 </h2>
                 {/* <p className="mt-2 text-sm text-slate-600">{accountName}</p> */}
               </div>
-              <div className={`w-full px-4 py-2 text-center text-sm font-semibold sm:w-auto ${accent.strong}`}>
+              <div className={`w-full px-4 py-2 text-center text-sm font-semibold sm:w-auto ${accent.strong}`} style={accent.style}>
                 {order.order_number}
               </div>
             </div>
@@ -328,7 +309,7 @@ export default function OrderPayment() {
                 </div>
               ) : null}
 
-              <button disabled={submitting} className={`w-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${accent.strong}`}>
+              <button disabled={submitting} className={`w-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${accent.strong}`} style={accent.style}>
                 {submitting ? t('জমা হচ্ছে...', 'Submitting...') : t('পেমেন্টের তথ্য জমা দিন', 'Submit Payment Details')}
               </button>
 
@@ -347,7 +328,7 @@ export default function OrderPayment() {
 function InstructionCard({ icon: Icon, title, steps, accent }) {
   return (
     <div className={`border ${accent.card} bg-white p-4 shadow-[0_18px_45px_-42px_rgba(15,23,42,0.28)] sm:p-5`}>
-      <div className={`inline-flex h-11 w-11 items-center justify-center ${accent.strong}`}>
+      <div className={`inline-flex h-11 w-11 items-center justify-center ${accent.strong}`} style={accent.style}>
         <Icon className="h-5 w-5" />
       </div>
       <h3 className="mt-4 text-lg font-semibold text-slate-950">{title}</h3>

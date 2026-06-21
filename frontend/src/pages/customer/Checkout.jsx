@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { FiArrowRight, FiCheckCircle, FiCreditCard, FiFileText, FiMapPin, FiShield, FiTruck, FiX } from 'react-icons/fi'
+import { FiArrowRight, FiCheckCircle, FiFileText, FiTruck, FiX } from 'react-icons/fi'
 import { GrCurrency } from "react-icons/gr";
 import { addressApi } from '../../api/addressApi'
 import { orderApi } from '../../api/orderApi'
+import { paymentMethodApi, readCachedPaymentMethods } from '../../api/paymentMethodApi'
 import { prescriptionApi } from '../../api/prescriptionApi'
 import PageHeader from '../../components/common/PageHeader'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
@@ -37,24 +38,35 @@ function matchesArea(address, area) {
   return normalize(address.area) === normalize(area.area_name) && normalize(address.city) === normalize(area.city)
 }
 
-const fullPaymentMethods = [
+const fallbackPaymentMethods = [
   {
-    value: 'BKASH',
-    label: 'bKash',
-    badge: 'bK',
-    logoUrl: 'https://cdn.brandfetch.io/id_4D40okd/w/400/h/400/theme/dark/icon.jpeg?c=1bxid64Mup7aczewSAYMX&t=1773019907118',
-    bodyBn: 'অর্ডারের পরে বিকাশে ফুল পেমেন্ট দিয়ে ট্রানজ্যাকশন আইডি জমা দিতে হবে।',
-    bodyEn: 'After order placement, pay the full amount with bKash and submit the transaction ID.',
-    brandClass: 'text-[#e2136e]',
+    code: 'COD',
+    label: 'Cash on delivery',
+    label_bn: 'ক্যাশ অন ডেলিভারি',
+    description: 'No advance is needed. You can pay during delivery.',
+    description_bn: 'অগ্রিম লাগবে না। ডেলিভারির সময় পেমেন্ট দিলেই হবে।',
+    requires_proof: false,
+    sort_order: 1,
   },
   {
-    value: 'NAGAD',
+    code: 'BKASH',
+    label: 'bKash',
+    badge: 'bK',
+    logo_url: 'https://cdn.brandfetch.io/id_4D40okd/w/400/h/400/theme/dark/icon.jpeg?c=1bxid64Mup7aczewSAYMX&t=1773019907118',
+    brand_color: '#e2136e',
+    requires_proof: true,
+    bodyBn: 'অর্ডারের পরে বিকাশে ফুল পেমেন্ট দিয়ে ট্রানজ্যাকশন আইডি জমা দিতে হবে।',
+    bodyEn: 'After order placement, pay the full amount with bKash and submit the transaction ID.',
+  },
+  {
+    code: 'NAGAD',
     label: 'Nagad',
     badge: 'N',
-    logoUrl: 'https://cdn.brandfetch.io/idPKXOsXfF/w/512/h/512/theme/dark/logo.png?c=1bxid64Mup7aczewSAYMX&t=1778051284059',
+    logo_url: 'https://cdn.brandfetch.io/idPKXOsXfF/w/512/h/512/theme/dark/logo.png?c=1bxid64Mup7aczewSAYMX&t=1778051284059',
+    brand_color: '#f28c16',
+    requires_proof: true,
     bodyBn: 'অর্ডারের পরে নগদে ফুল পেমেন্ট দিয়ে ট্রানজ্যাকশন আইডি জমা দিতে হবে।',
     bodyEn: 'After order placement, pay the full amount with Nagad and submit the transaction ID.',
-    brandClass: 'text-[#f28c16]',
   },
 ]
 
@@ -76,6 +88,7 @@ export default function Checkout() {
   const [submitting, setSubmitting] = useState(false)
   const [useSavedAddress, setUseSavedAddress] = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+  const [paymentMethods, setPaymentMethods] = useState(() => readCachedPaymentMethods() || fallbackPaymentMethods)
   const [guestAddress, setGuestAddress] = useState(createGuestAddressForm())
   const [couponInput, setCouponInput] = useState(draft.couponCode)
   const [appliedCouponCode, setAppliedCouponCode] = useState('')
@@ -107,29 +120,35 @@ export default function Checkout() {
     }
 
     setPricingLoading(true)
-
-    try {
+    const fetchQuote = async (couponCode) => {
       const { data } = await orderApi.quote({
         delivery_area_id: Number(nextAreaId),
-        coupon_code: nextCouponCode || undefined,
+        coupon_code: couponCode || undefined,
       })
 
-      setPricing(data.data)
-      if (nextCouponCode && data.data?.coupon_error) {
+      return data.data
+    }
+
+    try {
+      const summary = await fetchQuote(nextCouponCode)
+
+      setPricing(summary)
+      if (nextCouponCode && summary?.coupon_error) {
         setAppliedCouponCode('')
         writeCheckoutDraft({ couponCode: '' })
         if (!silent) {
-          toast.error(data.data.coupon_error)
+          toast.error(summary.coupon_error)
         }
         return null
       }
 
-      return data.data
+      return summary
     } catch (error) {
       if (nextCouponCode) {
         setAppliedCouponCode('')
         writeCheckoutDraft({ couponCode: '' })
-        const fallback = await loadPricing(nextAreaId, '', { silent: true })
+        const fallback = await fetchQuote('')
+        setPricing(fallback)
         if (!silent) {
           toast.error(error.response?.data?.message || t('কুপনটি ব্যবহার করা যায়নি।', 'Coupon could not be applied.'))
         }
@@ -151,6 +170,10 @@ export default function Checkout() {
     const requests = [
       orderApi.deliveryAreas().then((response) => ({
         type: 'deliveryAreas',
+        payload: response.data.data || [],
+      })),
+      paymentMethodApi.list().then((response) => ({
+        type: 'paymentMethods',
         payload: response.data.data || [],
       })),
     ]
@@ -176,6 +199,7 @@ export default function Checkout() {
     Promise.all(requests)
       .then((responses) => {
         const nextAreas = responses.find((item) => item.type === 'deliveryAreas')?.payload || []
+        const nextPaymentMethods = responses.find((item) => item.type === 'paymentMethods')?.payload || []
         const nextPrescriptions = responses.find((item) => item.type === 'prescriptions')?.payload || []
         const nextAddresses = responses.find((item) => item.type === 'addresses')?.payload || []
         const preferredAreaId = nextAreas.some((item) => String(item.id) === String(form.delivery_area_id || draft.deliveryAreaId))
@@ -187,6 +211,9 @@ export default function Checkout() {
         const preferredPrescriptionId = form.prescription_id || readPreferredPrescriptionId()
 
         setDeliveryAreas(nextAreas)
+        if (nextPaymentMethods.length) {
+          setPaymentMethods(nextPaymentMethods)
+        }
         setPrescriptions(nextPrescriptions)
         setAddresses(nextAddresses)
         setUseSavedAddress(Boolean(customer && compatible.length > 0))
@@ -195,6 +222,9 @@ export default function Checkout() {
         setForm((current) => ({
           ...current,
           delivery_area_id: preferredAreaId || current.delivery_area_id,
+          payment_method: nextPaymentMethods.length && !nextPaymentMethods.some((method) => method.code === current.payment_method)
+            ? (nextPaymentMethods.find((method) => !method.requires_proof) || nextPaymentMethods[0]).code
+            : current.payment_method,
           address_id: defaultAddressId ? String(defaultAddressId) : '',
           prescription_id: cart.requires_prescription && nextPrescriptions.some((item) => String(item.id) === String(preferredPrescriptionId))
             ? String(preferredPrescriptionId)
@@ -210,6 +240,7 @@ export default function Checkout() {
       })
       .catch(() => toast.error(t('চেকআউট তথ্য লোড করা যায়নি।', 'Checkout data could not be loaded.')))
       .finally(() => setLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, cart, customer, draft.deliveryAreaId, t])
 
   const pageLoading = authLoading || (cartLoading && !cart)
@@ -225,11 +256,18 @@ export default function Checkout() {
   const deliveryCharge = Number(pricing?.delivery_charge ?? selectedDeliveryArea?.delivery_charge ?? 0)
   const discountAmount = Number(pricing?.discount_amount ?? 0)
   const total = Number(pricing?.total_amount ?? Math.max(0, subtotal + deliveryCharge - discountAmount))
-  const paymentNeedsProof = form.payment_method === 'BKASH' || form.payment_method === 'NAGAD'
+  const fullPaymentMethods = useMemo(() => paymentMethods.filter((method) => method.requires_proof), [paymentMethods])
+  const codPaymentMethod = useMemo(() => paymentMethods.find((method) => !method.requires_proof) || null, [paymentMethods])
+  const defaultPaymentMethod = codPaymentMethod || fullPaymentMethods[0] || paymentMethods[0] || fallbackPaymentMethods[0]
+  const selectedPaymentMethod = useMemo(
+    () => paymentMethods.find((method) => method.code === form.payment_method) || defaultPaymentMethod,
+    [defaultPaymentMethod, form.payment_method, paymentMethods],
+  )
+  const paymentNeedsProof = Boolean(selectedPaymentMethod?.requires_proof)
   const paymentMode = paymentNeedsProof ? 'FULL' : 'COD'
   const selectedFullPaymentMethod = useMemo(
-    () => fullPaymentMethods.find((method) => method.value === form.payment_method) || null,
-    [form.payment_method],
+    () => fullPaymentMethods.find((method) => method.code === form.payment_method) || null,
+    [form.payment_method, fullPaymentMethods],
   )
   const hasDeliveryAreas = deliveryAreas.length > 0
   const requiresPrescriptionLogin = Boolean(cart?.requires_prescription && !customer)
@@ -245,6 +283,7 @@ export default function Checkout() {
 
   useEffect(() => {
     if (!cart?.items?.length || !selectedDeliveryArea) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadPricing(selectedDeliveryArea.id, appliedCouponCode, { silent: true })
   }, [appliedCouponCode, cart?.items?.length, cart?.subtotal, loadPricing, selectedDeliveryArea])
 
@@ -252,6 +291,7 @@ export default function Checkout() {
     setGuestAddress((current) => ({ ...current, [key]: value }))
   }
 
+  // eslint-disable-next-line no-unused-vars
   const handleDeliveryAreaChange = async (value) => {
     const nextArea = deliveryAreas.find((item) => String(item.id) === String(value)) || null
     const nextCompatible = nextArea ? addresses.filter((item) => matchesArea(item, nextArea)) : []
@@ -319,11 +359,15 @@ export default function Checkout() {
   const handlePaymentModeSelect = (mode) => {
     if (mode === 'COD') {
       setPaymentModalOpen(false)
-      setForm((current) => ({ ...current, payment_method: 'COD' }))
+      if (codPaymentMethod?.code) {
+        setForm((current) => ({ ...current, payment_method: codPaymentMethod.code }))
+      }
       return
     }
 
-    setPaymentModalOpen(true)
+    if (fullPaymentMethods.length) {
+      setPaymentModalOpen(true)
+    }
   }
 
   const handleFullPaymentMethodSelect = (method) => {
@@ -585,8 +629,8 @@ export default function Checkout() {
               <div className="text-sm text-slate-600">
                   <span className="font-semibold text-slate-950">{t('নির্বাচিত', 'Selected')}:</span>{' '}
                   {paymentMode === 'COD'
-                    ? t('ক্যাশ অন ডেলিভারি', 'Cash on delivery')
-                    : `${t('ফুল পেমেন্ট', 'Full payment')} - ${selectedFullPaymentMethod?.label || t('মেথড বাকি', 'method pending')}`}
+                    ? paymentLabel(selectedPaymentMethod, isBangla)
+                    : `${t('ফুল পেমেন্ট', 'Full payment')} - ${paymentLabel(selectedFullPaymentMethod, isBangla) || t('মেথড বাকি', 'method pending')}`}
                 </div>
             </div>
 
@@ -594,26 +638,26 @@ export default function Checkout() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 {[
-                  {
+                  codPaymentMethod ? {
                     value: 'COD',
-                    title: t('ক্যাশ অন ডেলিভারি', 'Cash on delivery'),
-                    body: t('অগ্রিম লাগবে না। ডেলিভারির সময় পেমেন্ট দিলেই হবে।', 'No advance is needed. You can pay during delivery.'),
+                    title: paymentLabel(codPaymentMethod, isBangla),
+                    body: paymentDescription(codPaymentMethod, isBangla),
                     icon: FiTruck,
                     selected: paymentMode === 'COD',
-                  },
-                  {
+                  } : null,
+                  fullPaymentMethods.length ? {
                     value: 'FULL',
                     title: t('ফুল পেমেন্ট', 'Full payment'),
                     body: selectedFullPaymentMethod
                       ? t(
-                        `নির্বাচিত অপশন: ${selectedFullPaymentMethod.label}. অর্ডারের পরে ট্রানজ্যাকশন আইডি ও স্ক্রিনশট জমা দিতে হবে।`,
-                        `Selected option: ${selectedFullPaymentMethod.label}. After order placement, submit the transaction ID and screenshot.`,
+                        `নির্বাচিত অপশন: ${paymentLabel(selectedFullPaymentMethod, isBangla)}. অর্ডারের পরে ট্রানজ্যাকশন আইডি ও স্ক্রিনশট জমা দিতে হবে।`,
+                        `Selected option: ${paymentLabel(selectedFullPaymentMethod, false)}. After order placement, submit the transaction ID and screenshot.`,
                       )
                       : t('ক্লিক করলে অ্যাকটিভ পেমেন্ট অপশন দেখাবে। সেখান থেকে বিকাশ, নগদ ইত্যাদি বাছতে পারবেন।', 'Click to open active payment options. From there, choose bKash, Nagad, and similar options.'),
                     icon: GrCurrency,
                     selected: paymentMode === 'FULL',
-                  },
-                ].map((method) => {
+                  } : null,
+                ].filter(Boolean).map((method) => {
                   const Icon = method.icon
 
                   return (
@@ -732,6 +776,7 @@ export default function Checkout() {
       <PaymentMethodModal
         open={paymentModalOpen}
         isBangla={isBangla}
+        methods={fullPaymentMethods}
         selectedMethod={selectedFullPaymentMethod}
         onClose={() => setPaymentModalOpen(false)}
         onSelect={handleFullPaymentMethodSelect}
@@ -740,7 +785,7 @@ export default function Checkout() {
   )
 }
 
-function PaymentMethodModal({ open, isBangla, selectedMethod, onClose, onSelect }) {
+function PaymentMethodModal({ open, isBangla, methods, selectedMethod, onClose, onSelect }) {
   if (!open) return null
 
   return (
@@ -759,20 +804,20 @@ function PaymentMethodModal({ open, isBangla, selectedMethod, onClose, onSelect 
         </div>
 
         <div className="grid gap-3 p-5 md:grid-cols-2">
-          {fullPaymentMethods.map((method) => {
-            const selected = selectedMethod?.value === method.value
+          {methods.map((method) => {
+            const selected = selectedMethod?.code === method.code
 
             return (
               <button
-                key={method.value}
+                key={method.code}
                 type="button"
-                onClick={() => onSelect(method.value)}
+                onClick={() => onSelect(method.code)}
                 className={`border p-4 text-left transition ${selected ? 'border-slate-950 bg-slate-50' : 'border-slate-200 bg-white hover:border-slate-400'}`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <PaymentBrandMark method={method} />
-                    <div className="text-lg font-semibold text-slate-950">{method.label}</div>
+                    <div className="text-lg font-semibold text-slate-950">{paymentLabel(method, isBangla)}</div>
                   </div>
                   {selected ? (
                     <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white">
@@ -795,17 +840,17 @@ function PaymentBrandMark({ method, large = false }) {
   const fallbackSizeClass = large ? 'text-base' : 'text-[11px]'
 
   return (
-    <span className={`inline-flex shrink-0 items-center justify-center overflow-hidden ${sizeClass} ${method.brandClass}`}>
-      {!imageFailed && method.logoUrl ? (
+    <span className={`inline-flex shrink-0 items-center justify-center overflow-hidden ${sizeClass}`} style={{ color: method.brand_color || undefined }}>
+      {!imageFailed && method.logo_url ? (
         <img
-          src={method.logoUrl}
+          src={method.logo_url}
           alt={`${method.label} icon`}
           className="h-full w-full object-contain"
           onError={() => setImageFailed(true)}
         />
       ) : (
         <span className={`font-semibold ${fallbackSizeClass}`}>
-          {method.badge}
+          {method.badge || method.code?.slice(0, 2) || 'PM'}
         </span>
       )}
     </span>
@@ -828,15 +873,10 @@ function CheckoutField({ label, value, onChange, required = false, className = '
   )
 }
 
-function CheckoutNote({ icon: Icon, title, body }) {
-  return (
-    <div className="border border-slate-200 bg-slate-50 p-4">
-      <div className="inline-flex h-9 w-9 items-center justify-center border border-slate-200 bg-white text-slate-950">
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="mt-3 text-sm font-semibold text-slate-950">{title}</div>
-      <div className="mt-2 text-sm leading-7 text-slate-500">{body}</div>
-    </div>
-  )
+function paymentLabel(method, isBangla) {
+  return isBangla ? method?.label_bn || method?.label || method?.code : method?.label || method?.code
 }
 
+function paymentDescription(method, isBangla) {
+  return isBangla ? method?.description_bn || method?.description || '' : method?.description || ''
+}

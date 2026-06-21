@@ -1,0 +1,77 @@
+<?php
+
+namespace App\Http\Controllers\Api\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\PaymentMethod;
+use App\Services\AdminActivityService;
+use App\Support\ApiResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+
+class PaymentMethodController extends Controller
+{
+    use ApiResponse;
+
+    public function index()
+    {
+        return $this->ok(
+            PaymentMethod::query()->orderBy('sort_order')->orderBy('id')->get(),
+            'Payment methods loaded successfully.'
+        );
+    }
+
+    public function store(Request $request, AdminActivityService $activity)
+    {
+        $method = PaymentMethod::create($this->validated($request));
+        $activity->log($request, 'create', 'payment_methods', $method->id, null, $method->toArray());
+
+        return $this->ok($method, 'Payment method created successfully.', 201);
+    }
+
+    public function update(Request $request, int $id, AdminActivityService $activity)
+    {
+        $method = PaymentMethod::findOrFail($id);
+        $old = $method->toArray();
+        $method->update($this->validated($request, $method->id));
+        $activity->log($request, 'update', 'payment_methods', $method->id, $old, $method->fresh()->toArray());
+
+        return $this->ok($method->fresh(), 'Payment method updated successfully.');
+    }
+
+    public function destroy(Request $request, int $id, AdminActivityService $activity)
+    {
+        $method = PaymentMethod::findOrFail($id);
+        abort_if($method->code === 'COD', 422, 'Cash on delivery cannot be deleted.');
+        $old = $method->toArray();
+        $method->delete();
+        $activity->log($request, 'delete', 'payment_methods', $id, $old);
+
+        return $this->ok(null, 'Payment method deleted successfully.');
+    }
+
+    private function validated(Request $request, ?int $id = null): array
+    {
+        $request->merge([
+            'code' => strtoupper(trim((string) $request->input('code'))),
+            'requires_proof' => filter_var($request->input('requires_proof'), FILTER_VALIDATE_BOOLEAN),
+            'is_active' => filter_var($request->input('is_active', true), FILTER_VALIDATE_BOOLEAN),
+        ]);
+
+        return $request->validate([
+            'code' => ['required', 'string', 'max:50', Rule::unique('payment_methods', 'code')->ignore($id)],
+            'label' => ['required', 'string', 'max:255'],
+            'label_bn' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:255'],
+            'description_bn' => ['nullable', 'string', 'max:255'],
+            'number' => ['nullable', 'string', 'max:255'],
+            'account_name' => ['nullable', 'string', 'max:255'],
+            'dial_code' => ['nullable', 'string', 'max:255'],
+            'logo_url' => ['nullable', 'url', 'max:2000'],
+            'brand_color' => ['nullable', 'string', 'max:30'],
+            'requires_proof' => ['nullable', 'boolean'],
+            'is_active' => ['nullable', 'boolean'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+        ]);
+    }
+}

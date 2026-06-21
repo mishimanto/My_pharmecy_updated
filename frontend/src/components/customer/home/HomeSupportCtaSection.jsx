@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 export default function HomeSupportCtaSection({ isBangla }) {
   return (
     <section className="pb-16">
-      <div className="overflow-hidden bg-[linear-gradient(135deg,#0f172a_0%,#0f766e_55%,#13b8b0_100%)] p-8 text-white shadow-[0_32px_80px_-24px_rgba(15,118,110,0.55)] sm:p-12">
+      <div className="overflow-hidden border border-[#9de8e1]/30 bg-[linear-gradient(135deg,#05222a_0%,#0b5d68_54%,#13b8b0_100%)] p-8 text-white shadow-[0_32px_80px_-24px_rgba(8,63,73,0.65)] sm:p-12">
         <div className="grid gap-8 xl:grid-cols-[1.1fr_0.9fr] xl:items-center">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-teal-100">{isBangla ? 'অর্ডারে সহায়তা লাগবে?' : 'Need help ordering?'}</p>
@@ -17,11 +17,11 @@ export default function HomeSupportCtaSection({ isBangla }) {
                 : 'Build your order from the catalog, submit prescriptions when needed, and keep support visible throughout the shopping journey.'}
             </p> */}
             <div className="mt-6 flex flex-wrap gap-4 text-sm">
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm">
+              <span className="inline-flex items-center gap-2 rounded-full border border-[#9de8e1]/25 bg-[#083f49]/40 px-4 py-2 backdrop-blur-sm">
                 <FiMapPin className="h-4 w-4" />
                 {isBangla ? 'ঢাকা ডেলিভারি' : 'Dhaka delivery'}
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm">
+              <span className="inline-flex items-center gap-2 rounded-full border border-[#9de8e1]/25 bg-[#083f49]/40 px-4 py-2 backdrop-blur-sm">
                 <FiPhoneCall className="h-4 w-4" />
                 09610-001122
               </span>
@@ -37,7 +37,7 @@ export default function HomeSupportCtaSection({ isBangla }) {
               <Link
                 key={item.to}
                 to={item.to}
-                className="group flex items-center justify-between border border-white/20 bg-white/10 px-5 py-4 text-sm font-bold backdrop-blur-sm transition hover:bg-white/20"
+                className="group flex items-center justify-between border border-[#9de8e1]/25 bg-[#083f49]/40 px-5 py-4 text-sm font-bold backdrop-blur-sm transition hover:border-[#9de8e1]/55 hover:bg-[#0e6574]/55"
               >
                 {item.label}
                 <FiArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
