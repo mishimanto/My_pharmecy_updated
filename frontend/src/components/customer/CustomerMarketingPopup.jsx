@@ -1,22 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FiArrowRight, FiClock, FiGift, FiX } from 'react-icons/fi'
 import { Link } from 'react-router-dom'
-import { marketingPopupApi, readCachedMarketingPopup } from '../../api/marketingPopupApi'
 import { useLanguage } from '../../context/LanguageContext'
+import { useMarketingPopupQuery } from '../../queries/customerQueries'
 import { getLocalizedOffer, getOfferTimeLeft } from '../../utils/offerDisplay'
 
 const POPUP_CLOSED_KEY = 'storefront_marketing_popup_closed_v1'
 
 export default function CustomerMarketingPopup() {
   const { isBangla } = useLanguage()
-  const [record, setRecord] = useState(() => readCachedMarketingPopup())
+  const popupQuery = useMarketingPopupQuery()
+  const record = popupQuery.data || null
   const [isVisible, setIsVisible] = useState(false)
   const [nowTick, setNowTick] = useState(0)
   const t = (bn, en) => (isBangla ? bn : en)
-
-  useEffect(() => {
-    marketingPopupApi.show().then((response) => setRecord(response.data.data || null)).catch(() => {})
-  }, [])
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowTick((current) => current + 1), 1000)

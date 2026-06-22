@@ -10,8 +10,6 @@ import {
   FiShield,
   FiTruck,
 } from 'react-icons/fi'
-import { bannerImageApi, readCachedBannerImages } from '../../api/bannerImageApi'
-import { heroSlideApi, readCachedHeroSlides } from '../../api/heroSlideApi'
 import { productApi } from '../../api/productApi'
 import HomeCategoriesSection from '../../components/customer/home/HomeCategoriesSection'
 import HomeBannerSection from '../../components/customer/home/HomeBannerSection'
@@ -26,6 +24,7 @@ import { getHeroSlides } from '../../components/customer/home/homeUtils'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
+import { useBannerImagesQuery, useCategoriesQuery, useHeroSlidesQuery, useManufacturersQuery, useProductsQuery } from '../../queries/customerQueries'
 import { getDefaultPurchaseOption, getUnitLabel } from '../../utils/purchaseUnits'
 import { isPrescriptionLoginRequiredError, requiresPrescriptionLogin, showPrescriptionLoginRequiredAlert } from '../../utils/prescriptionCartAlert'
 
@@ -34,8 +33,18 @@ export default function Home() {
   const { customer } = useCustomerAuth()
   const { isBangla } = useLanguage()
   const fallbackHeroSlides = useMemo(() => getHeroSlides(isBangla), [isBangla])
-  const [heroSlideRecords, setHeroSlideRecords] = useState(() => readCachedHeroSlides() || [])
-  const [bannerRecords, setBannerRecords] = useState(() => readCachedBannerImages() || [])
+  const cachedFeatured = productApi.getCachedList({ per_page: 12 })
+  const productsQuery = useProductsQuery({ per_page: 12 })
+  const categoriesQuery = useCategoriesQuery()
+  const manufacturersQuery = useManufacturersQuery()
+  const heroSlidesQuery = useHeroSlidesQuery()
+  const bannerImagesQuery = useBannerImagesQuery()
+  const products = useMemo(() => productsQuery.data?.data || [], [productsQuery.data])
+  const categories = useMemo(() => categoriesQuery.data || [], [categoriesQuery.data])
+  const manufacturers = useMemo(() => manufacturersQuery.data || [], [manufacturersQuery.data])
+  const heroSlideRecords = useMemo(() => heroSlidesQuery.data || [], [heroSlidesQuery.data])
+  const bannerRecords = useMemo(() => bannerImagesQuery.data || [], [bannerImagesQuery.data])
+  const loading = productsQuery.isLoading && !cachedFeatured
   const heroSlides = useMemo(() => {
     if (!heroSlideRecords.length) return fallbackHeroSlides
 
@@ -138,31 +147,13 @@ export default function Home() {
       body: isBangla ? 'অর্ডার, প্রেসক্রিপশন বা ডেলিভারি নিয়ে যেকোনো সময়ে সহায়তা নিন।' : 'Reach support for order, prescription, or delivery questions anytime.',
     },
   ]), [isBangla])
-  const cachedFeatured = productApi.getCachedList({ per_page: 12 })
-  const [products, setProducts] = useState(cachedFeatured?.data || [])
-  const [categories, setCategories] = useState(() => productApi.getCachedCategories())
-  const [manufacturers, setManufacturers] = useState(() => productApi.getCachedManufacturers())
-  const [loading, setLoading] = useState(!cachedFeatured)
   const [currentSlide, setCurrentSlide] = useState(0)
 
   useEffect(() => {
-    Promise.all([
-      productApi.list({ per_page: 12 }),
-      productApi.categories(),
-      productApi.manufacturers(),
-      heroSlideApi.list(),
-      bannerImageApi.list(),
-    ])
-      .then(([productRes, categoryRes, manufacturerRes, heroSlideRes, bannerRes]) => {
-        setProducts(productRes.data.data?.data || [])
-        setCategories(categoryRes.data.data || [])
-        setManufacturers(manufacturerRes.data.data || [])
-        setHeroSlideRecords(heroSlideRes.data.data || [])
-        setBannerRecords(bannerRes.data.data || [])
-      })
-      .catch(() => toast.error(isBangla ? 'এই মুহূর্তে স্টোরফ্রন্ট লোড করা যাচ্ছে না।' : 'Unable to load the storefront right now.'))
-      .finally(() => setLoading(false))
-  }, [isBangla])
+    if (productsQuery.isError) {
+      toast.error(isBangla ? 'এই মুহূর্তে স্টোরফ্রন্ট লোড করা যাচ্ছে না।' : 'Unable to load the storefront right now.')
+    }
+  }, [isBangla, productsQuery.isError])
 
   useEffect(() => {
     const timer = setInterval(() => {

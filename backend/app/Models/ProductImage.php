@@ -6,6 +6,22 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductImage extends PharmacyModel
 {
+    protected $appends = ['thumbnail_url'];
+
+    protected static function booted(): void
+    {
+        static::deleted(function (self $image): void {
+            collect([
+                $image->getRawOriginal('image_path'),
+                $image->getRawOriginal('image_webp_path'),
+                $image->getRawOriginal('thumbnail_path'),
+            ])
+                ->filter()
+                ->unique()
+                ->each(fn ($path) => Storage::disk('public')->delete($path));
+        });
+    }
+
     protected function casts(): array
     {
         return ['is_primary' => 'boolean'];
@@ -27,5 +43,14 @@ class ProductImage extends PharmacyModel
         }
 
         return null;
+    }
+
+    public function getThumbnailUrlAttribute(): ?string
+    {
+        if (! empty($this->attributes['thumbnail_path'])) {
+            return url(Storage::disk('public')->url($this->attributes['thumbnail_path']));
+        }
+
+        return $this->image_url;
     }
 }

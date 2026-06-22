@@ -1,11 +1,12 @@
-import { FiArrowRight, FiHeart, FiShoppingCart } from 'react-icons/fi'
+import { FiHeart, FiShoppingCart } from 'react-icons/fi'
 import { Link } from 'react-router-dom'
 import { productApi } from '../../api/productApi'
+import OptimizedImage from '../common/OptimizedImage'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
 import { money } from '../../utils/formatters'
 import { getCategoryName } from '../../utils/categoryNames'
-import { getManufacturerImage, getProductImage, handleImageFallback } from '../../utils/imageUrl'
+import { getManufacturerImage, getProductThumbnail, handleImageFallback } from '../../utils/imageUrl'
 import { getProductPath, getProductRouteKey } from '../../utils/productRouting'
 
 export default function ProductCard({ product, onAdd }) {
@@ -13,7 +14,7 @@ export default function ProductCard({ product, onAdd }) {
   const { isBangla } = useLanguage()
   const manufacturerImage = getManufacturerImage(product?.manufacturer)
   const saved = isWishlisted(product?.id)
-  const productImage = getProductImage(product)
+  const productImage = getProductThumbnail(product)
   const productPath = getProductPath(product)
   const productRouteKey = getProductRouteKey(product)
 
@@ -32,11 +33,10 @@ export default function ProductCard({ product, onAdd }) {
           onFocus={prefetch}
           className="flex h-44 w-full items-center justify-center sm:h-48"
         >
-          <img
+          <OptimizedImage
             src={productImage}
             alt={product.product_name}
             className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
-            loading="lazy"
             onError={handleImageFallback}
           />
         </Link>
@@ -86,11 +86,10 @@ export default function ProductCard({ product, onAdd }) {
           <Link to={productPath} state={{ product }} className="flex items-start justify-between gap-3" onMouseEnter={prefetch} onFocus={prefetch}>
             <h3 className="line-clamp-2 min-w-0 flex-1 text-base font-semibold leading-6 text-[#102a43] transition group-hover:text-[#1d4ed8]">{product.product_name}</h3>
             {manufacturerImage ? (
-              <img
+              <OptimizedImage
                 src={manufacturerImage}
                 alt={product.manufacturer?.manufacturer_name || (isBangla ? 'ব্র্যান্ড লোগো' : 'Brand logo')}
                 className="h-10 w-10 shrink-0 border border-[#2563eb]/15 bg-white/55 object-contain"
-                loading="lazy"
                 onError={handleImageFallback}
               />
             ) : null}

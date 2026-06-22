@@ -5,6 +5,7 @@ import { productApi } from '../../api/productApi'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
+import { useCategoriesQuery, useManufacturersQuery, useProductsQuery } from '../../queries/customerQueries'
 import { getDefaultPurchaseOption, getUnitLabel } from '../../utils/purchaseUnits'
 import { getCategoryName } from '../../utils/categoryNames'
 import { isPrescriptionLoginRequiredError, requiresPrescriptionLogin, showPrescriptionLoginRequiredAlert } from '../../utils/prescriptionCartAlert'
@@ -29,13 +30,8 @@ export default function ProductGrid() {
   const initialCachedList = productApi.getCachedList(initialParams)
   const t = (bn, en) => (isBangla ? bn : en)
 
-  const [products, setProducts] = useState(initialCachedList?.data || [])
   const [search, setSearch] = useState(initialSearch)
-  const [loading, setLoading] = useState(!initialCachedList)
   const [page, setPage] = useState(1)
-  const [meta, setMeta] = useState(initialCachedList)
-  const [categories, setCategories] = useState(() => productApi.getCachedCategories())
-  const [manufacturers, setManufacturers] = useState(() => productApi.getCachedManufacturers())
   const [filters, setFilters] = useState({
     category_id: initialCategoryId,
     manufacturer_id: '',
@@ -43,53 +39,25 @@ export default function ProductGrid() {
   })
   const deferredSearch = useDeferredValue(search)
 
-  useEffect(() => {
-    productApi.categories().then(({ data }) => setCategories(data.data || [])).catch(() => {})
-    productApi.manufacturers().then(({ data }) => setManufacturers(data.data || [])).catch(() => {})
-  }, [])
-
   const requestParams = useMemo(
     () => ({ search: deferredSearch, page, ...filters }),
     [deferredSearch, page, filters],
   )
 
-  const cachedPayload = useMemo(
-    () => productApi.getCachedList(requestParams),
-    [requestParams],
-  )
+  const productsQuery = useProductsQuery(requestParams)
+  const categoriesQuery = useCategoriesQuery()
+  const manufacturersQuery = useManufacturersQuery()
+  const meta = productsQuery.data || initialCachedList
+  const products = meta?.data || []
+  const categories = categoriesQuery.data || []
+  const manufacturers = manufacturersQuery.data || []
+  const loading = productsQuery.isLoading && !initialCachedList
 
   useEffect(() => {
-    const hasSeedData = Boolean(cachedPayload?.data?.length)
-    let syncTimer = null
-
-    if (cachedPayload) {
-      syncTimer = window.setTimeout(() => {
-        setProducts(cachedPayload.data || [])
-        setMeta(cachedPayload)
-      }, 0)
+    if (productsQuery.isError) {
+      toast.error(isBangla ? 'পণ্য লোড করা যাচ্ছে না।' : 'Could not load products.')
     }
-
-    const timer = setTimeout(() => {
-      if (!hasSeedData) {
-        setLoading(true)
-      }
-
-      productApi
-        .list(requestParams)
-        .then(({ data }) => {
-          const payload = data.data
-          setProducts(payload.data || [])
-          setMeta(payload)
-        })
-        .catch(() => toast.error(isBangla ? 'পণ্য লোড করা যাচ্ছে না।' : 'Could not load products.'))
-        .finally(() => setLoading(false))
-    }, hasSeedData ? 0 : 120)
-
-    return () => {
-      clearTimeout(timer)
-      if (syncTimer) window.clearTimeout(syncTimer)
-    }
-  }, [cachedPayload, requestParams, isBangla])
+  }, [isBangla, productsQuery.isError])
 
   const currentPage = meta?.current_page || page
   const lastPage = meta?.last_page || 1

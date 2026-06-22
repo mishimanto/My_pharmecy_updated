@@ -35,6 +35,19 @@ export function getProductImage(product, fallback = MEDICINE_PLACEHOLDER_SRC) {
   return resolveImageUrl(product?.primary_image?.image_url || product?.images?.[0]?.image_url, fallback)
 }
 
+export function getProductThumbnail(product, fallback = MEDICINE_PLACEHOLDER_SRC) {
+  const image = product?.primary_image || product?.images?.[0]
+  return resolveImageUrl(
+    image?.thumbnail_url
+      || image?.image_thumbnail_url
+      || image?.thumbnail_src
+      || image?.thumbnail_path
+      || image?.image_webp_url
+      || image?.image_url,
+    fallback,
+  )
+}
+
 export function getManufacturerImage(manufacturer, fallback = MEDICINE_PLACEHOLDER_SRC) {
   return resolveImageUrl(manufacturer?.logo_url, fallback)
 }

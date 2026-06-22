@@ -8,6 +8,7 @@ import { GrCheckboxSelected } from 'react-icons/gr'
 import { orderApi } from '../../api/orderApi'
 import PageHeader from '../../components/common/PageHeader'
 import EmptyState from '../../components/common/EmptyState'
+import OptimizedImage from '../../components/common/OptimizedImage'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useStorefront } from '../../context/StorefrontContext'
 import { useLanguage } from '../../context/LanguageContext'
@@ -131,6 +132,7 @@ export default function Cart() {
   useEffect(() => {
     if (!items.length || !selectedDeliveryArea) return
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadPricing(selectedDeliveryArea.id, { silent: true })
   }, [items.length, loadPricing, cart?.subtotal, selectedDeliveryArea])
 
@@ -218,13 +220,13 @@ export default function Cart() {
 
             <div className="border border-slate-200 bg-white shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
               {items.map((item) => {
-                const image = resolveImageUrl(item.image_url)
+                const image = resolveImageUrl(item.thumbnail_url || item.image_url)
 
                 return (
                   <div key={item.cart_item_id} className="grid gap-5 border-b border-slate-200 p-5 last:border-b-0 lg:grid-cols-[84px_1fr_160px_140px] lg:items-center">
                     <div className="overflow-hidden border border-slate-200 bg-slate-50">
                       {image ? (
-                        <img className="h-21 w-full object-cover" src={image} alt={cartItemProductName(item)} onError={handleImageFallback} />
+                        <OptimizedImage className="h-21 w-full object-cover" src={image} alt={cartItemProductName(item)} onError={handleImageFallback} />
                       ) : (
                         <div className="flex h-21 items-center justify-center text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">Rx</div>
                       )}

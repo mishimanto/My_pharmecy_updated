@@ -6,8 +6,9 @@ import toast from 'react-hot-toast'
 import { adminApi } from '../../../api/adminApi'
 import AdminLoadingState from '../../../components/admin/AdminLoadingState'
 import EmptyState from '../../../components/common/EmptyState'
+import OptimizedImage from '../../../components/common/OptimizedImage'
 import { money } from '../../../utils/formatters'
-import { getProductImage, handleImageFallback } from '../../../utils/imageUrl'
+import { getProductThumbnail, handleImageFallback } from '../../../utils/imageUrl'
 import { clearProductsCache, readProductsCache, writeProductsCache } from '../../../utils/adminProductCache'
 
 const statusOptions = ['', 'active', 'inactive']
@@ -35,6 +36,7 @@ export default function ProductIndex() {
     const cached = readProductsCache(params)
 
     if (cached) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProducts(cached.products || [])
       setMeta(cached.meta || null)
       setLoading(false)
@@ -65,7 +67,7 @@ export default function ProductIndex() {
       })
 
     return () => { active = false }
-  }, [params])
+  }, [params, products.length])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -153,7 +155,7 @@ export default function ProductIndex() {
                   <tr key={product.id}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <img src={getProductImage(product)} alt={product.product_name} loading="lazy" decoding="async" onError={handleImageFallback} className="h-11 w-11 rounded-md border border-slate-200 object-cover" />
+                        <OptimizedImage src={getProductThumbnail(product)} alt={product.product_name} onError={handleImageFallback} className="h-11 w-11 rounded-md border border-slate-200 object-cover" />
                         <div>
                           <div className="font-semibold text-slate-950">{product.product_name}</div>
                           <div className="text-xs text-slate-500">{product.generic_name || product.brand_name || '-'}</div>

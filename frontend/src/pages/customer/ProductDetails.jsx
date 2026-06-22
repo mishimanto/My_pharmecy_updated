@@ -4,9 +4,11 @@ import toast from 'react-hot-toast'
 import { FiArrowRight, FiHeart, FiPlus, FiMinus, FiShoppingCart, FiUpload, FiLogIn } from 'react-icons/fi'
 import { productApi } from '../../api/productApi'
 import { prescriptionApi } from '../../api/prescriptionApi'
+import OptimizedImage from '../../components/common/OptimizedImage'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
+import { useProductQuery } from '../../queries/customerQueries'
 import { handleImageFallback, MEDICINE_PLACEHOLDER_SRC, resolveImageUrl } from '../../utils/imageUrl'
 import { isPrescriptionLoginRequiredError, requiresPrescriptionLogin as requiresPrescriptionLoginForProduct, showPrescriptionLoginRequiredAlert } from '../../utils/prescriptionCartAlert'
 import { readPreferredPrescriptionId, writePreferredPrescriptionId } from '../../utils/prescriptionSelection'
@@ -50,39 +52,6 @@ export default function ProductDetails() {
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(false)
   const [prescriptionsReady, setPrescriptionsReady] = useState(false)
   const [selectedPrescriptionId, setSelectedPrescriptionId] = useState(() => readPreferredPrescriptionId())
-
-  useEffect(() => {
-    let cancelled = false
-
-    productApi
-      .show(slug)
-      .then(({ data }) => {
-        if (cancelled) return
-
-        const nextProduct = data.data
-        const canonicalPath = getProductPath(nextProduct)
-
-        productApi.primeProduct(nextProduct)
-        setViewState({ routeKey: slug, product: nextProduct, pending: false })
-
-        if (canonicalPath !== `/products/${encodeURIComponent(slug)}`) {
-          navigate(canonicalPath, { replace: true, state: { product: nextProduct } })
-        }
-      })
-      .catch(() => {
-        if (cancelled) return
-
-        setViewState({ routeKey: slug, product: seededProduct || null, pending: false })
-
-        if (!seededProduct) {
-          toast.error(t('এই মুহূর্তে পণ্যের বিস্তারিত লোড করা যাচ্ছে না।', 'Unable to load the product details right now.'))
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [slug, seededProduct, navigate, t])
 
   useEffect(() => {
     if (authLoading) return
@@ -145,6 +114,32 @@ export default function ProductDetails() {
   const routeKey = getProductRouteKey(product)
   const isLoading = viewState.routeKey === slug ? viewState.pending && !product : !seededProduct
   const loginPath = `/login?returnTo=${encodeURIComponent(location.pathname)}`
+  const productQuery = useProductQuery(slug)
+
+  useEffect(() => {
+    const nextProduct = productQuery.data
+    if (!nextProduct) return
+
+    const canonicalPath = getProductPath(nextProduct)
+    productApi.primeProduct(nextProduct)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setViewState({ routeKey: slug, product: nextProduct, pending: false })
+
+    if (canonicalPath !== `/products/${encodeURIComponent(slug)}`) {
+      navigate(canonicalPath, { replace: true, state: { product: nextProduct } })
+    }
+  }, [navigate, productQuery.data, slug])
+
+  useEffect(() => {
+    if (productQuery.isError) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setViewState({ routeKey: slug, product: seededProduct || null, pending: false })
+
+      if (!seededProduct) {
+        toast.error(t('এই মুহূর্তে পণ্যের বিস্তারিত লোড করা যাচ্ছে না।', 'Unable to load the product details right now.'))
+      }
+    }
+  }, [productQuery.isError, seededProduct, slug, t])
 
   const gallery = useMemo(() => {
     if (!product) return [MEDICINE_PLACEHOLDER_SRC]
@@ -191,7 +186,6 @@ export default function ProductDetails() {
     }
 
     if (!selectablePrescriptions.find((item) => String(item.id) === String(selectedPrescriptionId))) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedPrescriptionId('')
     }
   }, [product?.requires_prescription, selectablePrescriptions, selectedPrescriptionId])
@@ -302,10 +296,11 @@ export default function ProductDetails() {
           <div className="space-y-4">
             <div>
               <div className="overflow-hidden border border-[#b7d5d2] bg-[#e8f5f3] shadow-[0_24px_64px_-48px_rgba(13,75,89,0.34)]">
-                <img
+                <OptimizedImage
                   src={activeImage}
                   alt={productName || product?.product_name || 'Product image'}
                   className="h-90 w-full bg-white object-contain sm:h-125"
+                  loading="eager"
                   onError={handleImageFallback}
                 />
               </div>
@@ -321,7 +316,7 @@ export default function ProductDetails() {
                         activeImage === image ? 'border-[#0f766e]' : 'border-[#b7d5d2] hover:border-[#13b8b0]'
                       }`}
                     >
-                      <img src={image} alt={t('পণ্যের ছবি', 'Product thumbnail')} className="h-20 w-full object-cover" onError={handleImageFallback} />
+                      <OptimizedImage src={image} alt={t('পণ্যের ছবি', 'Product thumbnail')} className="h-20 w-full object-cover" onError={handleImageFallback} />
                     </button>
                   ))}
                 </div>

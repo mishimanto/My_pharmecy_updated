@@ -167,6 +167,7 @@ class CartController extends Controller
             'dosage_form' => $product->dosage_form,
             'requires_prescription' => (bool) $product->requires_prescription,
             'image_url' => $primaryImage?->image_url,
+            'thumbnail_url' => $primaryImage?->thumbnail_url,
             'quantity' => (int) $item->quantity,
             'purchase_quantity' => (int) $item->quantity,
             'purchase_unit' => $item->purchase_unit,

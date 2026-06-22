@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { siteSettingsApi } from '../api/siteSettingsApi'
+import { useQueryClient } from '@tanstack/react-query'
+import { customerQueryKeys, useSiteSettingsQuery } from '../queries/customerQueries'
 
 const SITE_SETTINGS_CACHE_KEY = 'site_settings_payload_v1'
 const SITE_SETTINGS_CACHE_TTL = 5 * 60 * 1000
@@ -57,45 +58,44 @@ function mergeSettings(payload) {
 }
 
 export function SiteSettingsProvider({ children }) {
-  const cached = readCache()
-  const [settings, setSettings] = useState(() => mergeSettings(cached))
-  const [loading, setLoading] = useState(() => !cached)
+  const [cached] = useState(() => readCache())
+  const queryClient = useQueryClient()
+  const [forcedLoading, setForcedLoading] = useState(false)
+  const settingsQuery = useSiteSettingsQuery({
+    initialData: cached || undefined,
+  })
+  const settings = useMemo(() => mergeSettings(settingsQuery.data || cached), [cached, settingsQuery.data])
+  const loading = forcedLoading || (settingsQuery.isLoading && !settingsQuery.data)
 
   const updateSettingsState = useCallback((payload) => {
     const merged = mergeSettings(payload)
-    setSettings(merged)
+    queryClient.setQueryData(customerQueryKeys.siteSettings, merged)
     writeCache(merged)
     window.dispatchEvent(new CustomEvent(SITE_SETTINGS_UPDATED_EVENT, { detail: merged }))
-    setLoading(false)
+    setForcedLoading(false)
     return merged
-  }, [])
+  }, [queryClient])
 
   const refreshSettings = useCallback(async ({ silent = false } = {}) => {
     if (!silent) {
-      setLoading((current) => current || !settings?.site_name)
+      setForcedLoading(true)
     }
 
-    const response = await siteSettingsApi.show()
-    return updateSettingsState(response.data?.data)
-  }, [settings?.site_name, updateSettingsState])
+    const response = await settingsQuery.refetch()
+    setForcedLoading(false)
+
+    if (response.error) {
+      throw response.error
+    }
+
+    return updateSettingsState(response.data)
+  }, [settingsQuery, updateSettingsState])
 
   useEffect(() => {
-    if (cached) return undefined
+    if (!settingsQuery.data) return
 
-    let active = true
-
-    siteSettingsApi.show()
-      .then((response) => {
-        if (!active) return
-        updateSettingsState(response.data?.data)
-      })
-      .catch(() => {
-        if (!active) return
-        setLoading(false)
-      })
-
-    return () => { active = false }
-  }, [cached, updateSettingsState])
+    writeCache(mergeSettings(settingsQuery.data))
+  }, [settingsQuery.data])
 
   useEffect(() => {
     const handleStorage = (event) => {
@@ -103,16 +103,16 @@ export function SiteSettingsProvider({ children }) {
 
       try {
         const cachedSettings = JSON.parse(event.newValue)
-        setSettings(mergeSettings(cachedSettings.payload))
-        setLoading(false)
+        queryClient.setQueryData(customerQueryKeys.siteSettings, mergeSettings(cachedSettings.payload))
+        setForcedLoading(false)
       } catch {
         // Ignore malformed cache payloads.
       }
     }
 
     const handleSettingsUpdated = (event) => {
-      setSettings(mergeSettings(event.detail))
-      setLoading(false)
+      queryClient.setQueryData(customerQueryKeys.siteSettings, mergeSettings(event.detail))
+      setForcedLoading(false)
     }
 
     window.addEventListener('storage', handleStorage)
@@ -122,7 +122,7 @@ export function SiteSettingsProvider({ children }) {
       window.removeEventListener('storage', handleStorage)
       window.removeEventListener(SITE_SETTINGS_UPDATED_EVENT, handleSettingsUpdated)
     }
-  }, [])
+  }, [queryClient])
 
   useEffect(() => {
     if (typeof document === 'undefined') return

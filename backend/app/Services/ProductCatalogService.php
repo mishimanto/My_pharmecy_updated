@@ -53,7 +53,7 @@ class ProductCatalogService
             ->with([
                 'category:id,category_name',
                 'manufacturer:id,manufacturer_name,logo_url,logo_path',
-                'images:id,product_id,image_url,image_path,is_primary',
+                'images:id,product_id,image_url,image_path,image_webp_path,thumbnail_path,is_primary',
                 'batches' => function ($query) {
                     ($this->validBatchConstraint())($query);
                     $query->select([

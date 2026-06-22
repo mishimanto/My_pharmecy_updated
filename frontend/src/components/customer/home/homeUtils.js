@@ -1,4 +1,4 @@
-import { getProductImage as getProductImageFromUrl, resolveImageUrl } from '../../../utils/imageUrl'
+import { getProductThumbnail, resolveImageUrl } from '../../../utils/imageUrl'
 
 export const categoryTints = [
   'from-[#dff8f4] via-[#f4fffd] to-[#eaf7f4]',
@@ -16,7 +16,7 @@ export function resolveImage(path) {
 }
 
 export function getProductImage(product) {
-  return getProductImageFromUrl(product)
+  return getProductThumbnail(product)
 }
 
 export function getHeroSlides(isBangla) {

@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import toast from 'react-hot-toast'
 import { FiArrowRight, FiClock, FiGift } from 'react-icons/fi'
 import { Link } from 'react-router-dom'
-import { offerApi, readCachedOffers } from '../../api/offerApi'
 // import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
+import { useOffersQuery } from '../../queries/customerQueries'
 import { getLocalizedOffer, getOfferTimeLeft } from '../../utils/offerDisplay'
 
 export default function Offers() {
   const { isBangla } = useLanguage()
-  const [records, setRecords] = useState(() => readCachedOffers() || [])
-  const [loading, setLoading] = useState(!readCachedOffers())
+  const offersQuery = useOffersQuery()
+  const records = useMemo(() => offersQuery.data || [], [offersQuery.data])
+  const loading = offersQuery.isLoading
   const [nowTick, setNowTick] = useState(0)
   const t = (bn, en) => (isBangla ? bn : en)
 
@@ -19,12 +19,6 @@ export default function Offers() {
     return () => window.clearInterval(timer)
   }, [])
 
-  useEffect(() => {
-    offerApi.list()
-      .then((response) => setRecords(response.data.data || []))
-      .catch(() => toast.error(isBangla ? 'অফার লোড করা যাচ্ছে না।' : 'Unable to load offers.'))
-      .finally(() => setLoading(false))
-  }, [isBangla])
 
   const offers = useMemo(() => records
     .map((item) => getLocalizedOffer(item, isBangla))

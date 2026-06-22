@@ -1,30 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
+import { adminQueryKeys, useAdminListQuery } from '../../queries/adminQueries'
 import EmptyState from '../common/EmptyState'
 import AdminLoadingState from './AdminLoadingState'
 
 export default function AdminTable({ resource }) {
-  const [rows, setRows] = useState([])
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
-  const [meta, setMeta] = useState(null)
-
-  useEffect(() => {
-    let active = true
-    adminApi
-      .list(resource, { search, page })
-      .then(({ data }) => {
-        if (!active) return
-        setRows(data.data.data || [])
-        setMeta(data.data)
-      })
-      .catch(() => active && toast.error('Unable to load data.'))
-      .finally(() => active && setLoading(false))
-    return () => { active = false }
-  }, [resource, search, page])
+  const tableQuery = useAdminListQuery(resource, { search, page })
+  const meta = tableQuery.data || null
+  const rows = meta?.data || []
+  const loading = tableQuery.isLoading
 
   const remove = async (id) => {
     const result = await Swal.fire({
@@ -38,7 +28,7 @@ export default function AdminTable({ resource }) {
     if (!result.isConfirmed) return
     await adminApi.remove(resource, id)
     toast.success('Record deleted.')
-    setRows((current) => current.filter((row) => row.id !== id))
+    queryClient.invalidateQueries({ queryKey: adminQueryKeys.resourceList(resource, { search, page }) })
   }
 
   const columns = rows[0] ? Object.keys(rows[0]).slice(0, 6) : []
@@ -47,8 +37,8 @@ export default function AdminTable({ resource }) {
   return (
     <div>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-        <input className="w-full rounded border border-slate-300 bg-white px-3 py-2" placeholder="Search" value={search} onChange={(event) => { setLoading(true); setSearch(event.target.value); setPage(1) }} />
-        <button className="rounded border border-slate-300 bg-white px-4 py-2 text-sm" onClick={() => { setLoading(true); setSearch(''); setPage(1) }}>Reset</button>
+        <input className="w-full rounded border border-slate-300 bg-white px-3 py-2" placeholder="Search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1) }} />
+        <button className="rounded border border-slate-300 bg-white px-4 py-2 text-sm" onClick={() => { setSearch(''); setPage(1) }}>Reset</button>
       </div>
       {loading && <AdminLoadingState className="py-6" />}
       {!loading && rows.length === 0 && <EmptyState />}
@@ -73,8 +63,8 @@ export default function AdminTable({ resource }) {
         <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
           <span>Page {meta.current_page || page} / {meta.last_page || 1}</span>
           <div className="flex gap-2">
-            <button disabled={page <= 1} className="rounded border px-3 py-1 disabled:opacity-40" onClick={() => { setLoading(true); setPage((value) => Math.max(1, value - 1)) }}>Previous</button>
-            <button disabled={!meta || meta.current_page >= meta.last_page} className="rounded border px-3 py-1 disabled:opacity-40" onClick={() => { setLoading(true); setPage((value) => value + 1) }}>Next</button>
+            <button disabled={page <= 1} className="rounded border px-3 py-1 disabled:opacity-40" onClick={() => setPage((value) => Math.max(1, value - 1))}>Previous</button>
+            <button disabled={!meta || meta.current_page >= meta.last_page} className="rounded border px-3 py-1 disabled:opacity-40" onClick={() => setPage((value) => value + 1)}>Next</button>
           </div>
         </div>
       )}

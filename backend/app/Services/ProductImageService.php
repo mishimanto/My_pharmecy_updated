@@ -33,11 +33,16 @@ class ProductImageService
     private function storeImage(callable $decoder): array
     {
         $path = 'products/' . Str::uuid() . '.webp';
+        $thumbnailPath = 'products/thumbnails/' . Str::uuid() . '.webp';
 
         try {
-            $image = $decoder(new ImageManager(new Driver()))
+            $manager = new ImageManager(new Driver());
+            $image = $decoder($manager)
                 ->scaleDown(width: 900, height: 900)
                 ->encode(new WebpEncoder(78));
+            $thumbnail = $decoder($manager)
+                ->scaleDown(width: 360, height: 360)
+                ->encode(new WebpEncoder(72));
         } catch (Throwable $exception) {
             Log::warning('Product image decode failed', [
                 'message' => $exception->getMessage(),
@@ -50,10 +55,12 @@ class ProductImageService
         }
 
         Storage::disk('public')->put($path, (string) $image);
+        Storage::disk('public')->put($thumbnailPath, (string) $thumbnail);
 
         return [
             'image_path' => $path,
             'image_webp_path' => $path,
+            'thumbnail_path' => $thumbnailPath,
             'image_url' => Storage::url($path),
         ];
     }

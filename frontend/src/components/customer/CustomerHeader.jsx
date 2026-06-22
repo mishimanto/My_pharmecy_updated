@@ -14,13 +14,14 @@ import {
   FiX,
 } from 'react-icons/fi'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { offerApi, readCachedOffers } from '../../api/offerApi'
 import { productApi } from '../../api/productApi'
+import OptimizedImage from '../common/OptimizedImage'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
+import { useOffersQuery } from '../../queries/customerQueries'
 import { getCategoryName } from '../../utils/categoryNames'
-import { getProductImage, handleImageFallback } from '../../utils/imageUrl'
+import { getProductThumbnail, handleImageFallback } from '../../utils/imageUrl'
 import { getLocalizedOffer, getOfferTimeLeft } from '../../utils/offerDisplay'
 import { getProductPath, getProductRouteKey } from '../../utils/productRouting'
 import CustomerLogo from './CustomerLogo'
@@ -40,7 +41,8 @@ export default function CustomerHeader() {
   const [isSearching, setIsSearching] = useState(false)
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [offerRecords, setOfferRecords] = useState(() => readCachedOffers() || [])
+  const offersQuery = useOffersQuery()
+  const offerRecords = offersQuery.data || []
   const [isOfferBarHidden, setIsOfferBarHidden] = useState(false)
   const [nowTick, setNowTick] = useState(0)
   const trimmedSearch = search.trim()
@@ -57,7 +59,6 @@ export default function CustomerHeader() {
       productApi.prefetchList({ per_page: 6 })
       productApi.prefetchCategories()
       productApi.prefetchManufacturers()
-      offerApi.list().then((response) => setOfferRecords(response.data.data || [])).catch(() => {})
       refreshCart().catch(() => {})
     }, 0)
 
@@ -212,12 +213,9 @@ export default function CustomerHeader() {
   const subNav = [
     ['/', t('হোম', 'Home')],
     ['/products', t('ওষুধ', 'Medicines')],
-    ['/offers', t('অফার', 'Offers')],
-    
+    ['/offers', t('অফার', 'Offers')],    
     ['/track-order', t('ট্র্যাক অর্ডার', 'Track Order')],
     ['/faq', t('জিজ্ঞাসা', 'FAQ')],
-    ['/privacy-policy', t('প্রাইভেসি', 'Privacy')],
-    ['/terms-and-conditions', t('শর্তাবলি', 'Terms')],
   ]
   const mobileMenuLinks = [...mobileNav]
   subNav.forEach(([to, label]) => {
@@ -227,7 +225,7 @@ export default function CustomerHeader() {
   })
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200 bg-[#f4f7fa]">
+    <header className="sticky top-0 z-50 border-b border-slate-200 bg-[#e7f8f6]">
       {offerBar ? (
         <div className={`border-b border-[#9de8e1]/35 bg-[linear-gradient(90deg,#0e6574,#13b8b0)] text-white shadow-[0_10px_30px_-26px_rgba(14,101,116,0.9)] transition-all duration-300 ${isOfferBarHidden ? 'max-h-0 -translate-y-full overflow-hidden opacity-0' : 'max-h-12 translate-y-0 opacity-100'}`}>
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 text-xs font-semibold sm:px-6 sm:text-sm lg:px-8">
@@ -248,7 +246,7 @@ export default function CustomerHeader() {
           </div>          
         </div>
       ) : null}
-      <div className="relative z-50 border-b border-slate-200/80 bg-white/92 backdrop-blur supports-backdrop-filter:bg-white/78">
+      <div className="relative z-50 border-b border-slate-200/80 bg-[linear-gradient(180deg,#f4fffd_0%,#e7f8f6_100%)] backdrop-blur supports-backdrop-filter:bg-[#f4fffd]/78">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:flex-nowrap lg:gap-4 lg:px-8 lg:py-4">
           <Link to="/" onClick={closeMenus} className="order-1 shrink-0 lg:order-1" aria-label="My Pharmecy home">
             <CustomerLogo />
@@ -260,7 +258,7 @@ export default function CustomerHeader() {
             <button
               type="button"
               onClick={() => setLanguage((current) => (current === 'bn' ? 'en' : 'bn'))}
-              className="inline-flex h-10 items-center justify-center border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-700 shadow-sm sm:h-11 sm:px-3 sm:text-[12px]"
+              className="inline-flex h-10 items-center justify-center border border-slate-200 bg-[#f4fffd] px-2.5 text-[11px] font-semibold text-slate-700 shadow-sm sm:h-11 sm:px-3 sm:text-[12px]"
               aria-label={t('ভাষা পরিবর্তন করুন', 'Change language')}
             >
               {language === 'bn' ? 'EN' : 'BN'}
@@ -268,7 +266,7 @@ export default function CustomerHeader() {
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen((current) => !current)}
-              className="inline-flex h-11 w-11 items-center justify-center border border-slate-200 bg-white text-slate-700 shadow-sm"
+              className="inline-flex h-11 w-11 items-center justify-center border border-slate-200 bg-[#f4fffd] text-slate-700 shadow-sm"
               aria-label={t('মেনু টগল করুন', 'Toggle navigation menu')}
             >
               {isMobileMenuOpen ? <FiX className="h-5 w-5" /> : <FiMenu className="h-5 w-5" />}
@@ -281,7 +279,7 @@ export default function CustomerHeader() {
             className="relative order-3 min-w-0 basis-full lg:order-2 lg:flex-1 lg:basis-auto lg:mx-4 xl:mx-8"
             role="search"
           >
-            <div className="group flex h-11 items-center border border-slate-200 bg-[linear-gradient(180deg,#ffffff,#f7fafc)] pl-3 pr-2 shadow-[0_16px_35px_-28px_rgba(15,23,42,0.42)] transition focus-within:border-[#8fd8d2] focus-within:shadow-[0_24px_45px_-30px_rgba(19,184,176,0.45)] sm:h-12 sm:pl-4 lg:h-12.5">
+            <div className="group flex h-11 items-center border border-slate-200 bg-[linear-gradient(180deg,#ffffff,#e7f8f6)] pl-3 pr-2 shadow-[0_16px_35px_-28px_rgba(15,23,42,0.42)] transition focus-within:border-[#8fd8d2] focus-within:shadow-[0_24px_45px_-30px_rgba(19,184,176,0.45)] sm:h-12 sm:pl-4 lg:h-12.5">
               <FiSearch className="h-4 w-4 shrink-0 text-[#0e6574] sm:h-5 sm:w-5 lg:hidden" />
               <input
                 value={search}
@@ -300,7 +298,7 @@ export default function CustomerHeader() {
             </div>
 
             {isSearchOpen && trimmedSearch ? (
-              <div className="absolute left-0 right-0 top-full z-90 mt-2 overflow-hidden border border-slate-200 bg-white shadow-[0_30px_60px_-30px_rgba(15,23,42,0.32)]">
+              <div className="absolute left-0 right-0 top-full z-90 mt-2 overflow-hidden border border-slate-200 bg-[#f4fffd] shadow-[0_30px_60px_-30px_rgba(15,23,42,0.32)]">
                 {trimmedSearch.length < 2 ? (
                   <div className="px-4 py-3 text-sm text-slate-500">
                     {t('ফলাফলের জন্য কমপক্ষে ২টি অক্ষর লিখুন।', 'Type at least 2 characters to see results.')}
@@ -327,11 +325,11 @@ export default function CustomerHeader() {
                             type="button"
                             onClick={() => handleSearchResultClick(product)}
                             onMouseEnter={() => productApi.prefetch(getProductRouteKey(product))}
-                            className="flex w-full items-center gap-3 border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 hover:bg-slate-50"
+                            className="flex w-full items-center gap-3 border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 hover:bg-[#e7f8f6]"
                           >
-                            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden border border-slate-200 bg-slate-50">
-                              {getProductImage(product) ? (
-                                <img src={getProductImage(product)} alt={product.product_name} className="h-full w-full object-cover" onError={handleImageFallback} />
+                            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden border border-slate-200 bg-[#e7f8f6]">
+                              {getProductThumbnail(product) ? (
+                                <OptimizedImage src={getProductThumbnail(product)} alt={product.product_name} className="h-full w-full object-cover" onError={handleImageFallback} />
                               ) : (
                                 <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
                                   {product.requires_prescription ? 'Rx' : 'OTC'}
@@ -359,7 +357,7 @@ export default function CustomerHeader() {
 
                     <button
                       type="submit"
-                      className="flex w-full items-center justify-between border-t border-slate-100 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-[#0e6574]"
+                      className="flex w-full items-center justify-between border-t border-slate-100 bg-[#f4fffd] px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-[#e7f8f6] hover:text-[#0e6574]"
                     >
                       <span>{t('সব ফলাফল দেখুন', 'View all results')}</span>
                       <FiSearch className="h-4 w-4" />
@@ -371,18 +369,18 @@ export default function CustomerHeader() {
           </form>
 
           <div className="order-4 hidden shrink-0 items-center gap-3 lg:order-3 lg:flex">
-            <div className="flex items-center border border-slate-200 bg-slate-50/90 p-1 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.3)]">
+            <div className="flex items-center border border-slate-200 bg-[#e7f8f6]/90 p-1 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.3)]">
               <button
                 type="button"
                 onClick={() => setLanguage('bn')}
-                className={`px-3 py-2 text-[12px] font-semibold transition ${language === 'bn' ? 'bg-[#13b8b0] text-white' : 'text-slate-600 hover:bg-white'}`}
+                className={`px-3 py-2 text-[12px] font-semibold transition ${language === 'bn' ? 'bg-[#13b8b0] text-white' : 'text-slate-600 hover:bg-[#f4fffd]'}`}
               >
                 বাংলা
               </button>
               <button
                 type="button"
                 onClick={() => setLanguage('en')}
-                className={`px-3 py-2 text-[12px] font-semibold transition ${language === 'en' ? 'bg-[#13b8b0] text-white' : 'text-slate-600 hover:bg-white'}`}
+                className={`px-3 py-2 text-[12px] font-semibold transition ${language === 'en' ? 'bg-[#13b8b0] text-white' : 'text-slate-600 hover:bg-[#f4fffd]'}`}
               >
                 En
               </button>
@@ -399,7 +397,7 @@ export default function CustomerHeader() {
                 <button
                   type="button"
                   onClick={() => setIsAccountMenuOpen((current) => !current)}
-                  className="flex items-center gap-1 border border-slate-200 bg-white px-3 py-2 text-left shadow-[0_18px_38px_-32px_rgba(15,23,42,0.3)] transition hover:border-slate-300"
+                  className="flex items-center gap-1 border border-slate-200 bg-[#f4fffd] px-3 py-2 text-left shadow-[0_18px_38px_-32px_rgba(15,23,42,0.3)] transition hover:border-slate-300"
                 >
                   <UserAvatar customer={customer} fallbackName={avatarName} />
                   <div className="min-w-0 max-w-37 text-right xl:max-w-37">
@@ -410,7 +408,7 @@ export default function CustomerHeader() {
                 </button>
 
                 {isAccountMenuOpen ? (
-                  <div className="absolute right-0 top-full mt-3 w-60 overflow-hidden border border-slate-200 bg-white shadow-[0_30px_60px_-36px_rgba(15,23,42,0.38)]">
+                  <div className="absolute right-0 top-full mt-3 w-60 overflow-hidden border border-slate-200 bg-[#f4fffd] shadow-[0_30px_60px_-36px_rgba(15,23,42,0.38)]">
                     <div className="p-2">
                       <AccountMenuLink to="/account" label={t('অ্যাকাউন্ট', 'Account')} icon={FiUser} onClick={closeMenus} />
                       <AccountMenuLink to="/orders" label={t('আমার অর্ডার', 'My orders')} icon={FiPackage} onClick={closeMenus} />                      
@@ -429,7 +427,7 @@ export default function CustomerHeader() {
                 ) : null}
               </div>
             ) : isAuthPending ? (
-              <div className="flex items-center gap-3 border border-slate-200 bg-white px-3 py-2.5 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.3)]">
+              <div className="flex items-center gap-3 border border-slate-200 bg-[#f4fffd] px-3 py-2.5 shadow-[0_18px_38px_-32px_rgba(15,23,42,0.3)]">
                 <span className="inline-flex h-9 w-9 animate-pulse rounded-full border border-slate-200 bg-slate-100" />
                 <div className="w-24">
                   <div className="h-3 animate-pulse bg-slate-100" />
@@ -439,7 +437,7 @@ export default function CustomerHeader() {
               <Link
                 to="/login"
                 onClick={closeMenus}
-                className="flex items-center gap-3 border border-slate-200 bg-white px-3 py-2.5 text-left shadow-[0_18px_38px_-32px_rgba(15,23,42,0.3)] transition hover:border-slate-300"
+                className="flex items-center gap-3 border border-slate-200 bg-[#f4fffd] px-3 py-2.5 text-left shadow-[0_18px_38px_-32px_rgba(15,23,42,0.3)] transition hover:border-slate-300"
               >
                 <div className="min-w-0 text-right">
                   <div className="truncate text-[15px] font-bold text-slate-950">{t('সাইন ইন', 'Sign in')}</div>
@@ -449,7 +447,7 @@ export default function CustomerHeader() {
           </div>
         </div>
 
-        <div className="hidden border-t border-slate-100 bg-[#f8fafc] lg:block">
+        <div className="hidden border-t border-slate-100 bg-[#e7f8f6] lg:block">
           <nav className="mx-auto flex max-w-7xl items-center justify-center gap-6 overflow-x-auto px-4 py-2 text-sm sm:px-6 lg:px-8" aria-label="Storefront links">
             {subNav.map(([to, label]) => {
               const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to)
@@ -461,7 +459,7 @@ export default function CustomerHeader() {
                   className={`whitespace-nowrap border px-3 py-1.5 font-medium transition ${
                     isActive
                       ? 'border-[#13b8b0] bg-[#eefbfa] text-[#0e6574]'
-                      : 'border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-950'
+                      : 'border-transparent text-slate-600 hover:border-slate-200 hover:bg-[#f4fffd] hover:text-slate-950'
                   }`}
                 >
                   {label}
@@ -473,7 +471,7 @@ export default function CustomerHeader() {
       </div>
 
       {isMobileMenuOpen ? (
-        <div className="absolute inset-x-0 top-17 z-70 border-t border-[#d4dde7] bg-white shadow-[0_24px_60px_-32px_rgba(15,23,42,0.38)] sm:top-19 lg:hidden">
+        <div className="absolute inset-x-0 top-17 z-70 border-t border-[#d4dde7] bg-[#f4fffd] shadow-[0_24px_60px_-32px_rgba(15,23,42,0.38)] sm:top-19 lg:hidden">
           <div className="mx-auto max-w-7xl space-y-5 px-4 py-4 sm:px-6">
             <div className="border-b border-slate-100 pb-4">
               {customer ? (
@@ -502,7 +500,7 @@ export default function CustomerHeader() {
                 <Link
                   to="/login"
                   onClick={closeMenus}
-                  className="inline-flex w-full items-center justify-center border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-300"
+                  className="inline-flex w-full items-center justify-center border border-slate-200 bg-[#f4fffd] px-4 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-300"
                 >
                   {t('সাইন ইন', 'Sign in')}
                 </Link>
@@ -521,7 +519,7 @@ export default function CustomerHeader() {
                     `border px-4 py-3 text-center text-sm font-medium transition ${
                       isActive
                         ? 'border-[#13b8b0] bg-[#eefbfa] text-[#0e6574]'
-                        : 'border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                        : 'border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-[#e7f8f6]'
                     }`
                   }
                 >
@@ -543,9 +541,9 @@ function HeaderActionLink({ to, label, count, icon: Icon, mobileOnly = false, co
       onClick={onClick}
       className={`relative inline-flex items-center text-[#132238] transition ${
         mobileOnly
-          ? 'h-10 w-10 justify-center border border-slate-200 bg-white shadow-sm hover:border-slate-300 sm:h-11 sm:w-11'
+          ? 'h-10 w-10 justify-center border border-slate-200 bg-[#f4fffd] shadow-sm hover:border-slate-300 sm:h-11 sm:w-11'
           : compact
-            ? 'h-11 gap-2 border border-transparent bg-white px-3 shadow-sm hover:border-slate-200 hover:bg-slate-50'
+            ? 'h-11 gap-2 border border-transparent bg-[#f4fffd] px-3 shadow-sm hover:border-slate-200 hover:bg-[#e7f8f6]'
             : 'gap-2 hover:opacity-80'
       }`}
       aria-label={label || 'Cart'}
