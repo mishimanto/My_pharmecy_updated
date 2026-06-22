@@ -15,7 +15,7 @@ export function getDefaultPurchaseOption(product) {
 
 const UNIT_COPY = {
   piece: { bn: 'পিস', en: 'Piece', enPlural: 'Pieces' },
-  strip: { bn: 'স্ট্রিপ', en: 'Strip', enPlural: 'Strips' },
+  strip: { bn: 'পাতা', en: 'Strip', enPlural: 'Strips' },
   box: { bn: 'বক্স', en: 'Box', enPlural: 'Boxes' },
   unit: { bn: 'ইউনিট', en: 'Unit', enPlural: 'Units' },
 }

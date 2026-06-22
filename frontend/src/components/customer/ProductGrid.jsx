@@ -169,7 +169,7 @@ export default function ProductGrid() {
             setPage(1)
           }}
         >
-          <option value="">{t('সব নির্মাতা', 'All manufacturers')}</option>
+          <option value="">{t('সব প্রস্তুতকারক', 'All manufacturers')}</option>
           {manufacturers.map((item) => <option key={item.id} value={item.id}>{item.manufacturer_name}</option>)}
         </select>
         <select

@@ -17,7 +17,7 @@ export default function HomeHeroSection({ heroSlides, currentSlide, slide, isBan
           />
         ))}
         <div className="absolute inset-0 bg-[linear-gradient(105deg,rgba(5,34,42,0.94)_0%,rgba(8,63,73,0.78)_46%,rgba(19,184,176,0.34)_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-[linear-gradient(180deg,rgba(237,253,250,0)_0%,#edfdfa_100%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-32" />
       </div>
 
       <div className="relative mx-auto grid min-h-[82vh] max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:px-8 xl:grid-cols-[1.12fr_0.88fr] xl:items-center xl:py-20">

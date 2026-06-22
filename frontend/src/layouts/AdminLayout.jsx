@@ -178,7 +178,7 @@ export default function AdminLayout() {
   }, [location.pathname])
 
   return (
-    <div className="min-h-screen bg-slate-200 text-slate-950">
+    <div className="admin-app min-h-screen bg-slate-200 text-slate-950">
       <div className="flex min-h-screen">
         <AdminSidebar sidebarOpen={sidebarOpen} visibleGroups={visibleGroups} />
 

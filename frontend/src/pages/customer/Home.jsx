@@ -81,7 +81,7 @@ export default function Home() {
   //     icon: FiShoppingBag,
   //     label: isBangla ? 'ক্যাটালগ' : 'Catalog',
   //     title: isBangla ? 'সব ওষুধ দেখুন' : 'Browse all medicines',
-  //     body: isBangla ? 'ক্যাটাগরি, নির্মাতা ও প্রেসক্রিপশন অনুযায়ী ফিল্টার করুন।' : 'Filter by category, manufacturer, and prescription requirement.',
+  //     body: isBangla ? 'ক্যাটাগরি, প্রস্তুতকারক ও প্রেসক্রিপশন অনুযায়ী ফিল্টার করুন।' : 'Filter by category, manufacturer, and prescription requirement.',
   //     accent: 'bg-teal-50 text-teal-700 ring-teal-100',
   //   },
   //   {
@@ -106,7 +106,7 @@ export default function Home() {
       step: '01',
       icon: FiSearch,
       title: isBangla ? 'খুঁজুন ও বেছে নিন' : 'Search and discover',
-      body: isBangla ? 'পণ্যের নাম, জেনেরিক, ক্যাটাগরি বা নির্মাতা দিয়ে ওষুধ খুঁজুন।' : 'Find medicine by product name, generic name, category, or manufacturer.',
+      body: isBangla ? 'পণ্যের নাম, জেনেরিক, ক্যাটাগরি বা প্রস্তুতকারক দিয়ে ওষুধ খুঁজুন।' : 'Find medicine by product name, generic name, category, or manufacturer.',
     },
     {
       step: '02',

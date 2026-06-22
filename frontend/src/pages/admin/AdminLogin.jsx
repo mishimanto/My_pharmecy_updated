@@ -45,7 +45,7 @@ export default function AdminLogin() {
   }
 
   return (
-    <AuthLayout title="Staff / Admin Login">
+    <AuthLayout title="Staff / Admin Login" variant="admin">
       <form className="space-y-4" onSubmit={submit}>
         {formError ? (
           <div className="flex items-start gap-3 border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">

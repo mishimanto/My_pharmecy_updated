@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom'
 import { useSiteSettings } from '../context/SiteSettingsContext'
 
-export default function AuthLayout({ title, children }) {
+export default function AuthLayout({ title, children, variant = 'customer' }) {
   const { settings } = useSiteSettings()
+  const layoutClassName = variant === 'admin' ? 'auth-app--admin' : 'auth-app--customer'
 
   return (
-    <main className="min-h-screen bg-[#eef2f5]">
+    <main className={`min-h-screen bg-[#eef2f5] ${layoutClassName}`}>
       <div className="mx-auto grid min-h-screen  xl:grid-cols-[0.98fr_0.72fr]">
         <section className="relative hidden overflow-hidden bg-slate-950 xl:flex">
           <img

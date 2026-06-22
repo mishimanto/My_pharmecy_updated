@@ -31,7 +31,7 @@ export default function Account() {
   const { isBangla } = useLanguage()
   const t = (bn, en) => (isBangla ? bn : en)
   const locale = isBangla ? 'bn-BD' : 'en-US'
-  const banglaFontClass = isBangla ? "[font-family:'Hind_Siliguri','Noto_Sans_Bengali','SolaimanLipi','Vrinda',sans-serif]" : ''
+  const banglaFontClass = isBangla ? 'font-bangla' : ''
   const fileInputRef = useRef(null)
   const previewUrlRef = useRef('')
   const [form, setForm] = useState(() => formFromCustomer(customer))

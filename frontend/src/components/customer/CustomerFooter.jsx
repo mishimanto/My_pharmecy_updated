@@ -16,7 +16,7 @@ export default function CustomerFooter() {
 
     return settings?.[key] || fallbackEn
   }
-  const banglaFontClass = isBangla ? "[font-family:'Hind_Siliguri','Noto_Sans_Bengali','SolaimanLipi','Vrinda',sans-serif]" : ''
+  const banglaFontClass = isBangla ? 'font-bangla' : ''
   const footerGroups = [
     {
       title: t('শপ', 'Shop'),

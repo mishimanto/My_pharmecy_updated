@@ -24,7 +24,7 @@ function createForm() {
 export default function Addresses() {
   const { isBangla } = useLanguage()
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
-  const banglaFontClass = isBangla ? "[font-family:'Hind_Siliguri','Noto_Sans_Bengali','SolaimanLipi','Vrinda',sans-serif]" : ''
+  const banglaFontClass = isBangla ? 'font-bangla' : ''
   const [addresses, setAddresses] = useState(() => readCustomerCache(ADDRESSES_CACHE_KEY, []))
   const [form, setForm] = useState(createForm())
   const [editingId, setEditingId] = useState(null)

@@ -8,7 +8,7 @@ export default function CustomerLayout() {
   const isHome = location.pathname === '/'
 
   return (
-    <div className="min-h-screen bg-[#f4f6f8] text-slate-900">
+    <div className="customer-app min-h-screen bg-[#f4f6f8] text-slate-900">
       <CustomerHeader />
 
       <main className={isHome ? '' : 'mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8'}>
