@@ -33,8 +33,8 @@ export default function Home() {
   const { customer } = useCustomerAuth()
   const { isBangla } = useLanguage()
   const fallbackHeroSlides = useMemo(() => getHeroSlides(isBangla), [isBangla])
-  const cachedFeatured = productApi.getCachedList({ per_page: 12 })
-  const productsQuery = useProductsQuery({ per_page: 12 })
+  const cachedFeatured = productApi.getCachedList({ per_page: 32 })
+  const productsQuery = useProductsQuery({ per_page: 32 })
   const categoriesQuery = useCategoriesQuery()
   const manufacturersQuery = useManufacturersQuery()
   const heroSlidesQuery = useHeroSlidesQuery()
@@ -164,7 +164,7 @@ export default function Home() {
   }, [heroSlides.length])
 
   const slide = heroSlides[currentSlide] || heroSlides[0]
-  const featuredProducts = useMemo(() => products.slice(0, 8), [products])
+  const featuredProducts = useMemo(() => products.slice(0, 32), [products])
   const otcProducts = useMemo(() => products.filter((product) => !product.requires_prescription).slice(0, 4), [products])
   const prescriptionProducts = useMemo(() => products.filter((product) => product.requires_prescription).slice(0, 4), [products])
   const categoryHighlights = useMemo(() => categories.slice(0, 8), [categories])

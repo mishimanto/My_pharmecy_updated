@@ -42,7 +42,6 @@ export default function ProductCard({ product, onAdd }) {
         </Link>
 
         <div className="absolute right-3 top-3 flex gap-2 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-          
           <button
             type="button"
             className={`inline-flex h-9 w-9 items-center justify-center border shadow-sm backdrop-blur transition ${
@@ -71,36 +70,44 @@ export default function ProductCard({ product, onAdd }) {
       </div>
 
       <div className="flex flex-1 flex-col bg-[linear-gradient(180deg,#dbeafe_0%,#ccfbf1_100%)] p-4">
-        <div className="flex flex-wrap gap-2 text-[11px]">
-          <span className="border border-[#2563eb]/15 bg-white/45 px-2.5 py-1 font-medium text-[#1e3a5f]">
-            {getCategoryName(product.category, isBangla, isBangla ? 'সাধারণ যত্ন' : 'General care')}
-          </span>
-          {product.requires_prescription ? (
-            <span className="bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
-              {isBangla ? 'প্রেসক্রিপশন' : 'Prescription'}
-            </span>
-          ) : null}
-        </div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap gap-2 text-[11px]">
+              <span className="border border-[#2563eb]/15 bg-white/45 px-2.5 py-1 font-medium text-[#1e3a5f]">
+                {getCategoryName(product.category, isBangla, isBangla ? 'সাধারণ যত্ন' : 'General care')}
+              </span>
+              {product.requires_prescription ? (
+                <span className="bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
+                  {isBangla ? 'প্রেসক্রিপশন' : 'Prescription'}
+                </span>
+              ) : null}
+            </div>
 
-        <div className="mt-3 min-w-0">
-          <Link to={productPath} state={{ product }} className="flex items-start justify-between gap-3" onMouseEnter={prefetch} onFocus={prefetch}>
-            <h3 className="line-clamp-2 min-w-0 flex-1 text-base font-semibold leading-6 text-[#102a43] transition group-hover:text-[#1d4ed8]">{product.product_name}</h3>
-            {manufacturerImage ? (
+            
+          </div>
+
+          {manufacturerImage ? (
+            <Link to={productPath} state={{ product }} className="shrink-0" onMouseEnter={prefetch} onFocus={prefetch}>
               <OptimizedImage
                 src={manufacturerImage}
                 alt={product.manufacturer?.manufacturer_name || (isBangla ? 'ব্র্যান্ড লোগো' : 'Brand logo')}
-                className="h-10 w-10 shrink-0 border border-[#2563eb]/15 bg-white/55 object-contain"
+                className="h-10 w-10 border border-[#2563eb]/15 bg-white/55 object-contain"
                 onError={handleImageFallback}
               />
-            ) : null}
-          </Link>
+            </Link>
+          ) : null}
         </div>
+        <div>
+          <Link to={productPath} state={{ product }} className="mt-3 block" onMouseEnter={prefetch} onFocus={prefetch}>
+            <h3 className="line-clamp-2 text-base font-semibold leading-6 text-[#102a43] transition group-hover:text-[#1d4ed8]">{product.product_name}</h3>
+          </Link>
+        </div>        
 
         <div className="mt-auto pt-4">
-          <div className="flex items-end justify-between gap-3 border-t border-[#7dd3fc]/45 pt-3">
+          <div className="flex items-end justify-end gap-3 border-t border-[#7dd3fc]/45 pt-3">
             <div className="min-w-0">
               <div className="text-xs text-[#486581]">{isBangla ? 'শুরু' : 'Starts at'}</div>
-              <div className="text-lg font-semibold text-[#1d4ed8]">{money(product.display_price, isBangla ? 'bn-BD' : 'en-US')}</div>
+              <div className="text-lg text-right font-semibold text-[#1d4ed8]">{money(product.display_price, isBangla ? 'bn-BD' : 'en-US')}</div>
             </div>
           </div>
         </div>

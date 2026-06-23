@@ -14,7 +14,7 @@ class ProductBrowseController extends Controller
 
     public function index(Request $request, ProductCatalogService $catalog)
     {
-        $products = $catalog->customerQuery($request)->paginate($request->integer('per_page', 12));
+        $products = $catalog->customerQuery($request)->paginate($request->integer('per_page', 16));
 
         return $this->ok($catalog->appendCollection($products), 'Products loaded successfully.');
     }
