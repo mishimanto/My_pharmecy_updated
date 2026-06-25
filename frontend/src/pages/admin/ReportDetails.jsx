@@ -6,6 +6,7 @@ import { adminApi } from '../../api/adminApi'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import EmptyState from '../../components/common/EmptyState'
 import { date, money } from '../../utils/formatters'
+import { getDeliveryStatusLabel, getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
 
 const reportMeta = {
   sales: { title: 'Sales Report', subtitle: 'Revenue, payment count, and top-selling products.' },
@@ -259,7 +260,7 @@ function ReportSection({ title, rows }) {
                 <tr key={row.id || `${title}-${index}`} className="transition hover:bg-slate-50/80">
                   {columns.map((column) => (
                     <td key={column} className="max-w-[260px] truncate px-4 py-3 text-slate-700">
-                      {formatValue(row[column], column)}
+                      <FormattedCell value={row[column]} column={column} />
                     </td>
                   ))}
                 </tr>
@@ -293,8 +294,120 @@ function formatValue(value, column) {
   if (value === null || value === undefined || value === '') return '-'
   if (moneyColumns.includes(column)) return money(value, 'en-US')
   if (dateColumns.includes(column)) return date(value, 'en-US')
+  if (column === 'payment_method' || column === 'refund_method') return getPaymentMethodLabel(value)
+  if (column === 'order_status') return getOrderStatusLabel(value)
+  if (column === 'payment_status') return getPaymentStatusLabel(value)
+  if (column === 'delivery_status') return getDeliveryStatusLabel(value)
+  if (column.includes('status')) return getGenericStatusLabel(value)
   if (typeof value === 'object') return value.full_name || value.product_name || value.order_number || JSON.stringify(value)
   return String(value)
+}
+
+function FormattedCell({ value, column }) {
+  const formatted = formatValue(value, column)
+  const tone = getValueTone(value, column)
+
+  if (!tone) {
+    return formatted
+  }
+
+  return (
+    <span className={`font-semibold ${tone}`}>
+      {formatted}
+    </span>
+  )
+}
+
+function getPaymentMethodLabel(method) {
+  const labels = {
+    COD: 'Cash on delivery',
+    BKASH: 'bKash',
+    NAGAD: 'Nagad',
+  }
+
+  return labels[String(method || '').toUpperCase()] || getGenericStatusLabel(method)
+}
+
+function getGenericStatusLabel(status) {
+  const labels = {
+    active: 'Active',
+    approved: 'Approved',
+    assigned: 'Assigned',
+    awaiting_proof: 'Unpaid',
+    cancelled: 'Cancelled',
+    closed: 'Closed',
+    completed: 'Completed',
+    confirmed: 'Confirmed',
+    delivered: 'Delivered',
+    failed: 'Failed',
+    inactive: 'Inactive',
+    in_progress: 'In Progress',
+    need_clarification: 'Needs Clarification',
+    open: 'Open',
+    out_for_delivery: 'Out for Delivery',
+    paid: 'Paid',
+    pending: 'Pending',
+    pending_confirmation: 'Pending',
+    picked: 'Picked',
+    picked_up: 'Picked Up',
+    prescription_review: 'Prescription Review',
+    processing: 'Processing',
+    refunded: 'Refunded',
+    rejected: 'Rejected',
+    requested: 'Requested',
+    resolved: 'Resolved',
+    returned: 'Returned',
+    under_review: 'Under Review',
+  }
+
+  const key = String(status || '').trim()
+  return labels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase()) || '-'
+}
+
+function getValueTone(value, column) {
+  if (value === null || value === undefined || value === '') return null
+
+  const key = String(value).toLowerCase()
+
+  if (column === 'payment_status') {
+    if (['paid', 'completed'].includes(key)) return 'text-emerald-700'
+    if (['awaiting_proof', 'unpaid', 'failed', 'rejected', 'cancelled'].includes(key)) return 'text-rose-700'
+    if (['pending', 'under_review'].includes(key)) return 'text-amber-700'
+  }
+
+  if (!column.includes('status')) return null
+
+  const tones = {
+    active: 'text-emerald-700',
+    approved: 'text-emerald-700',
+    assigned: 'text-sky-700',
+    cancelled: 'text-rose-700',
+    closed: 'text-slate-600',
+    completed: 'text-emerald-700',
+    confirmed: 'text-sky-700',
+    delivered: 'text-emerald-700',
+    failed: 'text-rose-700',
+    inactive: 'text-slate-600',
+    in_progress: 'text-blue-700',
+    need_clarification: 'text-violet-700',
+    open: 'text-amber-700',
+    out_for_delivery: 'text-cyan-700',
+    paid: 'text-emerald-700',
+    pending: 'text-amber-700',
+    pending_confirmation: 'text-amber-700',
+    picked: 'text-cyan-700',
+    picked_up: 'text-cyan-700',
+    prescription_review: 'text-violet-700',
+    processing: 'text-blue-700',
+    refunded: 'text-slate-600',
+    rejected: 'text-rose-700',
+    requested: 'text-amber-700',
+    resolved: 'text-emerald-700',
+    returned: 'text-orange-700',
+    under_review: 'text-amber-700',
+  }
+
+  return tones[key] || 'text-slate-600'
 }
 
 function cleanFilters(filters) {

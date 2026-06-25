@@ -41,10 +41,13 @@ export default function Reports() {
               to={`/admin/reports/${report.type}`}
               className="group block rounded-lg border border-slate-200 bg-white p-5 transition hover:border-emerald-300 hover:shadow-sm"
             >
-              <div className="flex items-start justify-between gap-4">
-                <span className={`inline-flex h-11 w-11 items-center justify-center rounded-full border ${tones[report.tone]}`}>
-                  <Icon className="h-5 w-5" />
-                </span>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border ${tones[report.tone]}`}>
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <h2 className="truncate text-lg font-semibold text-slate-950">{report.title}</h2>
+                </div>
                 <span className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-emerald-100 bg-white text-emerald-700 transition group-hover:border-emerald-200 group-hover:bg-emerald-50 group-hover:translate-x-0.5">
                   <FiArrowRight className="h-4 w-4" />
                 </span>
@@ -55,7 +58,6 @@ export default function Reports() {
                 <span className="h-1 w-1 rounded-full bg-slate-300" />
                 <span>{report.tables} tables</span>
               </div>
-              <h2 className="mt-2 text-lg font-semibold text-slate-950">{report.title}</h2>
               <p className="mt-2 min-h-12 text-sm leading-6 text-slate-600">{report.subtitle}</p>
             </Link>
           )
