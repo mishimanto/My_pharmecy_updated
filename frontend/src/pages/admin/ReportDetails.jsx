@@ -98,7 +98,6 @@ export default function ReportDetails() {
               Reports
             </Link>
             <h2 className="mt-2 text-xl font-semibold text-slate-950">{meta.title}</h2>
-            <p className="mt-1 text-sm text-slate-600">{meta.subtitle}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -128,7 +127,7 @@ export default function ReportDetails() {
           <InfoPill
             icon={FiCalendar}
             tone="amber"
-            label={appliedFilters.date_from || appliedFilters.date_to ? `${appliedFilters.date_from || 'Start'} to ${appliedFilters.date_to || 'Today'}` : 'All dates'}
+            label={appliedFilters.date_from || appliedFilters.date_to ? `${appliedFilters.date_from || 'Start'} - ${appliedFilters.date_to || 'Today'}` : 'All dates'}
           />
         </div>
       </div>
@@ -236,7 +235,6 @@ function ReportSection({ title, rows }) {
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-md font-semibold capitalize text-slate-950">{title.replaceAll('_', ' ')}</h3>
-          <p className="mt-1 text-sm text-slate-500">{rows.length ? 'Database rows generated for this report section.' : 'No rows available for this section.'}</p>
         </div>
         <span className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600">
           <FiClock className="h-4 w-4 text-slate-400" />

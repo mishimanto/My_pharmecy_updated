@@ -180,15 +180,15 @@ export default function Dashboard() {
         ))}
       </div>
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-        <ChartPanel title="Daily product sales" subtitle="Paid sales revenue from sold products.">
+        <ChartPanel title="Daily product sales">
           <AdminChart type="line" data={dailySalesTrend} options={lineOptions} />
         </ChartPanel>
-        <ChartPanel title="Inventory value share" subtitle="Stock value split from highest-value products.">
+        <ChartPanel title="Inventory value share">
           <AdminChart type="pie" data={inventoryShare} options={pieOptions} />
         </ChartPanel>
       </div>
       <div className="mt-6">
-        <ChartPanel title="Top-selling products" subtitle="Horizontal ranking by sold quantity.">
+        <ChartPanel title="Top-selling products">
           <AdminChart type="bar" data={topSellingProducts} options={barOptions} className="h-96" />
         </ChartPanel>
       </div>
