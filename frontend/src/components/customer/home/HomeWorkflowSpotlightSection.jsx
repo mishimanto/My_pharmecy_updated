@@ -60,7 +60,7 @@ export default function HomeWorkflowSpotlightSection({
           <div className="relative min-h-75 lg:min-h-95">
             <img
               src={spotlightImage}
-              alt={spotlightProduct?.product_name || (isBangla ? 'নির্বাচিত ওষুধ' : 'Featured medicine')}
+              alt={spotlightProduct?.product_name || (isBangla ? 'নির্বাচিত পণ্য' : 'Featured product')}
               className="absolute inset-0 h-full w-full object-cover"
               onError={handleImageFallback}
             />
@@ -68,7 +68,7 @@ export default function HomeWorkflowSpotlightSection({
             <div className="relative flex min-h-75 flex-col justify-end p-6 text-white lg:min-h-95">
               <div className={`transition-opacity duration-500 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
                 <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                  {spotlightProduct?.product_name || (isBangla ? 'জনপ্রিয় ওষুধ' : 'Popular medicine display')}
+                  {spotlightProduct?.product_name || (isBangla ? 'জনপ্রিয় পণ্য' : 'Popular product display')}
                 </h3>
                 {spotlightProduct ? (
                   <div className="mt-4 flex flex-wrap items-center gap-3">

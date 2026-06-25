@@ -8,7 +8,7 @@ import EmptyState from '../../components/common/EmptyState'
 import { date, money } from '../../utils/formatters'
 
 const reportMeta = {
-  sales: { title: 'Sales Report', subtitle: 'Revenue, payment count, and top-selling medicines.' },
+  sales: { title: 'Sales Report', subtitle: 'Revenue, payment count, and top-selling products.' },
   orders: { title: 'Order Report', subtitle: 'Order status, payment status, and recent order activity.' },
   inventory: { title: 'Inventory Report', subtitle: 'Low stock, near expiry, and stock valuation.' },
   payments: { title: 'Payment Report', subtitle: 'Payment status, method split, and transaction activity.' },

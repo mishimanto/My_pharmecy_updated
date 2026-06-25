@@ -46,7 +46,7 @@ class OrderStatusService
                 'Order cancelled',
                 [
                     "Your order {$order->order_number} has been cancelled as requested.",
-                    'If you still need the medicines, you can place a new order any time.',
+                    'If you still need the products, you can place a new order any time.',
                 ],
             );
 
@@ -202,7 +202,7 @@ class OrderStatusService
             return 'Approve the linked prescription before confirming this order.';
         }
 
-        return 'Mark the linked prescription as matched with the ordered medicines before confirming this order.';
+        return 'Mark the linked prescription as matched with the ordered products before confirming this order.';
     }
 
     public function confirmationBlockMessage(Order $order): string

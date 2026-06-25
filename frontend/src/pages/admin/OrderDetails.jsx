@@ -98,11 +98,13 @@ export default function OrderDetails() {
       .finally(() => setLoading(false))
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(load, [id])
 
   useEffect(() => {
     if (!order) return
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReviewForm({
       prescription_match_status: ['matched', 'mismatch', 'need_clarification'].includes(order.prescription_match_status)
         ? order.prescription_match_status
@@ -278,7 +280,7 @@ export default function OrderDetails() {
         <section className="space-y-6">
           <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-300 bg-slate-50/70 px-5 py-4">
-              <h2 className="text-base font-semibold text-slate-950">Ordered medicines</h2>
+              <h2 className="text-base font-semibold text-slate-950">Ordered products</h2>
             </div>
             {order.items?.map((item) => (
               <div key={item.id} className="border-b border-slate-300 p-5 last:border-b-0">

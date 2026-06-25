@@ -195,8 +195,8 @@ export default function UploadPrescription() {
               <textarea
                 className="min-h-[132px] w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-950"
                 placeholder={t(
-                  'ওষুধ, ডেলিভারি, বা রিভিউ নিয়ে কিছু জানাতে চাইলে এখানে লিখুন।',
-                  'Add any note about the medicine, delivery, or prescription review here.',
+                  'পণ্য, ডেলিভারি, বা রিভিউ নিয়ে কিছু জানাতে চাইলে এখানে লিখুন।',
+                  'Add any note about the product, delivery, or prescription review here.',
                 )}
                 value={form.notes}
                 onChange={updateField('notes')}

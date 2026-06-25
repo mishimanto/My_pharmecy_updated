@@ -19,7 +19,7 @@ import OptimizedImage from '../common/OptimizedImage'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
-import { useOffersQuery } from '../../queries/customerQueries'
+import { getOfferPricingSignature, useOffersQuery } from '../../queries/customerQueries'
 import { getCategoryName } from '../../utils/categoryNames'
 import { getProductThumbnail, handleImageFallback } from '../../utils/imageUrl'
 import { getLocalizedOffer, getOfferTimeLeft } from '../../utils/offerDisplay'
@@ -35,6 +35,7 @@ export default function CustomerHeader() {
   const searchContainerRef = useRef(null)
   const accountMenuRef = useRef(null)
   const searchRequestRef = useRef(0)
+  const offerBarHiddenRef = useRef(false)
   const [search, setSearch] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -43,27 +44,28 @@ export default function CustomerHeader() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const offersQuery = useOffersQuery()
   const offerRecords = offersQuery.data || []
+  const offerScope = getOfferPricingSignature(offerRecords)
   const [isOfferBarHidden, setIsOfferBarHidden] = useState(false)
   const [nowTick, setNowTick] = useState(0)
   const trimmedSearch = search.trim()
   const cachedSearchResults =
     trimmedSearch.length >= 2
-      ? productApi.getCachedList({ search: trimmedSearch, per_page: 6 })?.data?.slice(0, 6) || []
+      ? productApi.getCachedList({ search: trimmedSearch, per_page: 6 }, { cacheScope: offerScope })?.data?.slice(0, 6) || []
       : []
   const visibleSearchResults = searchResults.length > 0 ? searchResults : cachedSearchResults
   const isAuthPending = authLoading && !customer
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      productApi.prefetchList({ page: 1 })
-      productApi.prefetchList({ per_page: 6 })
+      productApi.prefetchList({ page: 1 }, { cacheScope: offerScope })
+      productApi.prefetchList({ per_page: 6 }, { cacheScope: offerScope })
       productApi.prefetchCategories()
       productApi.prefetchManufacturers()
       refreshCart().catch(() => {})
     }, 0)
 
     return () => window.clearTimeout(timeoutId)
-  }, [refreshCart])
+  }, [offerScope, refreshCart])
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowTick((current) => current + 1), 1000)
@@ -71,12 +73,36 @@ export default function CustomerHeader() {
   }, [])
 
   useEffect(() => {
-    const handleScroll = () => setIsOfferBarHidden(window.scrollY > 24)
+    let frameId = 0
 
-    handleScroll()
+    const updateOfferBar = () => {
+      const shouldHide = offerBarHiddenRef.current
+        ? window.scrollY > 4
+        : window.scrollY > 28
+
+      if (shouldHide !== offerBarHiddenRef.current) {
+        offerBarHiddenRef.current = shouldHide
+        setIsOfferBarHidden(shouldHide)
+      }
+    }
+
+    const handleScroll = () => {
+      if (frameId) return
+      frameId = window.requestAnimationFrame(() => {
+        frameId = 0
+        updateOfferBar()
+      })
+    }
+
+    updateOfferBar()
     window.addEventListener('scroll', handleScroll, { passive: true })
 
-    return () => window.removeEventListener('scroll', handleScroll)
+    return () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId)
+      }
+      window.removeEventListener('scroll', handleScroll)
+    }
   }, [])
 
   const closeMenus = () => {
@@ -92,7 +118,7 @@ export default function CustomerHeader() {
   }
 
   const prefetchProducts = () => {
-    productApi.prefetchList({ page: 1 })
+    productApi.prefetchList({ page: 1 }, { cacheScope: offerScope })
     productApi.prefetchCategories()
     productApi.prefetchManufacturers()
   }
@@ -124,7 +150,7 @@ export default function CustomerHeader() {
 
     const timeoutId = window.setTimeout(async () => {
       try {
-        const response = await productApi.list(params)
+        const response = await productApi.list(params, { cacheScope: offerScope })
 
         if (searchRequestRef.current !== requestId) {
           return
@@ -144,7 +170,7 @@ export default function CustomerHeader() {
     }, 220)
 
     return () => window.clearTimeout(timeoutId)
-  }, [trimmedSearch])
+  }, [offerScope, trimmedSearch])
 
   const handleSearchSubmit = (event) => {
     event.preventDefault()
@@ -202,7 +228,7 @@ export default function CustomerHeader() {
   const avatarName = customer?.full_name?.trim() || t('গেস্ট', 'Guest')
   const nav = [
     ['/', t('হোম', 'Home')],
-    ['/products', t('ওষুধ', 'Medicines')],
+    ['/products', t('পণ্য', 'Products')],
     ['/offers', t('অফার', 'Offers')],
     ['/upload-prescription', t('প্রেসক্রিপশন আপলোড', 'Upload Prescription')],
     ['/orders', t('অর্ডার', 'Orders')],
@@ -212,7 +238,7 @@ export default function CustomerHeader() {
   const mobileNav = customer || isAuthPending ? nav : nav.filter(([to]) => !['/orders', '/account', '/support'].includes(to))
   const subNav = [
     ['/', t('হোম', 'Home')],
-    ['/products', t('ওষুধ', 'Medicines')],
+    ['/products', t('পণ্য', 'Products')],
     ['/offers', t('অফার', 'Offers')],    
     ['/track-order', t('ট্র্যাক অর্ডার', 'Track Order')],
     ['/faq', t('জিজ্ঞাসা', 'FAQ')],
@@ -227,7 +253,7 @@ export default function CustomerHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-[#e7f8f6]">
       {offerBar ? (
-        <div className={`border-b border-[#9de8e1]/35 bg-[linear-gradient(90deg,#0e6574,#13b8b0)] text-white shadow-[0_10px_30px_-26px_rgba(14,101,116,0.9)] transition-all duration-300 ${isOfferBarHidden ? 'max-h-0 -translate-y-full overflow-hidden opacity-0' : 'max-h-12 translate-y-0 opacity-100'}`}>
+        <div className={`border-b border-[#9de8e1]/35 bg-[linear-gradient(90deg,#0e6574,#13b8b0)] text-white shadow-[0_10px_30px_-26px_rgba(14,101,116,0.9)] transition-[max-height,opacity,transform] duration-200 ease-out ${isOfferBarHidden ? 'max-h-0 -translate-y-2 overflow-hidden opacity-0' : 'max-h-12 translate-y-0 opacity-100'}`}>
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 text-xs font-semibold sm:px-6 sm:text-sm lg:px-8">
             <div className="flex min-w-0 items-center gap-2">
               <span className="min-w-0 truncate text-cyan-50">{offerBar.title}</span>
@@ -286,7 +312,7 @@ export default function CustomerHeader() {
                 onChange={handleSearchChange}
                 onFocus={handleSearchFocus}
                 className="min-w-0 flex-1 bg-transparent px-2 text-[14px] font-medium text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 sm:text-[15px] lg:px-1.5"
-                placeholder={t('ওষুধ, জেনেরিক বা ব্র্যান্ড খুঁজুন', 'Search medicine, generic, or brand')}
+                placeholder={t('পণ্য, জেনেরিক বা ব্র্যান্ড খুঁজুন', 'Search product, generic, or brand')}
               />
               <button
                 type="submit"
@@ -324,7 +350,7 @@ export default function CustomerHeader() {
                             key={product.id}
                             type="button"
                             onClick={() => handleSearchResultClick(product)}
-                            onMouseEnter={() => productApi.prefetch(getProductRouteKey(product))}
+                            onMouseEnter={() => productApi.prefetch(getProductRouteKey(product), { cacheScope: offerScope })}
                             className="flex w-full items-center gap-3 border-b border-slate-100 px-4 py-3 text-left transition last:border-b-0 hover:bg-[#e7f8f6]"
                           >
                             <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden border border-slate-200 bg-[#e7f8f6]">

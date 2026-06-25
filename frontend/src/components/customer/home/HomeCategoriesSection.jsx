@@ -10,7 +10,7 @@ export default function HomeCategoriesSection({ categories }) {
   return (
     <section className="py-16">
       <HomeSectionHeader        
-        title={isBangla ? 'বিভাগভিত্তিক ওষুধ' : 'Medicine Category'}
+        title={isBangla ? 'বিভাগভিত্তিক পণ্য' : 'Product Categories'}
         actionTo="/products"
         actionLabel={isBangla ? 'সব দেখুন' : 'Browse all'}
       />

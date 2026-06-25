@@ -285,7 +285,7 @@ export default function ProductDetails() {
             </Link>
             <span>/</span>
             <Link to="/products" className="font-medium text-[#0d4b59] transition hover:text-[#0b5f69]">
-              {t('ওষুধ', 'Medicines')}
+              {t('পণ্য', 'Products')}
             </Link>
             <span>/</span>
             <span className="truncate text-[#11343c]">{productName}</span>
@@ -485,7 +485,7 @@ export default function ProductDetails() {
                       <div className="mt-5 border border-amber-200 bg-white/65 p-4 text-center">
                         <p className="text-sm leading-6 text-[#4f6f6b]">
                           {t(
-                            'প্রেসক্রিপশনের ওষুধ অর্ডার করতে আগে আপনার অ্যাকাউন্টে লগইন করুন।',
+                            'প্রেসক্রিপশন পণ্য অর্ডার করতে আগে আপনার অ্যাকাউন্টে লগইন করুন।',
                             'Login to your account before uploading or selecting a prescription.',
                           )}
                         </p>
@@ -539,9 +539,9 @@ export default function ProductDetails() {
 
                           <div className="border-t border-[#b7d5d2] pt-4 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 sm:text-right">
                             <div className="text-xl font-semibold text-[#0f766e]">{roundedMoney(option.unit_price, locale)}</div>
-                            <div className="mt-1 text-xs text-[#4f6f6b]">
+                            {/* <div className="mt-1 text-xs text-[#4f6f6b]">
                               {option.savings > 0 ? t('পিসের তুলনায় কম', 'Better than piece price') : t('স্ট্যান্ডার্ড মূল্য', 'Standard price')}
-                            </div>
+                            </div> */}
                           </div>
                         </button>
                       )

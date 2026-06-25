@@ -110,7 +110,7 @@ class CheckoutController extends Controller
         abort_if(
             ! $user && $cart->items()->whereHas('product', fn ($query) => $query->where('requires_prescription', true))->exists(),
             403,
-            'Please login before checking out prescription medicines.'
+            'Please login before checking out prescription products.'
         );
 
         $order = $checkout->checkout(

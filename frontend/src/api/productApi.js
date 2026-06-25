@@ -90,35 +90,46 @@ function normalizeParams(params = {}) {
     .sort(([a], [b]) => a.localeCompare(b))
 }
 
-function listKey(params = {}) {
-  return JSON.stringify(normalizeParams(params))
+function normalizeCacheScope(options = {}) {
+  return options.cacheScope ? String(options.cacheScope) : 'default'
 }
 
-function setProductCache(product) {
-  if (!product) return
-
-  if (product.id != null) {
-    productCache.set(`id:${product.id}`, product)
-  }
-
-  if (product.slug) {
-    productCache.set(`slug:${product.slug}`, product)
-  }
-}
-
-function getCachedProductByKey(idOrSlug) {
-  const key = String(idOrSlug)
-  return productCache.get(`slug:${key}`) || productCache.get(`id:${key}`) || null
-}
-
-function primeProducts(products) {
-  products.forEach((product) => {
-    setProductCache(product)
+function listKey(params = {}, options = {}) {
+  return JSON.stringify({
+    scope: normalizeCacheScope(options),
+    params: normalizeParams(params),
   })
 }
 
-function storeList(key, payload) {
-  primeProducts(payload?.data || [])
+function productCacheKey(prefix, value, options = {}) {
+  return `${normalizeCacheScope(options)}:${prefix}:${value}`
+}
+
+function setProductCache(product, options = {}) {
+  if (!product) return
+
+  if (product.id != null) {
+    productCache.set(productCacheKey('id', product.id, options), product)
+  }
+
+  if (product.slug) {
+    productCache.set(productCacheKey('slug', product.slug, options), product)
+  }
+}
+
+function getCachedProductByKey(idOrSlug, options = {}) {
+  const key = String(idOrSlug)
+  return productCache.get(productCacheKey('slug', key, options)) || productCache.get(productCacheKey('id', key, options)) || null
+}
+
+function primeProducts(products, options = {}) {
+  products.forEach((product) => {
+    setProductCache(product, options)
+  })
+}
+
+function storeList(key, payload, options = {}) {
+  primeProducts(payload?.data || [], options)
   listCache.set(key, payload || null)
   writeCache()
 }
@@ -127,15 +138,15 @@ function responseFromPayload(payload) {
   return { data: { data: payload } }
 }
 
-function fetchList(params = {}) {
-  const key = listKey(params)
+function fetchList(params = {}, options = {}) {
+  const key = listKey(params, options)
 
   if (inflightLists.has(key)) {
     return inflightLists.get(key)
   }
 
   const request = api.get('/products', { params }).then((response) => {
-    storeList(key, response.data?.data || null)
+    storeList(key, response.data?.data || null, options)
     return response
   }).finally(() => {
     inflightLists.delete(key)
@@ -145,16 +156,16 @@ function fetchList(params = {}) {
   return request
 }
 
-function fetchProduct(idOrSlug) {
-  const key = String(idOrSlug)
+function fetchProduct(idOrSlug, options = {}) {
+  const key = `${normalizeCacheScope(options)}:${String(idOrSlug)}`
 
   if (inflightProducts.has(key)) {
     return inflightProducts.get(key)
   }
 
-  const request = api.get(`/products/${encodeURIComponent(key)}`).then((response) => {
+  const request = api.get(`/products/${encodeURIComponent(String(idOrSlug))}`).then((response) => {
     if (response.data?.data) {
-      setProductCache(response.data.data)
+      setProductCache(response.data.data, options)
       writeCache()
     }
 
@@ -200,41 +211,41 @@ function fetchManufacturers() {
 }
 
 export const productApi = {
-  list: (params = {}) => fetchList(params),
-  show: (idOrSlug) => fetchProduct(idOrSlug),
+  list: (params = {}, options = {}) => fetchList(params, options),
+  show: (idOrSlug, options = {}) => fetchProduct(idOrSlug, options),
   categories: () => fetchCategories(),
   manufacturers: () => fetchManufacturers(),
   categoryProducts: (id, params) => api.get(`/categories/${id}/products`, { params }),
-  getCachedProduct: (idOrSlug) => getCachedProductByKey(idOrSlug),
-  getCachedList: (params = {}) => listCache.get(listKey(params)) || null,
+  getCachedProduct: (idOrSlug, options = {}) => getCachedProductByKey(idOrSlug, options),
+  getCachedList: (params = {}, options = {}) => listCache.get(listKey(params, options)) || null,
   getCachedCategories: () => categoryCache || [],
   getCachedManufacturers: () => manufacturerCache || [],
-  primeProduct: (product) => {
+  primeProduct: (product, options = {}) => {
     if (product?.id != null || product?.slug) {
-      setProductCache(product)
+      setProductCache(product, options)
       writeCache()
     }
   },
-  primeList: (params = {}, payload = null) => {
-    storeList(listKey(params), payload)
+  primeList: (params = {}, payload = null, options = {}) => {
+    storeList(listKey(params, options), payload, options)
   },
-  prefetch: async (idOrSlug) => {
-    const cached = getCachedProductByKey(idOrSlug)
+  prefetch: async (idOrSlug, options = {}) => {
+    const cached = getCachedProductByKey(idOrSlug, options)
     if (cached) return cached
 
     try {
-      const response = await fetchProduct(idOrSlug)
+      const response = await fetchProduct(idOrSlug, options)
       return response.data?.data || null
     } catch {
       return null
     }
   },
-  prefetchList: async (params = {}) => {
-    const cached = listCache.get(listKey(params))
+  prefetchList: async (params = {}, options = {}) => {
+    const cached = listCache.get(listKey(params, options))
     if (cached) return cached
 
     try {
-      const response = await fetchList(params)
+      const response = await fetchList(params, options)
       return response.data?.data || null
     } catch {
       return null
@@ -260,8 +271,8 @@ export const productApi = {
       return []
     }
   },
-  getCachedListResponse: (params = {}) => {
-    const payload = listCache.get(listKey(params))
+  getCachedListResponse: (params = {}, options = {}) => {
+    const payload = listCache.get(listKey(params, options))
     return payload ? responseFromPayload(payload) : null
   },
   clearCache: () => {

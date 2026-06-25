@@ -33,7 +33,7 @@ export default function HomeHeroSection({ heroSlides, currentSlide, slide, isBan
 
           <div className="mt-8 flex flex-wrap gap-3">
             <Link to={slide.primaryUrl || '/products'} className="inline-flex items-center gap-2 bg-[#13b8b0] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-teal-950/30 transition hover:bg-[#0ea8a1]">
-              {slide.primaryLabel || (isBangla ? 'ওষুধ দেখুন' : 'Shop medicines')}
+              {slide.primaryLabel || (isBangla ? 'পণ্য দেখুন' : 'Shop products')}
               <FiArrowRight className="h-4 w-4" />
             </Link>
             <Link to={slide.secondaryUrl || '/upload-prescription'} className="inline-flex items-center gap-2 border border-[#9de8e1]/35 bg-[#083f49]/40 px-6 py-3.5 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-[#0e6574]/55">

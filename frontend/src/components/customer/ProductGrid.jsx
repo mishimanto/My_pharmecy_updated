@@ -1,7 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useSearchParams } from 'react-router-dom'
-import { productApi } from '../../api/productApi'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
@@ -20,14 +19,6 @@ export default function ProductGrid() {
   const initialSearch = searchParams.get('search') || ''
   const initialCategoryId = searchParams.get('category_id') || ''
   const initialRequiresPrescription = searchParams.get('requires_prescription') || ''
-  const initialParams = {
-    search: initialSearch,
-    page: 1,
-    category_id: initialCategoryId,
-    manufacturer_id: '',
-    requires_prescription: initialRequiresPrescription,
-  }
-  const initialCachedList = productApi.getCachedList(initialParams)
   const t = (bn, en) => (isBangla ? bn : en)
 
   const [search, setSearch] = useState(initialSearch)
@@ -47,11 +38,11 @@ export default function ProductGrid() {
   const productsQuery = useProductsQuery(requestParams)
   const categoriesQuery = useCategoriesQuery()
   const manufacturersQuery = useManufacturersQuery()
-  const meta = productsQuery.data || initialCachedList
+  const meta = productsQuery.data
   const products = meta?.data || []
   const categories = categoriesQuery.data || []
   const manufacturers = manufacturersQuery.data || []
-  const loading = productsQuery.isLoading && !initialCachedList
+  const loading = productsQuery.isLoading
 
   useEffect(() => {
     if (productsQuery.isError) {
@@ -191,8 +182,8 @@ export default function ProductGrid() {
               {resultSummary ? (
                 <div className="text-md text-slate-600">
                   {t(
-                    `${formatCount(resultSummary.from, true)}-${formatCount(resultSummary.to, true)} টি দেখানো হচ্ছে, মোট ${formatCount(resultSummary.total, true)} টি ওষুধ`,
-                    `Showing ${formatCount(resultSummary.from, false)}-${formatCount(resultSummary.to, false)} of ${formatCount(resultSummary.total, false)} medicines`,
+                    `${formatCount(resultSummary.from, true)}-${formatCount(resultSummary.to, true)} টি দেখানো হচ্ছে, মোট ${formatCount(resultSummary.total, true)} টি পণ্য`,
+                    `Showing ${formatCount(resultSummary.from, false)}-${formatCount(resultSummary.to, false)} of ${formatCount(resultSummary.total, false)} products`,
                   )}
                 </div>
               ) : null}

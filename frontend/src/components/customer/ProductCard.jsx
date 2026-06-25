@@ -17,6 +17,8 @@ export default function ProductCard({ product, onAdd }) {
   const productImage = getProductThumbnail(product)
   const productPath = getProductPath(product)
   const productRouteKey = getProductRouteKey(product)
+  const hasOffer = Number(product?.discount_amount || 0) > 0 && Number(product?.base_display_price || 0) > Number(product?.display_price || 0)
+  const offerLabel = (isBangla ? product?.active_offer?.label_bn || product?.active_offer?.title_bn : null) || product?.active_offer?.label || product?.active_offer?.title
 
   const prefetch = () => {
     productApi.primeProduct(product)
@@ -24,14 +26,14 @@ export default function ProductCard({ product, onAdd }) {
   }
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden border border-[#7dd3fc]/35 bg-[#15324a] shadow-[0_18px_46px_-40px_rgba(21,50,74,0.62)] transition duration-200 hover:border-[#38bdf8] hover:shadow-[0_24px_64px_-42px_rgba(14,116,144,0.68)]">
+    <article className="group relative flex h-full flex-col overflow-visible border border-[#7dd3fc]/35 bg-[#15324a] shadow-[0_18px_46px_-40px_rgba(21,50,74,0.62)] transition duration-200 hover:border-[#38bdf8] hover:shadow-[0_24px_64px_-42px_rgba(14,116,144,0.68)]">
       <div className="relative bg-[linear-gradient(135deg,#bfdbfe_0%,#c7d2fe_48%,#99f6e4_100%)]">
         <Link
           to={productPath}
           state={{ product }}
           onMouseEnter={prefetch}
           onFocus={prefetch}
-          className="flex h-44 w-full items-center justify-center sm:h-48"
+          className="flex h-44 w-full items-center justify-center overflow-hidden sm:h-48"
         >
           <OptimizedImage
             src={productImage}
@@ -40,6 +42,15 @@ export default function ProductCard({ product, onAdd }) {
             onError={handleImageFallback}
           />
         </Link>
+
+        {hasOffer ? (
+          <div className="absolute -left-1 top-3 z-20 flex items-center drop-shadow-md">
+            <span className="bg-red-400 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.04em] text-white">
+              {offerLabel || (isBangla ? 'অফার' : 'Offer')}
+            </span>
+            <span className="h-0 w-0 border-y-[13px] border-l-[12px] border-y-transparent border-l-red-600" />
+          </div>
+        ) : null}
 
         <div className="absolute right-3 top-3 flex gap-2 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
           <button
@@ -83,7 +94,9 @@ export default function ProductCard({ product, onAdd }) {
               ) : null}
             </div>
 
-            
+            <Link to={productPath} state={{ product }} className="mt-3 block" onMouseEnter={prefetch} onFocus={prefetch}>
+              <h3 className="line-clamp-2 text-base font-semibold leading-6 text-[#102a43] transition group-hover:text-[#1d4ed8]">{product.product_name}</h3>
+            </Link>
           </div>
 
           {manufacturerImage ? (
@@ -97,17 +110,17 @@ export default function ProductCard({ product, onAdd }) {
             </Link>
           ) : null}
         </div>
-        <div>
-          <Link to={productPath} state={{ product }} className="mt-3 block" onMouseEnter={prefetch} onFocus={prefetch}>
-            <h3 className="line-clamp-2 text-base font-semibold leading-6 text-[#102a43] transition group-hover:text-[#1d4ed8]">{product.product_name}</h3>
-          </Link>
-        </div>        
 
         <div className="mt-auto pt-4">
           <div className="flex items-end justify-end gap-3 border-t border-[#7dd3fc]/45 pt-3">
-            <div className="min-w-0">
+            <div className="min-w-0 text-right">
               <div className="text-xs text-[#486581]">{isBangla ? 'শুরু' : 'Starts at'}</div>
-              <div className="text-lg text-right font-semibold text-[#1d4ed8]">{money(product.display_price, isBangla ? 'bn-BD' : 'en-US')}</div>
+              {hasOffer ? (
+                <div className="mt-1 text-xs font-semibold text-[#486581] line-through">
+                  {money(product.base_display_price, isBangla ? 'bn-BD' : 'en-US')}
+                </div>
+              ) : null}
+              <div className="text-lg font-semibold text-[#1d4ed8]">{money(product.display_price, isBangla ? 'bn-BD' : 'en-US')}</div>
             </div>
           </div>
         </div>

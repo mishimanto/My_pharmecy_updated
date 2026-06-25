@@ -34,7 +34,7 @@ class CartController extends Controller
         abort_unless($product->is_active, 422, 'Product is not active.');
 
         [$user] = $shopper->requireGuestOrUser($request);
-        abort_if($product->requires_prescription && ! $user, 403, 'Please login before ordering prescription medicines.');
+        abort_if($product->requires_prescription && ! $user, 403, 'Please login before ordering prescription products.');
 
         $product = $catalog->appendComputedFields($product);
         $purchaseUnit = $data['purchase_unit'] ?? $product->default_purchase_unit;
@@ -135,7 +135,7 @@ class CartController extends Controller
         }
 
         if ($requiresPrescription) {
-            $warnings[] = 'This cart contains prescription medicines.';
+            $warnings[] = 'This cart contains prescription products.';
         }
 
         return [

@@ -30,7 +30,7 @@ export default function Cart() {
   const hasPrescription = Boolean(cart?.requires_prescription)
   const warnings = useMemo(() => cart?.warnings || [], [cart?.warnings])
   const filteredWarnings = useMemo(
-    () => warnings.filter((warning) => warning !== 'This cart contains prescription medicines.'),
+    () => warnings.filter((warning) => !['This cart contains prescription medicines.', 'This cart contains prescription products.'].includes(warning)),
     [warnings],
   )
   const totalQuantity = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
@@ -195,7 +195,7 @@ export default function Cart() {
       <PageHeader title={t('কার্ট', 'Cart')} />
 
       {pageLoading ? <p className="text-slate-500">{t('কার্ট লোড হচ্ছে...', 'Loading cart...')}</p> : null}
-      {!pageLoading && items.length === 0 ? <EmptyState title={t('কার্ট খালি', 'Cart is empty')} text={t('ওষুধ যোগ করুন, সেগুলি এখানে দেখাবে।', 'Add medicines and they will appear here.')} /> : null}
+      {!pageLoading && items.length === 0 ? <EmptyState title={t('কার্ট খালি', 'Cart is empty')} text={t('পণ্য যোগ করুন, সেগুলি এখানে দেখাবে।', 'Add products and they will appear here.')} /> : null}
 
       {items.length > 0 ? (
         <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
@@ -208,7 +208,7 @@ export default function Cart() {
 
             {hasPrescription ? (
               <div className="border border-amber-200 bg-amber-50 p-3 text-sm leading-7 text-amber-800">
-                <span className="font-semibold">{t('নোট:', 'Note:')}</span> {t('এই কার্টে প্রেসক্রিপশন ওষুধ আছে। চেকআউটের আগে একটি অনুমোদিত প্রেসক্রিপশন আপলোড বা নির্বাচন করুন।', 'This cart contains prescription medicines. Please upload or select an approved prescription before checkout.')}
+                <span className="font-semibold">{t('নোট:', 'Note:')}</span> {t('এই কার্টে প্রেসক্রিপশন পণ্য আছে। চেকআউটের আগে একটি অনুমোদিত প্রেসক্রিপশন আপলোড বা নির্বাচন করুন।', 'This cart contains prescription products. Please upload or select an approved prescription before checkout.')}
               </div>
             ) : null}
 

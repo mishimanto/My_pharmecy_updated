@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { FiArrowRight, FiBarChart2, FiCreditCard, FiDatabase, FiFileText, FiPackage, FiRefreshCw, FiShoppingBag, FiTruck, FiUploadCloud } from 'react-icons/fi'
 
 const reports = [
-  { type: 'sales', title: 'Sales Report', subtitle: 'Daily revenue, monthly revenue, and top-selling medicines.', icon: FiBarChart2, tone: 'emerald', group: 'Finance', tables: 3 },
+  { type: 'sales', title: 'Sales Report', subtitle: 'Daily revenue, monthly revenue, and top-selling products.', icon: FiBarChart2, tone: 'emerald', group: 'Finance', tables: 3 },
   { type: 'orders', title: 'Order Report', subtitle: 'Order status, payment status, and recent order activity.', icon: FiShoppingBag, tone: 'sky', group: 'Operations', tables: 3 },
   { type: 'inventory', title: 'Inventory Report', subtitle: 'Low stock, near-expiry batches, and stock value.', icon: FiPackage, tone: 'amber', group: 'Inventory', tables: 3 },
   { type: 'payments', title: 'Payment Report', subtitle: 'Payment status, methods, and recent transactions.', icon: FiCreditCard, tone: 'emerald', group: 'Finance', tables: 3 },

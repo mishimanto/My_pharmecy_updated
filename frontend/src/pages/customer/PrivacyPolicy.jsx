@@ -11,8 +11,8 @@ const sections = [
   {
     titleBn: 'প্রেসক্রিপশন ব্যবস্থাপনা',
     titleEn: 'Prescription handling',
-    bodyBn: 'প্রেসক্রিপশন আপলোড ফার্মাসিস্ট রিভিউ, সীমিত ওষুধ যাচাই এবং অর্ডার পূরণের জন্য ব্যবহার করা হয়। এগুলো সংবেদনশীল স্বাস্থ্য-সম্পর্কিত রেকর্ড হিসেবে বিবেচিত।',
-    bodyEn: 'Prescription uploads are used for pharmacist review, restricted-medicine validation, and order fulfillment. They should be treated as sensitive healthcare-related records.',
+    bodyBn: 'প্রেসক্রিপশন আপলোড ফার্মাসিস্ট রিভিউ, সীমিত পণ্য যাচাই এবং অর্ডার পূরণের জন্য ব্যবহার করা হয়। এগুলো সংবেদনশীল স্বাস্থ্য-সম্পর্কিত রেকর্ড হিসেবে বিবেচিত।',
+    bodyEn: 'Prescription uploads are used for pharmacist review, restricted-product validation, and order fulfillment. They should be treated as sensitive healthcare-related records.',
   },
   {
     titleBn: 'অর্ডার ও ডেলিভারি ডাটা',

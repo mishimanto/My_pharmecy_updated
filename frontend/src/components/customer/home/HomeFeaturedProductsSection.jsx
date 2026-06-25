@@ -5,7 +5,7 @@ export default function HomeFeaturedProductsSection({ isBangla, loading, feature
   return (
     <section className="pb-16">
       <HomeSectionHeader
-        title={isBangla ? 'ঘরে বসেই অর্ডার করুন' : 'Medicines ready to order'}
+        title={isBangla ? 'ঘরে বসেই পণ্য অর্ডার করুন' : 'Pharmacy products ready to order'}
         actionTo="/products"
         actionLabel={isBangla ? 'সব দেখুন' : 'View all'}
       />

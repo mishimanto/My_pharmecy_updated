@@ -7,7 +7,7 @@ export default function HomeOffersSection({ isBangla, offers }) {
 
   return (
     <section className="my-10">
-      <HomeSectionHeader title={isBangla ? 'চলমান অফার' : 'Current offers'} actionLabel={isBangla ? 'সব ওষুধ দেখুন' : 'Browse medicines'} actionTo="/products" />
+      <HomeSectionHeader title={isBangla ? 'চলমান অফার' : 'Current offers'} actionLabel={isBangla ? 'সব পণ্য দেখুন' : 'Browse products'} actionTo="/products" />
       <div className="mt-5 grid gap-4 lg:grid-cols-3">
         {offers.slice(0, 3).map((offer) => (
           <Link key={offer.id} to={offer.linkUrl || '/products'} className="group overflow-hidden border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">

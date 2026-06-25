@@ -17,8 +17,8 @@ const FIVE_MINUTES = 1000 * 60 * 5
 const THIRTY_MINUTES = 1000 * 60 * 30
 
 export const customerQueryKeys = {
-  products: (params = {}) => ['products', params],
-  product: (idOrSlug) => ['product', String(idOrSlug || '')],
+  products: (params = {}, offerScope = 'default') => ['products', params, offerScope],
+  product: (idOrSlug, offerScope = 'default') => ['product', String(idOrSlug || ''), offerScope],
   categories: ['categories'],
   manufacturers: ['manufacturers'],
   heroSlides: ['hero-slides'],
@@ -41,11 +41,39 @@ export const customerQueryKeys = {
   deliveryAreas: ['delivery-areas'],
 }
 
+export function getOfferPricingSignature(offers = []) {
+  const activeRules = offers
+    .filter((offer) => offer?.status === 'active' && Number(offer.discount_value || 0) > 0)
+    .map((offer) => ({
+      id: offer.id,
+      updated_at: offer.updated_at,
+      discount_type: offer.discount_type || 'percent',
+      discount_value: Number(offer.discount_value || 0),
+      max_discount: offer.max_discount ?? null,
+      applies_to: offer.applies_to || 'all',
+      category_id: offer.category_id ?? null,
+      manufacturer_id: offer.manufacturer_id ?? null,
+      product_ids: offer.product_ids || [],
+      starts_at: offer.starts_at || null,
+      ends_at: offer.ends_at || null,
+    }))
+    .sort((a, b) => String(a.id).localeCompare(String(b.id)))
+
+  return activeRules.length ? JSON.stringify(activeRules) : 'no-active-offers'
+}
+
+function useOfferPricingScope() {
+  const offersQuery = useOffersQuery()
+  return getOfferPricingSignature(offersQuery.data || [])
+}
+
 export function useProductsQuery(params = {}, options = {}) {
+  const offerScope = useOfferPricingScope()
+
   return useQuery({
-    queryKey: customerQueryKeys.products(params),
-    queryFn: () => productApi.list(params).then((response) => response.data.data),
-    initialData: () => productApi.getCachedList(params) || undefined,
+    queryKey: customerQueryKeys.products(params, offerScope),
+    queryFn: () => productApi.list(params, { cacheScope: offerScope }).then((response) => response.data.data),
+    initialData: () => productApi.getCachedList(params, { cacheScope: offerScope }) || undefined,
     staleTime: FIVE_MINUTES,
     gcTime: THIRTY_MINUTES,
     ...options,
@@ -53,11 +81,13 @@ export function useProductsQuery(params = {}, options = {}) {
 }
 
 export function useProductQuery(idOrSlug, options = {}) {
+  const offerScope = useOfferPricingScope()
+
   return useQuery({
-    queryKey: customerQueryKeys.product(idOrSlug),
-    queryFn: () => productApi.show(idOrSlug).then((response) => response.data.data),
+    queryKey: customerQueryKeys.product(idOrSlug, offerScope),
+    queryFn: () => productApi.show(idOrSlug, { cacheScope: offerScope }).then((response) => response.data.data),
     enabled: Boolean(idOrSlug),
-    initialData: () => productApi.getCachedProduct(idOrSlug) || undefined,
+    initialData: () => productApi.getCachedProduct(idOrSlug, { cacheScope: offerScope }) || undefined,
     ...options,
   })
 }
@@ -123,6 +153,9 @@ export function useOffersQuery(options = {}) {
     queryKey: customerQueryKeys.offers,
     queryFn: () => offerApi.list().then((response) => response.data.data || []),
     initialData: () => readCachedOffers() || undefined,
+    staleTime: 1000 * 30,
+    gcTime: FIVE_MINUTES,
+    refetchOnMount: 'always',
     ...options,
   })
 }

@@ -15,7 +15,10 @@ class OfferController extends Controller
 
     public function index(Request $request)
     {
-        $query = Offer::query()->orderBy('sort_order')->orderBy('id');
+        $query = Offer::query()
+            ->with('category:id,category_name', 'manufacturer:id,manufacturer_name')
+            ->orderBy('sort_order')
+            ->orderBy('id');
         if ($request->filled('status')) $query->where('status', $request->string('status')->toString());
 
         return $this->ok($query->get(), 'Offers loaded successfully.');
@@ -77,6 +80,13 @@ class OfferController extends Controller
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'status' => ['nullable', 'in:active,inactive'],
+            'discount_type' => ['nullable', 'in:percent,fixed'],
+            'discount_value' => ['nullable', 'numeric', 'min:0'],
+            'max_discount' => ['nullable', 'numeric', 'min:0'],
+            'applies_to' => ['nullable', 'in:all,category,manufacturer,products'],
+            'category_id' => ['nullable', 'exists:categories,id'],
+            'manufacturer_id' => ['nullable', 'exists:manufacturers,id'],
+            'product_ids' => ['nullable'],
         ]);
     }
 
@@ -96,8 +106,29 @@ class OfferController extends Controller
         $data['sort_order'] = $data['sort_order'] ?? 0;
         $data['show_in_nav'] = $request->boolean('show_in_nav');
         $data['status'] = $data['status'] ?? 'active';
+        $data['discount_type'] = $data['discount_type'] ?? 'percent';
+        $data['discount_value'] = $data['discount_value'] ?? 0;
+        $data['applies_to'] = $data['applies_to'] ?? 'all';
+        $data['product_ids'] = $this->normalizeProductIds($data['product_ids'] ?? null);
 
         return $data;
+    }
+
+    private function normalizeProductIds(mixed $value): ?array
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        if (is_array($value)) {
+            return collect($value)->map(fn ($id) => (int) $id)->filter()->values()->all();
+        }
+
+        return collect(explode(',', (string) $value))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter()
+            ->values()
+            ->all();
     }
 
     private function clearDisplaySelections(array $data, ?int $exceptId = null): void

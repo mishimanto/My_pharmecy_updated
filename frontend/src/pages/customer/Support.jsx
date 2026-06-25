@@ -23,6 +23,7 @@ export default function Support() {
       .finally(() => setLoading(false))
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, [])
 
   const stats = useMemo(() => ({
@@ -91,7 +92,7 @@ export default function Support() {
                 <input value={form.order_id} onChange={(event) => setForm({ ...form, order_id: event.target.value })} className="mt-2 w-full border border-slate-300 px-4 py-3 text-sm outline-none" placeholder={t('ঐচ্ছিক অর্ডার আইডি বা অর্ডার নম্বর', 'Optional order ID or order number')} />
               </FormField>
               <FormField label={t('বিস্তারিত', 'Description')}>
-                <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} required className="mt-2 min-h-36 w-full border border-slate-300 px-4 py-3 text-sm outline-none" placeholder={t('সমস্যা, ওষুধ সংক্রান্ত প্রশ্ন বা ডেলিভারি সমস্যা লিখুন', 'Describe the issue, medicine concern, or delivery problem')} />
+                <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} required className="mt-2 min-h-36 w-full border border-slate-300 px-4 py-3 text-sm outline-none" placeholder={t('সমস্যা, পণ্য সংক্রান্ত প্রশ্ন বা ডেলিভারি সমস্যা লিখুন', 'Describe the issue, product concern, or delivery problem')} />
               </FormField>
               <FormField label={t('অ্যাটাচমেন্ট', 'Attachment')}>
                 <label className="mt-2 flex cursor-pointer items-center gap-3 border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-500">
@@ -111,7 +112,7 @@ export default function Support() {
             <div className="grid gap-4 sm:grid-cols-3">
               <MiniHelpCard icon={FiPackage} title={t('অর্ডার সমস্যা', 'Order issues')} body={t('দেরি ডেলিভারি, মিসিং পণ্য বা প্যাকড অর্ডার নিয়ে সমস্যা।', 'Late delivery, missing products, or packed-order concerns.')} />
               <MiniHelpCard icon={FiFileText} title={t('প্রেসক্রিপশন রিভিউ', 'Prescription review')} body={t('রিজেক্টেড বা পেন্ডিং প্রেসক্রিপশন-যুক্ত পণ্য নিয়ে জানতে চান।', 'Clarify rejected or pending prescription-linked items.')} />
-              <MiniHelpCard icon={FiMessageSquare} title={t('সাধারণ সাপোর্ট', 'General support')} body={t('ওষুধ অর্ডারের আগে বা পরে যেকোনো প্রশ্ন করুন।', 'Ask questions before or after placing medicine orders.')} />
+              <MiniHelpCard icon={FiMessageSquare} title={t('সাধারণ সাপোর্ট', 'General support')} body={t('পণ্য অর্ডারের আগে বা পরে যেকোনো প্রশ্ন করুন।', 'Ask questions before or after placing product orders.')} />
             </div>
 
             {loading ? <p className="text-sm text-slate-500">{t('সাপোর্ট টিকিট লোড হচ্ছে...', 'Loading support tickets...')}</p> : null}

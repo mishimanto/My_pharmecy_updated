@@ -2,11 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   FiAlertCircle,
-  FiArrowLeft,
   FiCheckCircle,
   FiClock,
   FiExternalLink,
-  FiEye,
   FiFileText,
   FiHash,
   FiPhone,
@@ -17,7 +15,6 @@ import {
 import { FaUserDoctor } from "react-icons/fa6";
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
-import PageHeader from '../../components/common/PageHeader'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import { adminApi } from '../../api/adminApi'
 import { date } from '../../utils/formatters'
@@ -162,6 +159,7 @@ export default function PrescriptionDetails() {
   useEffect(() => {
     if (!prescription) return
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm((current) => ({
       review_status: reviewOptions.includes(prescription.status) ? prescription.status : current.review_status,
       review_note: current.review_note,
@@ -269,7 +267,7 @@ export default function PrescriptionDetails() {
                   </div>
 
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Ordered Medicines</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Ordered Products</p>
                     <div className="mt-3 space-y-3">
                       {prescription.order.items?.length ? (
                         prescription.order.items.map((item) => (
@@ -277,7 +275,7 @@ export default function PrescriptionDetails() {
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                               <div className="min-w-0">
                                 <p className="truncate text-sm font-semibold text-slate-950">
-                                  {item.product?.product_name || item.product?.generic_name || 'Medicine item'}
+                                  {item.product?.product_name || item.product?.generic_name || 'Product item'}
                                 </p>
                                 <p className="mt-1 text-xs text-slate-500">
                                   Quantity {item.quantity ?? 0}

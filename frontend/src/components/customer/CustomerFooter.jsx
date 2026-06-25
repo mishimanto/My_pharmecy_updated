@@ -21,7 +21,7 @@ export default function CustomerFooter() {
     {
       title: t('শপ', 'Shop'),
       items: [
-        [t('সব ওষুধ', 'All medicines'), '/products'],
+        [t('সব পণ্য', 'All products'), '/products'],
         [t('প্রেসক্রিপশন আপলোড', 'Prescription upload'), '/upload-prescription'],
         [t('অর্ডার ট্র্যাক', 'Track order'), '/track-order'],
         [t('কার্ট', 'Cart'), '/cart'],

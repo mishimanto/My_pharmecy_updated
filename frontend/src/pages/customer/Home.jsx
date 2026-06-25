@@ -10,7 +10,6 @@ import {
   FiShield,
   FiTruck,
 } from 'react-icons/fi'
-import { productApi } from '../../api/productApi'
 import HomeCategoriesSection from '../../components/customer/home/HomeCategoriesSection'
 import HomeBannerSection from '../../components/customer/home/HomeBannerSection'
 import HomeFeaturedProductsSection from '../../components/customer/home/HomeFeaturedProductsSection'
@@ -33,7 +32,6 @@ export default function Home() {
   const { customer } = useCustomerAuth()
   const { isBangla } = useLanguage()
   const fallbackHeroSlides = useMemo(() => getHeroSlides(isBangla), [isBangla])
-  const cachedFeatured = productApi.getCachedList({ per_page: 32 })
   const productsQuery = useProductsQuery({ per_page: 32 })
   const categoriesQuery = useCategoriesQuery()
   const manufacturersQuery = useManufacturersQuery()
@@ -44,7 +42,7 @@ export default function Home() {
   const manufacturers = useMemo(() => manufacturersQuery.data || [], [manufacturersQuery.data])
   const heroSlideRecords = useMemo(() => heroSlidesQuery.data || [], [heroSlidesQuery.data])
   const bannerRecords = useMemo(() => bannerImagesQuery.data || [], [bannerImagesQuery.data])
-  const loading = productsQuery.isLoading && !cachedFeatured
+  const loading = productsQuery.isLoading
   const heroSlides = useMemo(() => {
     if (!heroSlideRecords.length) return fallbackHeroSlides
 
@@ -115,7 +113,7 @@ export default function Home() {
       step: '01',
       icon: FiSearch,
       title: isBangla ? 'খুঁজুন ও বেছে নিন' : 'Search and discover',
-      body: isBangla ? 'পণ্যের নাম, জেনেরিক, ক্যাটাগরি বা প্রস্তুতকারক দিয়ে ওষুধ খুঁজুন।' : 'Find medicine by product name, generic name, category, or manufacturer.',
+      body: isBangla ? 'পণ্যের নাম, জেনেরিক, ক্যাটাগরি বা প্রস্তুতকারক দিয়ে পণ্য খুঁজুন।' : 'Find pharmacy products by product name, generic name, category, or manufacturer.',
     },
     {
       step: '02',

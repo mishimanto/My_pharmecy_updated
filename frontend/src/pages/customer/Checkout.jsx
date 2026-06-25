@@ -384,7 +384,7 @@ export default function Checkout() {
     }
 
     if (requiresPrescriptionLogin) {
-      toast.error(t('প্রেসক্রিপশনের ওষুধ অর্ডার করতে আগে লগইন করুন।', 'Please login before ordering prescription medicines.'))
+      toast.error(t('প্রেসক্রিপশন পণ্য অর্ডার করতে আগে লগইন করুন।', 'Please login before ordering prescription products.'))
       navigate(loginPath)
       return
     }
@@ -445,7 +445,7 @@ export default function Checkout() {
       <>
         <PageHeader title={t('চেকআউট', 'Checkout')} />
         <button onClick={() => navigate('/products')} className="bg-slate-950 px-4 py-3 text-sm font-semibold text-white">
-          {t('ওষুধ দেখুন', 'Browse medicines')}
+          {t('পণ্য দেখুন', 'Browse products')}
         </button>
       </>
     )
@@ -609,7 +609,7 @@ export default function Checkout() {
                     <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{t('চালিয়ে যেতে আগে লগইন করুন', 'Login to continue')}</h2>
                     <p className="mt-3 text-sm leading-7 text-slate-600">
                       {t(
-                        'প্রেসক্রিপশনের ওষুধের অর্ডার সম্পূর্ণ করতে আগে আপনার অ্যাকাউন্টে লগইন করতে হবে।',
+                        'প্রেসক্রিপশন পণ্যের অর্ডার সম্পূর্ণ করতে আগে আপনার অ্যাকাউন্টে লগইন করতে হবে।',
                         'Please login to your account before selecting a prescription or placing this order.',
                       )}
                     </p>

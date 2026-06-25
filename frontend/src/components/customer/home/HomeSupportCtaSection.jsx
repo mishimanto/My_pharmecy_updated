@@ -31,7 +31,7 @@ export default function HomeSupportCtaSection({ isBangla }) {
           <div className="grid gap-3">
             {[
               { to: '/upload-prescription', label: isBangla ? 'প্রেসক্রিপশন আপলোড' : 'Upload prescription' },
-              { to: '/products', label: isBangla ? 'সব ওষুধ দেখুন' : 'Browse all medicines' },
+              { to: '/products', label: isBangla ? 'সব পণ্য দেখুন' : 'Browse all products' },
               { to: '/support', label: isBangla ? 'সহায়তায় যোগাযোগ' : 'Contact support' },
             ].map((item) => (
               <Link

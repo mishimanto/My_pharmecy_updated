@@ -12,7 +12,7 @@ export default function HomeProductPanelsSection({ isBangla, prescriptionProduct
     <section className="grid gap-6 pb-16 xl:grid-cols-2">
       <ProductListPanel
         variant="prescription"
-        title={isBangla ? 'প্রেসক্রিপশন ওষুধ' : 'Prescription medicines'}
+        title={isBangla ? 'প্রেসক্রিপশন পণ্য' : 'Prescription products'}
         
         products={prescriptionProducts}
         emptyMessage={isBangla ? 'ক্যাটালগ বড় হলে প্রেসক্রিপশন পণ্য এখানে দেখাবে।' : 'Prescription products will appear here as the catalog grows.'}

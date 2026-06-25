@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 
 class ProductCatalogService
 {
+    public function __construct(private OfferDiscountService $offers) {}
+
     private const UNIT_LABELS = [
         'piece' => 'Piece',
         'strip' => 'Strip',
@@ -86,8 +88,13 @@ class ProductCatalogService
             : $product->batches()->where('status', 'active')->whereDate('expiry_date', '>', now())->whereRaw('(stock_quantity - reserved_quantity) > 0')->orderBy('expiry_date')->get();
 
         $fefoBatch = $validBatches->first();
+        $baseDisplayPrice = Currency::whole($fefoBatch?->selling_price ?? 0);
+        $pricing = $this->offers->priceForProduct($product, $baseDisplayPrice);
         $product->available_stock = $validBatches->sum(fn ($batch) => max(0, $batch->stock_quantity - $batch->reserved_quantity));
-        $product->display_price = $fefoBatch?->selling_price;
+        $product->base_display_price = $baseDisplayPrice;
+        $product->display_price = $pricing['final_price'];
+        $product->discount_amount = $pricing['discount_amount'];
+        $product->active_offer = $pricing['offer'];
         $product->lowest_valid_price = $validBatches->min('selling_price');
         $product->primary_image = $product->images->firstWhere('is_primary', true) ?? $product->images->first();
         $product->unit_config = $this->unitConfig($product);
@@ -118,7 +125,7 @@ class ProductCatalogService
 
     public function purchaseOptions(Product $product): array
     {
-        $piecePrice = Currency::whole($product->display_price ?? 0);
+        $piecePrice = Currency::whole($product->base_display_price ?? $product->display_price ?? 0);
         $availableStock = max(0, (int) ($product->available_stock ?? 0));
         $config = $this->unitConfig($product);
 
@@ -138,7 +145,7 @@ class ProductCatalogService
             $options[] = $this->buildOption('box', $config['pieces_per_box'], $boxPrice, $boxCompare, $availableStock);
         }
 
-        return $options;
+        return array_map(fn (array $option) => $this->applyOfferToOption($product, $option), $options);
     }
 
     public function defaultPurchaseUnit(Product $product): string
@@ -189,6 +196,20 @@ class ProductCatalogService
             'badge' => $mostPopular ? 'Most Popular' : null,
             'conversion_label' => $this->conversionLabel($code, $piecesPerUnit),
         ];
+    }
+
+    private function applyOfferToOption(Product $product, array $option): array
+    {
+        $pricing = $this->offers->priceForProduct($product, $option['unit_price']);
+
+        $option['base_unit_price'] = $option['unit_price'];
+        $option['unit_price'] = $pricing['final_price'];
+        $option['discount_amount'] = $pricing['discount_amount'];
+        $option['offer'] = $pricing['offer'];
+        $option['compare_price'] = max($option['compare_price'], $option['base_unit_price']);
+        $option['savings'] = Currency::whole(($option['savings'] ?? 0) + $pricing['discount_amount']);
+
+        return $option;
     }
 
     private function conversionLabel(string $code, int $piecesPerUnit): string

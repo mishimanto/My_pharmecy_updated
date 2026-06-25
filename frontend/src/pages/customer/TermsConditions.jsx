@@ -9,8 +9,8 @@ const sections = [
     bodyEn: 'Customers should provide accurate personal, delivery, and prescription information while using the pharmacy ordering system.',
   },
   {
-    titleBn: 'প্রেসক্রিপশন ওষুধ',
-    titleEn: 'Prescription medicines',
+    titleBn: 'প্রেসক্রিপশন পণ্য',
+    titleEn: 'Prescription products',
     bodyBn: 'সীমিত পণ্য সরবরাহের আগে বৈধ প্রেসক্রিপশন রিভিউ প্রয়োজন হতে পারে। ফার্মেসি রিভিউতে অতিরিক্ত তথ্য লাগলে অর্ডার হোল্ড বা সংশোধন করা হতে পারে।',
     bodyEn: 'Restricted products may require valid prescription review before fulfillment. Orders can be held or adjusted if pharmacy review requires clarification.',
   },
@@ -46,7 +46,7 @@ export default function TermsConditions() {
     <ContentPage
       eyebrow={t('নীতিমালা', 'Policy')}
       title={t('শর্তাবলি', 'Terms and conditions')}
-      subtitle={t('ওষুধ অর্ডার, প্রেসক্রিপশন ব্যবহার, ডেলিভারি, পেমেন্ট এবং সাপোর্ট ব্যবস্থাপনার মূল শর্ত।', 'Core storefront terms for medicine ordering, prescription use, delivery, payments, and support handling.')}
+      subtitle={t('পণ্য অর্ডার, প্রেসক্রিপশন ব্যবহার, ডেলিভারি, পেমেন্ট এবং সাপোর্ট ব্যবস্থাপনার মূল শর্ত।', 'Core storefront terms for product ordering, prescription use, delivery, payments, and support handling.')}
       sections={localizedSections}
     />
   )

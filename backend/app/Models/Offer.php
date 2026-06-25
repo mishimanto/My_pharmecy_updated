@@ -12,7 +12,21 @@ class Offer extends PharmacyModel
         'starts_at' => 'datetime',
         'ends_at' => 'datetime',
         'show_in_nav' => 'boolean',
+        'show_popup' => 'boolean',
+        'discount_value' => 'float',
+        'max_discount' => 'float',
+        'product_ids' => 'array',
     ];
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function manufacturer()
+    {
+        return $this->belongsTo(Manufacturer::class);
+    }
 
     public function getImageSrcAttribute(): ?string
     {

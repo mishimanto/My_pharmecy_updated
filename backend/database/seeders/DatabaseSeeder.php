@@ -61,6 +61,7 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->seedCatalog();
+        $this->call(OfferSeeder::class);
         $this->seedDeliveryAreas();
     }
 
@@ -70,15 +71,19 @@ class DatabaseSeeder extends Seeder
 
         $categories = [
             ['category_name' => 'Pain Relief', 'description' => 'Tablets, capsules, and suspensions for pain and fever relief.'],
-            ['category_name' => 'Gastric Care', 'description' => 'Acidity, reflux, and stomach protection medicines.'],
+            ['category_name' => 'Gastric Care', 'description' => 'Acidity, reflux, and stomach protection products.'],
             ['category_name' => 'Respiratory', 'description' => 'Allergy, cold, cough, and breathing support products.'],
-            ['category_name' => 'Prescription Medicines', 'description' => 'Prescription-first medicines for guided treatment plans.'],
+            ['category_name' => 'Prescription Products', 'description' => 'Prescription-first products for guided treatment plans.'],
             ['category_name' => 'Diabetes Care', 'description' => 'Diabetes management tablets and insulin support products.'],
-            ['category_name' => 'Cardiac Care', 'description' => 'Blood pressure, cholesterol, and heart-care medicines.'],
+            ['category_name' => 'Cardiac Care', 'description' => 'Blood pressure, cholesterol, and heart-care products.'],
             ['category_name' => 'Vitamins & Supplements', 'description' => 'Daily wellness vitamins, minerals, and nutritional support.'],
             ['category_name' => 'Skin Care', 'description' => 'Creams, gels, and shampoos for skin and scalp care.'],
             ['category_name' => 'Child Care', 'description' => 'Syrups, drops, and pediatric essentials for children.'],
-            ['category_name' => "Women's Health", 'description' => 'Supplements and medicines for women-focused care needs.'],
+            ['category_name' => "Women's Health", 'description' => 'Supplements and products for women-focused care needs.'],
+            ['category_name' => 'Medical Devices', 'description' => 'Home health devices, monitoring tools, and pharmacy equipment.'],
+            ['category_name' => 'First Aid & Hygiene', 'description' => 'Bandages, sanitizers, antiseptics, masks, and daily hygiene essentials.'],
+            ['category_name' => 'Mother & Baby Care', 'description' => 'Baby care, feeding, diapering, and maternity support products.'],
+            ['category_name' => 'Personal Care', 'description' => 'Pharmacy-approved personal care and wellness products.'],
         ];
 
         foreach ($categories as $category) {
@@ -160,10 +165,10 @@ class DatabaseSeeder extends Seeder
             ['product_name' => 'Deslor 5mg Tablet', 'generic_name' => 'Desloratadine', 'brand_name' => 'Deslor', 'strength' => '5mg', 'dosage_form' => 'Tablet', 'requires_prescription' => false, 'category' => 'Respiratory', 'manufacturer' => 'Aristopharma', 'selling_price' => 20, 'pieces_per_strip' => 10, 'strips_per_box' => 6, 'stock_quantity' => 115],
             ['product_name' => 'Breathex Inhaler', 'generic_name' => 'Salbutamol', 'brand_name' => 'Breathex', 'strength' => '100mcg', 'dosage_form' => 'Inhaler', 'requires_prescription' => true, 'category' => 'Respiratory', 'manufacturer' => 'Beximco Pharma', 'selling_price' => 285, 'pieces_per_strip' => 1, 'strips_per_box' => 1, 'stock_quantity' => 60],
 
-            ['product_name' => 'Zimax 500mg Tablet', 'generic_name' => 'Azithromycin', 'brand_name' => 'Zimax', 'strength' => '500mg', 'dosage_form' => 'Tablet', 'requires_prescription' => true, 'category' => 'Prescription Medicines', 'manufacturer' => 'Square Pharmaceuticals', 'selling_price' => 35, 'pieces_per_strip' => 3, 'strips_per_box' => 4, 'stock_quantity' => 90],
-            ['product_name' => 'Cef-3 400mg Capsule', 'generic_name' => 'Cefixime', 'brand_name' => 'Cef-3', 'strength' => '400mg', 'dosage_form' => 'Capsule', 'requires_prescription' => true, 'category' => 'Prescription Medicines', 'manufacturer' => 'Renata', 'selling_price' => 48, 'pieces_per_strip' => 6, 'strips_per_box' => 4, 'stock_quantity' => 85],
-            ['product_name' => 'Moxacil 500mg Capsule', 'generic_name' => 'Amoxicillin', 'brand_name' => 'Moxacil', 'strength' => '500mg', 'dosage_form' => 'Capsule', 'requires_prescription' => true, 'category' => 'Prescription Medicines', 'manufacturer' => 'Opsonin Pharma', 'selling_price' => 32, 'pieces_per_strip' => 8, 'strips_per_box' => 5, 'stock_quantity' => 120],
-            ['product_name' => 'Neocef 250mg Suspension', 'generic_name' => 'Cefuroxime', 'brand_name' => 'Neocef', 'strength' => '250mg/5ml', 'dosage_form' => 'Suspension', 'requires_prescription' => true, 'category' => 'Prescription Medicines', 'manufacturer' => 'Eskayef', 'selling_price' => 240, 'pieces_per_strip' => 1, 'strips_per_box' => 1, 'stock_quantity' => 55],
+            ['product_name' => 'Zimax 500mg Tablet', 'generic_name' => 'Azithromycin', 'brand_name' => 'Zimax', 'strength' => '500mg', 'dosage_form' => 'Tablet', 'requires_prescription' => true, 'category' => 'Prescription Products', 'manufacturer' => 'Square Pharmaceuticals', 'selling_price' => 35, 'pieces_per_strip' => 3, 'strips_per_box' => 4, 'stock_quantity' => 90],
+            ['product_name' => 'Cef-3 400mg Capsule', 'generic_name' => 'Cefixime', 'brand_name' => 'Cef-3', 'strength' => '400mg', 'dosage_form' => 'Capsule', 'requires_prescription' => true, 'category' => 'Prescription Products', 'manufacturer' => 'Renata', 'selling_price' => 48, 'pieces_per_strip' => 6, 'strips_per_box' => 4, 'stock_quantity' => 85],
+            ['product_name' => 'Moxacil 500mg Capsule', 'generic_name' => 'Amoxicillin', 'brand_name' => 'Moxacil', 'strength' => '500mg', 'dosage_form' => 'Capsule', 'requires_prescription' => true, 'category' => 'Prescription Products', 'manufacturer' => 'Opsonin Pharma', 'selling_price' => 32, 'pieces_per_strip' => 8, 'strips_per_box' => 5, 'stock_quantity' => 120],
+            ['product_name' => 'Neocef 250mg Suspension', 'generic_name' => 'Cefuroxime', 'brand_name' => 'Neocef', 'strength' => '250mg/5ml', 'dosage_form' => 'Suspension', 'requires_prescription' => true, 'category' => 'Prescription Products', 'manufacturer' => 'Eskayef', 'selling_price' => 240, 'pieces_per_strip' => 1, 'strips_per_box' => 1, 'stock_quantity' => 55],
 
             ['product_name' => 'Comet 500mg Tablet', 'generic_name' => 'Metformin', 'brand_name' => 'Comet', 'strength' => '500mg', 'dosage_form' => 'Tablet', 'requires_prescription' => true, 'category' => 'Diabetes Care', 'manufacturer' => 'Square Pharmaceuticals', 'selling_price' => 9, 'pieces_per_strip' => 10, 'strips_per_box' => 12, 'stock_quantity' => 280],
             ['product_name' => 'Glyset 80mg Tablet', 'generic_name' => 'Gliclazide', 'brand_name' => 'Glyset', 'strength' => '80mg', 'dosage_form' => 'Tablet', 'requires_prescription' => true, 'category' => 'Diabetes Care', 'manufacturer' => 'Incepta', 'selling_price' => 11, 'pieces_per_strip' => 10, 'strips_per_box' => 12, 'stock_quantity' => 190],
@@ -194,6 +199,23 @@ class DatabaseSeeder extends Seeder
             ['product_name' => 'Femicon Tablet', 'generic_name' => 'Ethinyl Estradiol + Levonorgestrel', 'brand_name' => 'Femicon', 'strength' => '0.03mg/0.15mg', 'dosage_form' => 'Tablet', 'requires_prescription' => true, 'category' => "Women's Health", 'manufacturer' => 'Renata', 'selling_price' => 38, 'pieces_per_strip' => 28, 'strips_per_box' => 3, 'stock_quantity' => 80],
             ['product_name' => 'Ovacare Tablet', 'generic_name' => 'Myo-Inositol + Folic Acid', 'brand_name' => 'Ovacare', 'strength' => 'Wellness Blend', 'dosage_form' => 'Tablet', 'requires_prescription' => false, 'category' => "Women's Health", 'manufacturer' => 'Healthcare Pharma', 'selling_price' => 22, 'pieces_per_strip' => 10, 'strips_per_box' => 6, 'stock_quantity' => 96],
             ['product_name' => 'Calbo D Tablet', 'generic_name' => 'Calcium + Vitamin D3', 'brand_name' => 'Calbo D', 'strength' => '500mg + 400IU', 'dosage_form' => 'Tablet', 'requires_prescription' => false, 'category' => "Women's Health", 'manufacturer' => 'Drug International', 'selling_price' => 13, 'pieces_per_strip' => 10, 'strips_per_box' => 10, 'stock_quantity' => 140],
+
+            ['product_name' => 'Digital Thermometer', 'generic_name' => 'Body Temperature Monitor', 'brand_name' => 'CareTemp', 'strength' => 'Digital', 'dosage_form' => 'Device', 'requires_prescription' => false, 'category' => 'Medical Devices', 'manufacturer' => 'ACI Limited', 'selling_price' => 260, 'pieces_per_strip' => 1, 'strips_per_box' => 1, 'stock_quantity' => 70],
+            ['product_name' => 'Blood Pressure Monitor', 'generic_name' => 'Automatic BP Monitor', 'brand_name' => 'HealthTrack', 'strength' => 'Arm Type', 'dosage_form' => 'Device', 'requires_prescription' => false, 'category' => 'Medical Devices', 'manufacturer' => 'Healthcare Pharma', 'selling_price' => 2350, 'pieces_per_strip' => 1, 'strips_per_box' => 1, 'stock_quantity' => 35],
+            ['product_name' => 'Glucometer Starter Kit', 'generic_name' => 'Blood Glucose Monitoring Kit', 'brand_name' => 'GlucoCare', 'strength' => 'Kit', 'dosage_form' => 'Device', 'requires_prescription' => false, 'category' => 'Medical Devices', 'manufacturer' => 'Beximco Pharma', 'selling_price' => 1450, 'pieces_per_strip' => 1, 'strips_per_box' => 1, 'stock_quantity' => 45],
+            ['product_name' => 'Pulse Oximeter', 'generic_name' => 'Oxygen Saturation Monitor', 'brand_name' => 'OxyCheck', 'strength' => 'Finger Tip', 'dosage_form' => 'Device', 'requires_prescription' => false, 'category' => 'Medical Devices', 'manufacturer' => 'Square Pharmaceuticals', 'selling_price' => 980, 'pieces_per_strip' => 1, 'strips_per_box' => 1, 'stock_quantity' => 40],
+
+            ['product_name' => 'Alcohol Hand Sanitizer 250ml', 'generic_name' => 'Hand Sanitizer', 'brand_name' => 'SafeHands', 'strength' => '250ml', 'dosage_form' => 'Liquid', 'requires_prescription' => false, 'category' => 'First Aid & Hygiene', 'manufacturer' => 'ACI Limited', 'selling_price' => 120, 'pieces_per_strip' => 1, 'strips_per_box' => 1, 'stock_quantity' => 160],
+            ['product_name' => 'Sterile Gauze Pack', 'generic_name' => 'Sterile Gauze', 'brand_name' => 'MediGauze', 'strength' => '10 pcs', 'dosage_form' => 'First Aid', 'requires_prescription' => false, 'category' => 'First Aid & Hygiene', 'manufacturer' => 'Renata', 'selling_price' => 85, 'pieces_per_strip' => 1, 'strips_per_box' => 1, 'stock_quantity' => 130],
+            ['product_name' => 'Surgical Face Mask Box', 'generic_name' => 'Disposable Face Mask', 'brand_name' => 'CareMask', 'strength' => '50 pcs', 'dosage_form' => 'Hygiene', 'requires_prescription' => false, 'category' => 'First Aid & Hygiene', 'manufacturer' => 'Eskayef', 'selling_price' => 210, 'pieces_per_strip' => 1, 'strips_per_box' => 1, 'stock_quantity' => 95],
+            ['product_name' => 'Antiseptic Solution 500ml', 'generic_name' => 'Antiseptic Solution', 'brand_name' => 'SafeClean', 'strength' => '500ml', 'dosage_form' => 'Liquid', 'requires_prescription' => false, 'category' => 'First Aid & Hygiene', 'manufacturer' => 'Drug International', 'selling_price' => 175, 'pieces_per_strip' => 1, 'strips_per_box' => 1, 'stock_quantity' => 100],
+
+            ['product_name' => 'Baby Diaper Medium Pack', 'generic_name' => 'Disposable Diaper', 'brand_name' => 'BabySoft', 'strength' => 'M / 32 pcs', 'dosage_form' => 'Baby Care', 'requires_prescription' => false, 'category' => 'Mother & Baby Care', 'manufacturer' => 'ACI Limited', 'selling_price' => 620, 'pieces_per_strip' => 1, 'strips_per_box' => 1, 'stock_quantity' => 55],
+            ['product_name' => 'Baby Wipes Pack', 'generic_name' => 'Wet Wipes', 'brand_name' => 'BabySoft', 'strength' => '80 pcs', 'dosage_form' => 'Baby Care', 'requires_prescription' => false, 'category' => 'Mother & Baby Care', 'manufacturer' => 'Square Pharmaceuticals', 'selling_price' => 180, 'pieces_per_strip' => 1, 'strips_per_box' => 1, 'stock_quantity' => 90],
+            ['product_name' => 'Feeding Bottle 250ml', 'generic_name' => 'Baby Feeding Bottle', 'brand_name' => 'CareBaby', 'strength' => '250ml', 'dosage_form' => 'Baby Care', 'requires_prescription' => false, 'category' => 'Mother & Baby Care', 'manufacturer' => 'Healthcare Pharma', 'selling_price' => 290, 'pieces_per_strip' => 1, 'strips_per_box' => 1, 'stock_quantity' => 60],
+
+            ['product_name' => 'Oral Care Mouthwash 250ml', 'generic_name' => 'Mouthwash', 'brand_name' => 'FreshCare', 'strength' => '250ml', 'dosage_form' => 'Personal Care', 'requires_prescription' => false, 'category' => 'Personal Care', 'manufacturer' => 'ACI Limited', 'selling_price' => 165, 'pieces_per_strip' => 1, 'strips_per_box' => 1, 'stock_quantity' => 85],
+            ['product_name' => 'Moisturizing Lotion 200ml', 'generic_name' => 'Moisturizing Lotion', 'brand_name' => 'DermaSoft', 'strength' => '200ml', 'dosage_form' => 'Personal Care', 'requires_prescription' => false, 'category' => 'Personal Care', 'manufacturer' => 'Renata', 'selling_price' => 340, 'pieces_per_strip' => 1, 'strips_per_box' => 1, 'stock_quantity' => 65],
         ];
 
         $placeholderImage = [
@@ -273,10 +295,10 @@ class DatabaseSeeder extends Seeder
     {
         $prescriptionLine = $product['requires_prescription']
             ? 'Consult a registered physician or pharmacist before use.'
-            : 'Suitable for regular over-the-counter pharmacy support when used as directed.';
+            : 'Suitable for regular pharmacy support when used as directed.';
 
         return sprintf(
-            '%s is a %s medicine under %s. %s',
+            '%s is a %s pharmacy product under %s. %s',
             $product['product_name'],
             strtolower($product['dosage_form']),
             $product['category'],
