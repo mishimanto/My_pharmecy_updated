@@ -1,6 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import {
+  FiAlertCircle,
+  FiClock,
+  FiDollarSign,
+  FiFileText,
+  FiMessageSquare,
+  FiPackage,
+  FiRotateCcw,
+  FiShoppingBag,
+  FiTruck,
+  FiUsers,
+} from 'react-icons/fi'
 import { adminApi } from '../../api/adminApi'
 import AdminChart from '../../components/admin/AdminChart'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
@@ -18,7 +30,7 @@ const labels = {
   pending_deliveries: 'Pending Deliveries',
   low_stock_batches: 'Low-Stock Batches',
   near_expiry_batches: 'Near-Expiry Batches',
-  open_support_tickets: 'Open Support Tickets',
+  open_support_tickets: 'Support Tickets',
   pending_return_requests: 'Pending Returns',
 }
 const DASHBOARD_CACHE_KEY = 'admin_dashboard_payload_v3'
@@ -61,6 +73,18 @@ const statVariants = {
   near_expiry_batches: 'amber',
   open_support_tickets: 'violet',
   pending_return_requests: 'rose',
+}
+const statIcons = {
+  total_users: FiUsers,
+  total_orders: FiShoppingBag,
+  today_orders: FiClock,
+  total_revenue: FiDollarSign,
+  pending_prescription_reviews: FiFileText,
+  pending_deliveries: FiTruck,
+  low_stock_batches: FiAlertCircle,
+  near_expiry_batches: FiPackage,
+  open_support_tickets: FiMessageSquare,
+  pending_return_requests: FiRotateCcw,
 }
 
 function getCachedDashboard() {
@@ -236,16 +260,28 @@ function Panel({ title, count, to, children }) {
 
 function StatCard({ label, value, variant = 'emerald' }) {
   const style = statStyles[variant] || statStyles.emerald
+  const Icon = statIcons[labelToKey(label)] || FiPackage
 
   return (
     <div className={`relative overflow-hidden rounded-lg border p-4 ${style.panel}`}>
       <span className={`pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-linear-to-br ${style.bubble}`}>
         <span className="absolute left-5 top-5 h-5 w-5 rounded-full bg-white/70 blur-[1px]" />
       </span>
-      <p className="relative text-xs font-medium text-slate-500">{label}</p>
-      <p className={`relative mt-2 text-2xl font-semibold ${style.value}`}>{value}</p>
+      <div className="relative flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-slate-500">{label}</p>
+          <p className={`mt-2 text-2xl font-semibold ${style.value}`}>{value}</p>
+        </div>
+        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center text-slate-500">
+          <Icon className="h-6 w-6" />
+        </span>
+      </div>
     </div>
   )
+}
+
+function labelToKey(label) {
+  return Object.entries(labels).find(([, value]) => value === label)?.[0]
 }
 
 function Row({ title, meta, value }) {

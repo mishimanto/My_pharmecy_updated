@@ -244,7 +244,7 @@ function ReportSection({ title, rows }) {
       </div>
 
       {!rows.length ? (
-        <EmptyState compact title="No data found" text="This report section has no rows for the selected filters." />
+        <EmptyState compact title="No data found" text="This report section has no data for the selected filters." />
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full border border-slate-300 divide-y divide-slate-200 text-sm">

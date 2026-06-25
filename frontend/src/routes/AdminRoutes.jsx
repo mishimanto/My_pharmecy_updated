@@ -1,7 +1,9 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import AdminLayout from '../layouts/AdminLayout'
 import ProtectedAdminRoute from './ProtectedAdminRoute'
+import AdminLoader from '../components/admin/AdminLoader'
+import NotFoundPage from '../components/common/NotFoundPage'
 
 const AdminProfile = lazy(() => import('../pages/admin/AdminProfile'))
 const AdminChangePassword = lazy(() => import('../pages/admin/AdminChangePassword'))
@@ -53,11 +55,7 @@ const AdminNotifications = lazy(() => import('../pages/admin/AdminNotifications'
 const MarketingTools = lazy(() => import('../pages/admin/MarketingTools'))
 
 function AdminRouteFallback() {
-  return (
-    <div className="p-6 text-sm font-semibold text-slate-500">
-      Loading...
-    </div>
-  )
+  return <AdminLoader />
 }
 
 export default function AdminRoutes() {
@@ -120,8 +118,17 @@ export default function AdminRoutes() {
             <Route path="reports/:type" element={<ReportDetails />} />
             <Route path="activity-logs" element={<ActivityLogs />} />
             <Route path="notifications" element={<AdminNotifications />} />
-            <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
           </Route>
+          <Route
+            path="*"
+            element={(
+              <NotFoundPage
+                
+                actionLabel="Back to dashboard"
+                actionTo="/admin/dashboard"
+              />
+            )}
+          />
         </Routes>
       </Suspense>
     </ProtectedAdminRoute>

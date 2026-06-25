@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { FiCreditCard, FiEdit, FiPlus, FiSave, FiTrash2, FiX } from 'react-icons/fi'
+import { FiCheckCircle, FiClock, FiCreditCard, FiEdit, FiImage, FiSave, FiTrash2, FiX } from 'react-icons/fi'
 import { adminApi } from '../../api/adminApi'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
+import { handleImageFallback, resolveImageUrl } from '../../utils/imageUrl'
 
 const emptyForm = {
   code: '',
@@ -19,17 +20,69 @@ const emptyForm = {
   is_active: true,
   sort_order: 0,
 }
+const statStyles = {
+  emerald: {
+    panel: 'border-emerald-200 bg-[linear-gradient(135deg,#ecfdf5_0%,#d1fae5_100%)] shadow-[0_18px_45px_-34px_rgba(16,185,129,0.9)]',
+    bubble: 'from-white/80 via-emerald-100 to-emerald-300/80 shadow-[-14px_18px_34px_-24px_rgba(5,150,105,0.9),inset_12px_-12px_24px_rgba(5,150,105,0.22),inset_-10px_10px_18px_rgba(255,255,255,0.8)]',
+    value: 'text-emerald-700',
+  },
+  sky: {
+    panel: 'border-sky-200 bg-[linear-gradient(135deg,#f0f9ff_0%,#dbeafe_100%)] shadow-[0_18px_45px_-34px_rgba(14,165,233,0.9)]',
+    bubble: 'from-white/80 via-sky-100 to-sky-300/80 shadow-[-14px_18px_34px_-24px_rgba(2,132,199,0.9),inset_12px_-12px_24px_rgba(2,132,199,0.22),inset_-10px_10px_18px_rgba(255,255,255,0.8)]',
+    value: 'text-sky-700',
+  },
+  amber: {
+    panel: 'border-amber-200 bg-[linear-gradient(135deg,#fffbeb_0%,#fef3c7_100%)] shadow-[0_18px_45px_-34px_rgba(245,158,11,0.9)]',
+    bubble: 'from-white/80 via-amber-100 to-amber-300/80 shadow-[-14px_18px_34px_-24px_rgba(217,119,6,0.9),inset_12px_-12px_24px_rgba(217,119,6,0.22),inset_-10px_10px_18px_rgba(255,255,255,0.8)]',
+    value: 'text-amber-700',
+  },
+}
+
+function readFileAsDataUri(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+async function resizeLogoToDataUri(file) {
+  const source = await readFileAsDataUri(file)
+
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => {
+      const size = 192
+      const canvas = document.createElement('canvas')
+      const context = canvas.getContext('2d')
+      const sourceSize = Math.min(image.naturalWidth || image.width, image.naturalHeight || image.height)
+      const sx = ((image.naturalWidth || image.width) - sourceSize) / 2
+      const sy = ((image.naturalHeight || image.height) - sourceSize) / 2
+
+      canvas.width = size
+      canvas.height = size
+      context.drawImage(image, sx, sy, sourceSize, sourceSize, 0, 0, size, size)
+      resolve(canvas.toDataURL('image/webp', 0.72))
+    }
+    image.onerror = reject
+    image.src = source
+  })
+}
 
 export default function PaymentMethods() {
   const [items, setItems] = useState([])
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
+  const [logoFile, setLogoFile] = useState(null)
+  const [preview, setPreview] = useState('')
+  const [removeLogo, setRemoveLogo] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const stats = useMemo(() => [
-    ['Methods', items.length],
-    ['Active', items.filter((item) => item.is_active).length],
-    ['Proof Required', items.filter((item) => item.requires_proof).length],
+    { label: 'Methods', value: items.length, variant: 'sky', icon: FiCreditCard },
+    { label: 'Active', value: items.filter((item) => item.is_active).length, variant: 'emerald', icon: FiCheckCircle },
+    { label: 'Proof Required', value: items.filter((item) => item.requires_proof).length, variant: 'amber', icon: FiClock },
   ], [items])
 
   const load = () => {
@@ -43,11 +96,46 @@ export default function PaymentMethods() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(load, [])
 
-  const setField = (field, value) => setForm((current) => ({ ...current, [field]: value }))
-  const reset = () => { setForm(emptyForm); setEditingId(null) }
+  const setField = (field, value) => {
+    setForm((current) => ({ ...current, [field]: value }))
+
+    if (field === 'logo_url') {
+      setRemoveLogo(false)
+      if (!logoFile) {
+        setPreview(value || '')
+      }
+    }
+  }
+  const reset = () => {
+    setForm(emptyForm)
+    setEditingId(null)
+    setLogoFile(null)
+    setPreview('')
+    setRemoveLogo(false)
+  }
   const edit = (item) => {
     setEditingId(item.id)
     setForm({ ...emptyForm, ...item, requires_proof: Boolean(item.requires_proof), is_active: Boolean(item.is_active) })
+    setLogoFile(null)
+    setPreview(item.logo_url || '')
+    setRemoveLogo(false)
+  }
+
+  const handleLogoChange = (event) => {
+    const file = event.target.files?.[0] || null
+    setLogoFile(file)
+
+    if (file) {
+      setPreview(URL.createObjectURL(file))
+      setRemoveLogo(false)
+    }
+  }
+
+  const clearLogo = () => {
+    setLogoFile(null)
+    setPreview('')
+    setRemoveLogo(true)
+    setForm((current) => ({ ...current, logo_url: '' }))
   }
 
   const submit = async (event) => {
@@ -55,6 +143,11 @@ export default function PaymentMethods() {
     if (!form.code.trim() || !form.label.trim()) return toast.error('Code and label are required.')
     setSaving(true)
     const payload = { ...form, code: form.code.trim().toUpperCase() }
+    if (logoFile) {
+      payload.logo_data = await resizeLogoToDataUri(logoFile)
+    } else if (removeLogo) {
+      payload.remove_logo = true
+    }
     try {
       editingId ? await adminApi.update('payment-methods', editingId, payload) : await adminApi.create('payment-methods', payload)
       toast.success(editingId ? 'Payment method updated.' : 'Payment method created.')
@@ -76,7 +169,7 @@ export default function PaymentMethods() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      {/* <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white px-5 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <FiCreditCard className="h-5 w-5 text-emerald-700" />
           <h1 className="text-xl font-semibold text-slate-950">Payment Methods</h1>
@@ -85,14 +178,11 @@ export default function PaymentMethods() {
           <FiPlus className="h-4 w-4" />
           {editingId ? 'Editing Method' : 'Add New'}
         </span>
-      </div>
+      </div> */}
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {stats.map(([label, value]) => (
-          <div key={label} className="rounded-lg border border-slate-200 bg-white px-4 py-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-950">{value}</p>
-          </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        {stats.map((item) => (
+          <StatCard key={item.label} label={item.label} value={item.value} variant={item.variant} icon={item.icon} />
         ))}
       </div>
 
@@ -103,16 +193,26 @@ export default function PaymentMethods() {
           </div>
           <div className="divide-y divide-slate-100">
             {items.map((item) => (
-              <div key={item.id} className="grid gap-4 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+              <div key={item.id} className="grid gap-4 px-5 py-4 lg:grid-cols-[72px_minmax(0,1fr)_auto] lg:items-center">
+                <MethodLogoPreview item={item} />
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${item.is_active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
-                      {item.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                    {item.requires_proof ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">Proof required</span> : null}
+                  <h3 className="truncate text-md font-bold text-blue-700">{item.label}</h3>
+                  {/* <p className="mt-1 text-xs font-medium uppercase tracking-[0.14em] text-slate-400">{item.code}</p> */}
+                  <div className="mt-1 grid gap-1 text-sm text-slate-600 sm:grid-cols-2">
+                    <p className="truncate">
+                      <span className="font-medium text-slate-800">Number:</span> {item.number || 'Not set'}
+                    </p>
+                    <p className="truncate">
+                      <span className="font-medium text-slate-800">Account:</span> {item.account_name || 'Not set'}
+                    </p>
+                    <p className={item.is_active ? 'text-emerald-700 font-semibold' : 'text-rose-600 font-semibold'}>
+                      <span className="font-medium text-slate-800">Status:</span> {item.is_active ? 'Active' : 'Inactive'}
+                    </p>
+                    <p className={item.requires_proof ? 'text-amber-700' : 'text-slate-500'}>
+                      <span className="font-medium text-slate-800">Proof:</span> {item.requires_proof ? 'Required' : 'Not required'}
+                    </p>
                   </div>
-                  <h3 className="mt-2 truncate text-sm font-semibold text-slate-950">{item.label} <span className="text-slate-400">({item.code})</span></h3>
-                  <p className="mt-1 truncate text-xs text-slate-500">{item.number || 'No number'} / {item.account_name || 'No account name'}</p>
+                  {/* {item.description ? <p className="mt-2 line-clamp-2 text-xs text-slate-500">{item.description}</p> : null} */}
                 </div>
                 <div className="flex items-center gap-2">
                   <button type="button" onClick={() => edit(item)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-50"><FiEdit className="h-4 w-4" /></button>
@@ -134,7 +234,33 @@ export default function PaymentMethods() {
           <Field label="Description BN" value={form.description_bn} onChange={(value) => setField('description_bn', value)} />
           <div className="grid gap-3 sm:grid-cols-2"><Field label="Payment number" value={form.number} onChange={(value) => setField('number', value)} /><Field label="Account name" value={form.account_name} onChange={(value) => setField('account_name', value)} /></div>
           <div className="grid gap-3 sm:grid-cols-2"><Field label="Dial code" value={form.dial_code} onChange={(value) => setField('dial_code', value)} /><Field label="Brand color" value={form.brand_color} onChange={(value) => setField('brand_color', value)} /></div>
-          <Field label="Logo CDN URL" value={form.logo_url} onChange={(value) => setField('logo_url', value)} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Logo CDN URL" value={form.logo_url} onChange={(value) => setField('logo_url', value)} />
+            <label className="block text-sm font-medium text-slate-700">
+              Upload logo image
+              <label className="mt-1 flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700">
+                <FiImage className="h-4 w-4" />
+                <span>{logoFile ? 'Change image' : 'Choose image'}</span>
+                <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
+              </label>
+            </label>
+          </div>
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Logo preview</p>
+            <div className="mt-3 flex items-center gap-3">
+              <MethodLogoPreview item={{ label: form.label, logo_url: preview || form.logo_url, brand_color: form.brand_color }} />
+              {(preview || form.logo_url) ? (
+                <button
+                  type="button"
+                  onClick={clearLogo}
+                  className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-rose-200 hover:text-rose-600"
+                >
+                  <FiX className="h-4 w-4" />
+                  Remove logo
+                </button>
+              ) : null}
+            </div>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <ToggleField label="Requires proof" checked={form.requires_proof} onChange={(value) => setField('requires_proof', value)} />
             <ToggleField label="Active" checked={form.is_active} onChange={(value) => setField('is_active', value)} />
@@ -145,6 +271,54 @@ export default function PaymentMethods() {
           </button>
         </form>
       </div>
+    </div>
+  )
+}
+
+function StatCard({ label, value, variant = 'sky', icon: Icon = FiCreditCard }) {
+  const style = statStyles[variant] || statStyles.sky
+
+  return (
+    <div className={`relative overflow-hidden rounded-lg border p-4 ${style.panel}`}>
+      <span className={`pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-linear-to-br ${style.bubble}`}>
+        <span className="absolute left-5 top-5 h-5 w-5 rounded-full bg-white/70 blur-[1px]" />
+      </span>
+      <div className="relative flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-slate-500">{label}</p>
+          <p className={`mt-2 text-2xl font-semibold ${style.value}`}>{value}</p>
+        </div>
+        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center text-slate-500">
+          <Icon className="h-6 w-6" />
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function MethodLogoPreview({ item }) {
+  const src = item?.logo_url ? resolveImageUrl(item.logo_url, '') : ''
+  const initials = String(item?.label || 'PM').trim().slice(0, 2).toUpperCase()
+
+  if (src) {
+    return (
+      <div className="flex h-[72px] w-[72px] items-center justify-center overflow-hidden border border-slate-200 bg-white p-2 shadow-sm">
+        <img
+          src={src}
+          alt={item?.label || 'Payment method logo'}
+          onError={(event) => handleImageFallback(event, '')}
+          className="h-full w-full object-contain"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="flex h-[72px] w-[72px] items-center justify-center border border-slate-200 text-sm font-semibold text-slate-700 shadow-sm"
+      style={{ backgroundColor: `${item?.brand_color || '#0e6574'}14` }}
+    >
+      {item?.label ? initials : <FiImage className="h-5 w-5 text-slate-400" />}
     </div>
   )
 }

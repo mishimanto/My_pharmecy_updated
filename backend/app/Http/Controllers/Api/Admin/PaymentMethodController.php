@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\PaymentMethod;
 use App\Services\AdminActivityService;
+use App\Services\PaymentMethodLogoService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -21,29 +22,63 @@ class PaymentMethodController extends Controller
         );
     }
 
-    public function store(Request $request, AdminActivityService $activity)
+    public function store(Request $request, AdminActivityService $activity, PaymentMethodLogoService $logos)
     {
-        $method = PaymentMethod::create($this->validated($request));
+        $data = $this->validated($request);
+        unset($data['logo'], $data['logo_data'], $data['remove_logo']);
+
+        if ($request->filled('logo_data')) {
+            $data = [...$data, ...$logos->storeDataUri($request->string('logo_data')->toString())];
+        } elseif ($request->hasFile('logo')) {
+            $data = [...$data, ...$logos->store($request->file('logo'))];
+        }
+
+        $method = PaymentMethod::create($data);
         $activity->log($request, 'create', 'payment_methods', $method->id, null, $method->toArray());
 
         return $this->ok($method, 'Payment method created successfully.', 201);
     }
 
-    public function update(Request $request, int $id, AdminActivityService $activity)
+    public function update(Request $request, int $id, AdminActivityService $activity, PaymentMethodLogoService $logos)
     {
         $method = PaymentMethod::findOrFail($id);
         $old = $method->toArray();
-        $method->update($this->validated($request, $method->id));
+        $data = $this->validated($request, $method->id);
+        unset($data['logo'], $data['logo_data'], $data['remove_logo']);
+
+        if ($request->boolean('remove_logo')) {
+            if ($method->logo_path) {
+                $logos->delete($method->logo_path);
+            }
+            $data['logo_url'] = null;
+            $data['logo_path'] = null;
+        }
+
+        if ($request->filled('logo_data')) {
+            $data = [...$data, ...$logos->storeDataUri($request->string('logo_data')->toString(), $method->logo_path)];
+        } elseif ($request->hasFile('logo')) {
+            $data = [...$data, ...$logos->store($request->file('logo'), $method->logo_path)];
+        } elseif ($request->filled('logo_url') && $request->string('logo_url')->toString() !== ($old['logo_url'] ?? null) && $method->logo_path) {
+            $logos->delete($method->logo_path);
+            $data['logo_path'] = null;
+        }
+
+        $method->update($data);
         $activity->log($request, 'update', 'payment_methods', $method->id, $old, $method->fresh()->toArray());
 
         return $this->ok($method->fresh(), 'Payment method updated successfully.');
     }
 
-    public function destroy(Request $request, int $id, AdminActivityService $activity)
+    public function destroy(Request $request, int $id, AdminActivityService $activity, PaymentMethodLogoService $logos)
     {
         $method = PaymentMethod::findOrFail($id);
         abort_if($method->code === 'COD', 422, 'Cash on delivery cannot be deleted.');
         $old = $method->toArray();
+
+        if ($method->logo_path) {
+            $logos->delete($method->logo_path);
+        }
+
         $method->delete();
         $activity->log($request, 'delete', 'payment_methods', $id, $old);
 
@@ -68,6 +103,9 @@ class PaymentMethodController extends Controller
             'account_name' => ['nullable', 'string', 'max:255'],
             'dial_code' => ['nullable', 'string', 'max:255'],
             'logo_url' => ['nullable', 'url', 'max:2000'],
+            'logo' => ['nullable', 'file'],
+            'logo_data' => ['nullable', 'string'],
+            'remove_logo' => ['nullable', 'boolean'],
             'brand_color' => ['nullable', 'string', 'max:30'],
             'requires_proof' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],

@@ -8,9 +8,10 @@ function envValue(key, fallback = '') {
 }
 
 export function createRealtimeClient(token) {
+  const realtimeEnabled = String(envValue('VITE_REVERB_ENABLED', 'false')).toLowerCase() === 'true'
   const appKey = envValue('VITE_REVERB_APP_KEY')
 
-  if (!appKey || !token) {
+  if (!realtimeEnabled || !appKey || !token) {
     return null
   }
 

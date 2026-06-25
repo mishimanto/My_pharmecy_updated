@@ -139,7 +139,7 @@ class ReportController extends Controller
 
     public function payments(Request $request)
     {
-        $payments = $this->dateRange(DB::table('payments'), $request, 'created_at');
+        $payments = $this->dateRange(DB::table('payments'), $request, 'payments.created_at');
         $paidPayments = (clone $payments)->where('payment_status', 'paid');
 
         return $this->report([
@@ -169,8 +169,8 @@ class ReportController extends Controller
 
     public function prescriptions(Request $request)
     {
-        $prescriptions = $this->dateRange(DB::table('prescriptions'), $request, 'created_at');
-        $reviews = $this->dateRange(DB::table('prescription_reviews'), $request, 'reviewed_at');
+        $prescriptions = $this->dateRange(DB::table('prescriptions'), $request, 'prescriptions.created_at');
+        $reviews = $this->dateRange(DB::table('prescription_reviews'), $request, 'prescription_reviews.reviewed_at');
 
         return $this->report([
             'Total Prescriptions' => (clone $prescriptions)->count(),
@@ -205,7 +205,7 @@ class ReportController extends Controller
 
     public function deliveries(Request $request)
     {
-        $deliveries = $this->dateRange(DB::table('deliveries'), $request, 'created_at');
+        $deliveries = $this->dateRange(DB::table('deliveries'), $request, 'deliveries.created_at');
 
         return $this->report([
             'Total Deliveries' => (clone $deliveries)->count(),
@@ -240,8 +240,8 @@ class ReportController extends Controller
 
     public function refunds(Request $request)
     {
-        $refunds = $this->dateRange(DB::table('refunds'), $request, 'created_at');
-        $returns = $this->dateRange(DB::table('return_requests'), $request, 'created_at');
+        $refunds = $this->dateRange(DB::table('refunds'), $request, 'refunds.created_at');
+        $returns = $this->dateRange(DB::table('return_requests'), $request, 'return_requests.created_at');
 
         return $this->report([
             'Total Refunds' => (clone $refunds)->count(),
