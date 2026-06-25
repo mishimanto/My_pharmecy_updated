@@ -17,6 +17,7 @@ class CheckoutService
         private InventoryService $inventory,
         private OrderCommunicationService $communication,
         private CouponService $coupons,
+        private NotificationService $notifications,
     ) {}
 
     public function checkout(
@@ -135,6 +136,18 @@ class CheckoutService
             }
 
             $this->coupons->markUsed($pricing['coupon'] ?? null);
+
+            $this->notifications->create([
+                'notification_type' => 'new_order',
+                'title' => 'Order received',
+                'message' => "Order {$order->order_number} is waiting for review.",
+                'metadata' => [
+                    'resource' => 'orders',
+                    'resource_id' => $order->id,
+                    'link' => "/admin/orders/{$order->id}",
+                    'order_number' => $order->order_number,
+                ],
+            ]);
 
             $this->communication->notify(
                 $order,

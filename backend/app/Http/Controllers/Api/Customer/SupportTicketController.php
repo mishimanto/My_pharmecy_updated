@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\SupportTicket;
+use App\Services\NotificationService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +26,7 @@ class SupportTicketController extends Controller
         );
     }
 
-    public function store(Request $request)
+    public function store(Request $request, NotificationService $notifications)
     {
         $data = $request->validate([
             'order_id' => ['nullable', 'string', 'max:255'],
@@ -36,7 +37,7 @@ class SupportTicketController extends Controller
 
         $orderId = $this->resolveCustomerOrderId($request, $data['order_id'] ?? null);
 
-        return DB::transaction(function () use ($request, $data, $orderId) {
+        return DB::transaction(function () use ($request, $data, $orderId, $notifications) {
             $ticket = $request->user()->supportTickets()->create([
                 'order_id' => $orderId,
                 'subject' => $data['subject'],
@@ -52,6 +53,18 @@ class SupportTicketController extends Controller
                 ]);
             }
 
+            $notifications->create([
+                'notification_type' => 'new_support_ticket',
+                'title' => 'Support ticket received',
+                'message' => "{$request->user()->full_name} opened a support ticket: {$ticket->subject}.",
+                'metadata' => [
+                    'resource' => 'support',
+                    'resource_id' => $ticket->id,
+                    'link' => "/admin/support/{$ticket->id}",
+                    'ticket_id' => $ticket->id,
+                ],
+            ]);
+
             return $this->ok($ticket->load($this->relations()), 'সাপোর্ট টিকিট তৈরি হয়েছে।', 201);
         });
     }
@@ -64,7 +77,7 @@ class SupportTicketController extends Controller
         );
     }
 
-    public function reply(Request $request, string $reference)
+    public function reply(Request $request, string $reference, NotificationService $notifications)
     {
         $data = $request->validate([
             'message' => ['required', 'string'],
@@ -84,6 +97,18 @@ class SupportTicketController extends Controller
         if ($ticket->status === 'open') {
             $ticket->update(['status' => 'in_progress']);
         }
+
+        $notifications->create([
+            'notification_type' => 'support_customer_reply',
+            'title' => 'Customer replied to support',
+            'message' => "{$request->user()->full_name} replied to ticket: {$ticket->subject}.",
+            'metadata' => [
+                'resource' => 'support',
+                'resource_id' => $ticket->id,
+                'link' => "/admin/support/{$ticket->id}",
+                'ticket_id' => $ticket->id,
+            ],
+        ]);
 
         return $this->ok($ticket->fresh()->load($this->relations()), 'রিপ্লাই পাঠানো হয়েছে।');
     }

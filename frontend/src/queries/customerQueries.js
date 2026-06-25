@@ -215,7 +215,7 @@ export function useOrderTrackingQuery(id, options = {}) {
 export function useNotificationsQuery(options = {}) {
   return useQuery({
     queryKey: customerQueryKeys.notifications,
-    queryFn: () => notificationApi.list().then((response) => response.data.data || []),
+    queryFn: () => notificationApi.list().then((response) => response.data.data?.data || response.data.data || []),
     ...options,
   })
 }

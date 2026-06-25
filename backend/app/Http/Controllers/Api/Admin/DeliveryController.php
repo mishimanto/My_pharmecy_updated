@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Delivery;
 use App\Models\Order;
 use App\Services\AdminActivityService;
+use App\Services\NotificationService;
 use App\Services\OrderStatusService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class DeliveryController extends Controller
@@ -80,7 +80,7 @@ class DeliveryController extends Controller
         return $this->ok($delivery->load('order.user', 'rider'), 'Delivery created successfully.', 201);
     }
 
-    public function status(Request $request, int $id, AdminActivityService $activity, OrderStatusService $orders)
+    public function status(Request $request, int $id, AdminActivityService $activity, OrderStatusService $orders, NotificationService $notifications)
     {
         $data = $request->validate([
             'delivery_status' => ['required', 'in:pending,delivered,failed,returned'],
@@ -126,13 +126,11 @@ class DeliveryController extends Controller
             $orders->updateByStaff($delivery->order, 'delivered', $request->user(), null, $request->ip());
         }
 
-        DB::table('notifications')->insert([
+        $notifications->create([
             'user_id' => $delivery->order->user_id,
             'notification_type' => 'delivery_update',
             'title' => 'Delivery update',
             'message' => "Your {$delivery->order->order_number} delivery status is now {$data['delivery_status']}.",
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
 
         return $this->ok($delivery->fresh()->load('order.user', 'rider'), 'Delivery status updated successfully.');

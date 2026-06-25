@@ -3,9 +3,9 @@
 namespace App\Jobs;
 
 use App\Models\Order;
+use App\Services\NotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -22,7 +22,7 @@ class SendOrderCommunicationJob implements ShouldQueue
         public array $emailLines = [],
     ) {}
 
-    public function handle(): void
+    public function handle(NotificationService $notifications): void
     {
         $order = Order::query()->with('user')->find($this->orderId);
         if (! $order) {
@@ -30,13 +30,11 @@ class SendOrderCommunicationJob implements ShouldQueue
         }
 
         if ($order->user_id) {
-            DB::table('notifications')->insert([
+            $notifications->create([
                 'user_id' => $order->user_id,
                 'notification_type' => $this->notificationType,
                 'title' => $this->title,
                 'message' => $this->message,
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
         }
 

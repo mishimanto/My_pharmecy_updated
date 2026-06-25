@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Staff;
 use App\Models\SupportTicket;
 use App\Services\AdminActivityService;
+use App\Services\NotificationService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class SupportManagementController extends Controller
 {
@@ -93,7 +93,7 @@ class SupportManagementController extends Controller
         return $this->ok($ticket->fresh()->load($this->relations()), 'সাপোর্ট টিকিট স্ট্যাটাস আপডেট হয়েছে।');
     }
 
-    public function reply(Request $request, int $id, AdminActivityService $activity)
+    public function reply(Request $request, int $id, AdminActivityService $activity, NotificationService $notifications)
     {
         $data = $request->validate([
             'message' => ['required', 'string'],
@@ -116,13 +116,11 @@ class SupportManagementController extends Controller
             $ticket->update(['status' => 'in_progress']);
         }
 
-        DB::table('notifications')->insert([
+        $notifications->create([
             'user_id' => $ticket->user_id,
             'notification_type' => 'support_reply',
             'title' => 'সাপোর্ট থেকে উত্তর এসেছে',
             'message' => "আপনার '{$ticket->subject}' টিকিটে নতুন উত্তর দেওয়া হয়েছে।",
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
 
         $activity->log($request, 'reply', 'support_tickets', $ticket->id, null, $reply->toArray());

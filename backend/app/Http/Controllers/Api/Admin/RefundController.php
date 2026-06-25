@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Refund;
 use App\Services\AdminActivityService;
+use App\Services\NotificationService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class RefundController extends Controller
 {
@@ -51,7 +51,7 @@ class RefundController extends Controller
         );
     }
 
-    public function status(Request $request, int $id, AdminActivityService $activity)
+    public function status(Request $request, int $id, AdminActivityService $activity, NotificationService $notifications)
     {
         $data = $request->validate([
             'status' => ['required', 'in:pending,processing,completed,rejected'],
@@ -73,13 +73,11 @@ class RefundController extends Controller
         }
 
         $activity->log($request, 'status_update', 'refunds', $refund->id, $old, $refund->fresh()->toArray());
-        DB::table('notifications')->insert([
+        $notifications->create([
             'user_id' => $refund->returnRequest->user_id,
             'notification_type' => 'refund_update',
             'title' => 'রিফান্ড আপডেট',
             'message' => "আপনার রিফান্ড স্ট্যাটাস {$data['status']}।",
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
 
         return $this->ok(

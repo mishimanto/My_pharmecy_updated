@@ -3,9 +3,9 @@
 namespace App\Jobs;
 
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -24,19 +24,17 @@ class SendUserAccountCommunicationJob implements ShouldQueue
         public array $emailLines = [],
     ) {}
 
-    public function handle(): void
+    public function handle(NotificationService $notifications): void
     {
         if ($this->userId) {
             $user = User::query()->find($this->userId);
 
             if ($user) {
-                DB::table('notifications')->insert([
+                $notifications->create([
                     'user_id' => $user->id,
                     'notification_type' => $this->notificationType,
                     'title' => $this->title,
                     'message' => $this->message,
-                    'created_at' => now(),
-                    'updated_at' => now(),
                 ]);
             }
         }

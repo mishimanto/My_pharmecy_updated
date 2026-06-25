@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import {
   FiActivity,
   FiAlertCircle,
+  FiBell,
   FiBox,
   FiCreditCard,
   FiFileText,
@@ -98,6 +99,7 @@ const navigationGroups = [
       { to: '/admin/roles', label: 'Roles & Permissions', permission: 'role.manage', icon: FiShield },
       { to: '/admin/reports', label: 'Reports', permission: 'report.view', icon: FiPieChart },
       { to: '/admin/activity-logs', label: 'Activity Logs', permission: 'activity-log.view', icon: FiActivity },
+      { to: '/admin/notifications', label: 'Notifications', permission: null, icon: FiBell },
     ],
   },
 ]

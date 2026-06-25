@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Prescription;
+use App\Services\NotificationService;
 use App\Services\PrescriptionFileService;
 use App\Services\ShopperContextService;
 use App\Support\ApiResponse;
@@ -27,7 +28,7 @@ class PrescriptionController extends Controller
         return $this->ok($prescriptions, 'Prescriptions loaded successfully.');
     }
 
-    public function store(Request $request, ShopperContextService $shopper, PrescriptionFileService $files)
+    public function store(Request $request, ShopperContextService $shopper, PrescriptionFileService $files, NotificationService $notifications)
     {
         [$user, $guestToken] = $shopper->requireGuestOrUser($request);
 
@@ -56,6 +57,18 @@ class PrescriptionController extends Controller
             'notes' => $data['notes'] ?? null,
             'status' => 'pending',
             'uploaded_at' => now(),
+        ]);
+
+        $notifications->create([
+            'notification_type' => 'new_prescription',
+            'title' => 'New prescription uploaded',
+            'message' => ($user?->full_name ?: 'Guest customer').' uploaded a prescription for review.',
+            'metadata' => [
+                'resource' => 'prescriptions',
+                'resource_id' => $prescription->id,
+                'link' => "/admin/prescriptions/{$prescription->id}",
+                'prescription_id' => $prescription->id,
+            ],
         ]);
 
         return $this->ok($prescription->load('reviews.reviewer:id,full_name'), 'Prescription uploaded successfully.', 201);

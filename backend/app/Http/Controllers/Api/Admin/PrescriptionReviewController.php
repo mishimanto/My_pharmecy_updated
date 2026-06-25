@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Prescription;
 use App\Models\PrescriptionReview;
 use App\Services\AdminActivityService;
+use App\Services\NotificationService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -45,7 +46,7 @@ class PrescriptionReviewController extends Controller
         return $this->ok($prescription, 'Prescription details loaded successfully.');
     }
 
-    public function review(Request $request, int $id, AdminActivityService $activity)
+    public function review(Request $request, int $id, AdminActivityService $activity, NotificationService $notifications)
     {
         $data = $request->validate([
             'review_status' => ['required', Rule::in(['approved', 'rejected', 'need_clarification'])],
@@ -59,7 +60,7 @@ class PrescriptionReviewController extends Controller
         $prescription = Prescription::findOrFail($id);
         $old = $prescription->toArray();
 
-        return DB::transaction(function () use ($request, $activity, $data, $prescription, $old) {
+        return DB::transaction(function () use ($request, $activity, $data, $prescription, $old, $notifications) {
             $review = PrescriptionReview::create([
                 'prescription_id' => $prescription->id,
                 'reviewed_by' => $request->user()->id,
@@ -70,7 +71,7 @@ class PrescriptionReviewController extends Controller
 
             $prescription->update(['status' => $data['review_status']]);
 
-            DB::table('notifications')->insert([
+            $notifications->create([
                 'user_id' => $prescription->user_id,
                 'notification_type' => 'prescription_review',
                 'title' => 'প্রেসক্রিপশন রিভিউ আপডেট',
@@ -81,8 +82,6 @@ class PrescriptionReviewController extends Controller
                 },
                 'channel' => 'in_app',
                 'status' => 'unread',
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
             $activity->log($request, 'review', 'prescription', $prescription->id, $old, [

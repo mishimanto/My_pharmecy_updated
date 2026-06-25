@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ReturnRequest;
 use App\Services\AdminActivityService;
+use App\Services\NotificationService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -52,7 +53,7 @@ class ReturnManagementController extends Controller
         );
     }
 
-    public function status(Request $request, int $id, AdminActivityService $activity)
+    public function status(Request $request, int $id, AdminActivityService $activity, NotificationService $notifications)
     {
         $data = $request->validate([
             'status' => ['required', 'in:requested,approved,rejected,picked_up,refunded,closed'],
@@ -68,7 +69,7 @@ class ReturnManagementController extends Controller
         ]);
 
         $activity->log($request, 'status_update', 'return_requests', $return->id, $old, $return->fresh()->toArray());
-        $this->notify($return->fresh(), 'রিটার্ন স্ট্যাটাস আপডেট', "আপনার রিটার্ন অনুরোধ এখন {$data['status']}।");
+        $this->notify($notifications, $return->fresh(), 'রিটার্ন স্ট্যাটাস আপডেট', "আপনার রিটার্ন অনুরোধ এখন {$data['status']}।");
 
         return $this->ok(
             $return->fresh()->load('user', 'order', 'orderItem.product', 'approvedBy', 'refund'),
@@ -76,7 +77,7 @@ class ReturnManagementController extends Controller
         );
     }
 
-    public function refund(Request $request, int $id, AdminActivityService $activity)
+    public function refund(Request $request, int $id, AdminActivityService $activity, NotificationService $notifications)
     {
         $data = $request->validate([
             'refund_amount' => ['required', 'numeric', 'min:0'],
@@ -92,7 +93,7 @@ class ReturnManagementController extends Controller
             'রিফান্ড করার আগে রিটার্ন অনুমোদন করতে হবে।'
         );
 
-        return DB::transaction(function () use ($request, $data, $return, $activity) {
+        return DB::transaction(function () use ($request, $data, $return, $activity, $notifications) {
             $refund = $return->refund()->updateOrCreate(
                 ['return_id' => $return->id],
                 [
@@ -111,7 +112,7 @@ class ReturnManagementController extends Controller
             }
 
             $activity->log($request, 'refund', 'refunds', $refund->id, null, $refund->fresh()->toArray());
-            $this->notify($return->fresh(), 'রিফান্ড আপডেট', "আপনার রিফান্ড স্ট্যাটাস {$refund->status}।");
+            $this->notify($notifications, $return->fresh(), 'রিফান্ড আপডেট', "আপনার রিফান্ড স্ট্যাটাস {$refund->status}।");
 
             return $this->ok(
                 $return->fresh()->load('user', 'order.payment', 'orderItem.product', 'approvedBy', 'refund'),
@@ -120,15 +121,13 @@ class ReturnManagementController extends Controller
         });
     }
 
-    private function notify(ReturnRequest $return, string $title, string $message): void
+    private function notify(NotificationService $notifications, ReturnRequest $return, string $title, string $message): void
     {
-        DB::table('notifications')->insert([
+        $notifications->create([
             'user_id' => $return->user_id,
             'notification_type' => 'return_status_update',
             'title' => $title,
             'message' => $message,
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
     }
 }

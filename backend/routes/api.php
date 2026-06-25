@@ -51,6 +51,8 @@ use App\Http\Controllers\Api\Customer\ProductBrowseController;
 use App\Http\Controllers\Api\Customer\ReturnRequestController;
 use App\Http\Controllers\Api\Customer\SupportTicketController;
 use App\Http\Controllers\Api\SiteSettingsController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
@@ -83,6 +85,10 @@ Route::get('/banner-images', [BannerImageController::class, 'index']);
 Route::get('/offers', [OfferController::class, 'index']);
 Route::get('/marketing-popup', [MarketingPopupController::class, 'show']);
 Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
+
+Route::post('/broadcasting/auth', function (Request $request) {
+    return Broadcast::auth($request);
+})->middleware('auth:sanctum');
 
 Route::prefix('customer')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);

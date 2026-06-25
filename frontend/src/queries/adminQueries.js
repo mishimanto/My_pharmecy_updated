@@ -12,6 +12,7 @@ export const adminQueryKeys = {
   resourceList: (resource, params = {}) => ['admin', resource, 'list', params],
   resourceDetail: (resource, id) => ['admin', resource, 'detail', String(id || '')],
   report: (type, params = {}) => ['admin', 'reports', type, params],
+  notifications: (params = {}) => ['admin', 'notifications', params],
   permissions: ['admin', 'permissions'],
   userHistory: (id, type) => ['admin', 'users', String(id || ''), type],
 }

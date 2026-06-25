@@ -16,7 +16,9 @@ class NotificationManagementController extends Controller
         return $this->ok(
             Notification::query()
                 ->with('user', 'staff')
+                ->whereNull('user_id')
                 ->where(fn ($query) => $query->whereNull('staff_id')->orWhere('staff_id', $request->user()->id))
+                ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')->toString()))
                 ->latest()
                 ->paginate($request->integer('per_page', 15)),
             'নোটিফিকেশন তালিকা পাওয়া গেছে।'
@@ -26,6 +28,7 @@ class NotificationManagementController extends Controller
     public function read(Request $request, int $id)
     {
         $notification = Notification::query()
+            ->whereNull('user_id')
             ->where(fn ($query) => $query->whereNull('staff_id')->orWhere('staff_id', $request->user()->id))
             ->findOrFail($id);
         $notification->update(['status' => 'read', 'read_at' => now()]);

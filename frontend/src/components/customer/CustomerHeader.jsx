@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
 import {
   FiChevronDown,
   FiFileText,
@@ -19,17 +21,19 @@ import OptimizedImage from '../common/OptimizedImage'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
-import { getOfferPricingSignature, useOffersQuery } from '../../queries/customerQueries'
+import { customerQueryKeys, getOfferPricingSignature, useOffersQuery } from '../../queries/customerQueries'
 import { getCategoryName } from '../../utils/categoryNames'
 import { getProductThumbnail, handleImageFallback } from '../../utils/imageUrl'
 import { getLocalizedOffer, getOfferTimeLeft } from '../../utils/offerDisplay'
 import { getProductPath, getProductRouteKey } from '../../utils/productRouting'
+import { useRealtimeNotifications } from '../../hooks/useRealtimeNotifications'
 import CustomerLogo from './CustomerLogo'
 
 export default function CustomerHeader() {
   const { customer, loading: authLoading, logout } = useCustomerAuth()
   const { cartCount, wishlistCount, refreshCart } = useStorefront()
   const { language, setLanguage, isBangla } = useLanguage()
+  const queryClient = useQueryClient()
   const navigate = useNavigate()
   const location = useLocation()
   const searchContainerRef = useRef(null)
@@ -54,6 +58,29 @@ export default function CustomerHeader() {
       : []
   const visibleSearchResults = searchResults.length > 0 ? searchResults : cachedSearchResults
   const isAuthPending = authLoading && !customer
+  const customerToken = typeof window !== 'undefined' ? window.localStorage.getItem('customer_token') : null
+
+  const handleRealtimeNotification = useCallback(
+    (notification) => {
+      queryClient.invalidateQueries({ queryKey: customerQueryKeys.notifications })
+      queryClient.invalidateQueries({ queryKey: customerQueryKeys.orders })
+      queryClient.invalidateQueries({ queryKey: customerQueryKeys.returns })
+      queryClient.invalidateQueries({ queryKey: customerQueryKeys.supportTickets })
+
+      if (notification?.title) {
+        toast.success(notification.title)
+      }
+    },
+    [queryClient],
+  )
+
+  useRealtimeNotifications({
+    type: 'customer',
+    id: customer?.id,
+    token: customerToken,
+    enabled: Boolean(customer?.id && customerToken),
+    onNotification: handleRealtimeNotification,
+  })
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {

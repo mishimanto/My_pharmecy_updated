@@ -6,7 +6,10 @@ class Notification extends PharmacyModel
 {
     protected function casts(): array
     {
-        return ['read_at' => 'datetime'];
+        return [
+            'metadata' => 'array',
+            'read_at' => 'datetime',
+        ];
     }
 
     public function user() { return $this->belongsTo(User::class); }

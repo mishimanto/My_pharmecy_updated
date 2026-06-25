@@ -1,33 +1,37 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { notificationApi } from '../../api/notificationApi'
 import PageHeader from '../../components/common/PageHeader'
+import { customerQueryKeys, useNotificationsQuery } from '../../queries/customerQueries'
 import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
 import { date } from '../../utils/formatters'
 
 const NOTIFICATIONS_CACHE_KEY = 'notifications_list'
 
 export default function Notifications() {
-  const [notifications, setNotifications] = useState(() => readCustomerCache(NOTIFICATIONS_CACHE_KEY, []))
-  const [loading, setLoading] = useState(() => readCustomerCache(NOTIFICATIONS_CACHE_KEY, null) === null)
+  const queryClient = useQueryClient()
+  const cachedNotifications = readCustomerCache(NOTIFICATIONS_CACHE_KEY, [])
+  const notificationsQuery = useNotificationsQuery({
+    initialData: cachedNotifications.length ? cachedNotifications : undefined,
+  })
+  const notifications = useMemo(() => notificationsQuery.data || [], [notificationsQuery.data])
+  const loading = notificationsQuery.isLoading
 
-  const load = () => {
-    notificationApi.list()
-      .then((res) => {
-        const nextNotifications = res.data.data?.data || []
-        setNotifications(nextNotifications)
-        writeCustomerCache(NOTIFICATIONS_CACHE_KEY, nextNotifications)
-      })
-      .catch(() => toast.error('Notifications could not be loaded.'))
-      .finally(() => setLoading(false))
-  }
+  useEffect(() => {
+    if (notificationsQuery.isError) {
+      toast.error('Notifications could not be loaded.')
+    }
+  }, [notificationsQuery.isError])
 
-  useEffect(load, [])
+  useEffect(() => {
+    writeCustomerCache(NOTIFICATIONS_CACHE_KEY, notifications)
+  }, [notifications])
 
   const markRead = async (id) => {
     try {
       await notificationApi.read(id)
-      setNotifications((current) => {
+      queryClient.setQueryData(customerQueryKeys.notifications, (current = []) => {
         const nextNotifications = current.map((item) => item.id === id ? { ...item, status: 'read', read_at: new Date().toISOString() } : item)
         writeCustomerCache(NOTIFICATIONS_CACHE_KEY, nextNotifications)
         return nextNotifications
