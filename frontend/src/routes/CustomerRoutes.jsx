@@ -5,7 +5,7 @@ import CustomerLoader from '../components/customer/CustomerLoader'
 import CustomerLayout from '../layouts/CustomerLayout'
 import ProtectedCustomerRoute from './ProtectedCustomerRoute'
 
-const ROUTE_LOADER_MIN_DURATION = 1500
+const ROUTE_LOADER_MIN_DURATION = 2000
 
 function lazyWithMinimumDelay(importer, delay = ROUTE_LOADER_MIN_DURATION) {
   return lazy(() =>
