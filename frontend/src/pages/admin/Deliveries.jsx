@@ -1,8 +1,12 @@
-import { useEffect, useState } from 'react'
+/* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { FiAlertCircle, FiCheckCircle, FiClock, FiTruck } from 'react-icons/fi'
 import { adminApi } from '../../api/adminApi'
+import AdminFilterBar from '../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
+import AdminStatCard from '../../components/admin/AdminStatCard'
 import EmptyState from '../../components/common/EmptyState'
 // import PageHeader from '../../components/common/PageHeader'
 import { date } from '../../utils/formatters'
@@ -60,6 +64,19 @@ export default function Deliveries() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(!initialCache)
   const [updating, setUpdating] = useState(false)
+  const statItems = useMemo(() => {
+    const totalDeliveries = meta?.total ?? deliveries.length
+    const pendingDeliveries = deliveries.filter((delivery) => delivery.delivery_status === 'pending').length
+    const deliveredDeliveries = deliveries.filter((delivery) => delivery.delivery_status === 'delivered').length
+    const issueDeliveries = deliveries.filter((delivery) => ['failed', 'returned'].includes(delivery.delivery_status)).length
+
+    return [
+      { label: 'Total Deliveries', value: totalDeliveries, variant: 'sky', icon: FiTruck },
+      { label: 'Pending Deliveries', value: pendingDeliveries, variant: 'amber', icon: FiClock },
+      { label: 'Delivered', value: deliveredDeliveries, variant: 'emerald', icon: FiCheckCircle },
+      { label: 'Failed / Returned', value: issueDeliveries, variant: 'rose', icon: FiAlertCircle },
+    ]
+  }, [deliveries, meta?.total])
 
   useEffect(() => {
     let active = true
@@ -109,25 +126,30 @@ export default function Deliveries() {
   const updateParams = (nextParams) => {
     setParams(nextParams)
   }
+  const statusFilterOptions = statuses.map((status) => ({
+    value: status,
+    label: status ? getDeliveryStatusLabel(status) : 'All Statuses',
+  }))
 
   return (
     <>
       {/* <PageHeader title="Deliveries" subtitle="Manage direct-store delivery records and statuses." /> */}
-      <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_220px]">
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Tracking number or order number"
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-        />
-        <select
-          value={params.status}
-          onChange={(event) => updateParams({ ...params, status: event.target.value, page: 1 })}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-        >
-          {statuses.map((status) => <option key={status || 'all'} value={status}>{status ? getDeliveryStatusLabel(status) : 'All Statuses'}</option>)}
-        </select>
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {statItems.map((item) => (
+          <AdminStatCard key={item.label} label={item.label} value={item.value} variant={item.variant} icon={item.icon} />
+        ))}
       </div>
+      <AdminFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Tracking number or order number"
+        filters={[{
+          key: 'status',
+          value: params.status,
+          onChange: (value) => updateParams({ ...params, status: value, page: 1 }),
+          options: statusFilterOptions,
+        }]}
+      />
 
       {updating ? <AdminLoadingState className="justify-start pb-3" /> : null}
       {loading && deliveries.length === 0 ? <AdminLoadingState className="py-8" /> : null}

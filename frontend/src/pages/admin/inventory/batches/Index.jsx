@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+/* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FiEdit, FiPlus, FiPower, FiTrash2 } from 'react-icons/fi'
+import { FiAlertCircle, FiArchive, FiCheckCircle, FiEdit, FiPackage, FiPlus, FiPower, FiTrash2 } from 'react-icons/fi'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import EmptyState from '../../../../components/common/EmptyState'
+import AdminFilterBar from '../../../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../../../components/admin/AdminLoadingState'
+import AdminStatCard from '../../../../components/admin/AdminStatCard'
 import { adminApi } from '../../../../api/adminApi'
 import { productApi } from '../../../../api/productApi'
 import { date, money } from '../../../../utils/formatters'
@@ -44,6 +47,19 @@ export default function InventoryBatchesIndex() {
   const [meta, setMeta] = useState(initialCache?.meta || null)
   const [loading, setLoading] = useState(!initialCache)
   const [updating, setUpdating] = useState(false)
+  const statItems = useMemo(() => {
+    const totalBatches = meta?.total ?? batches.length
+    const activeBatches = batches.filter((batch) => batch.status === 'active').length
+    const availableBatches = batches.filter((batch) => Number(batch.available_stock || 0) > 0).length
+    const outOfStockBatches = batches.filter((batch) => Number(batch.available_stock || 0) <= 0).length
+
+    return [
+      { label: 'Total Batches', value: totalBatches, variant: 'sky', icon: FiArchive },
+      { label: 'Active Batches', value: activeBatches, variant: 'emerald', icon: FiCheckCircle },
+      { label: 'Available Stock', value: availableBatches, variant: 'amber', icon: FiPackage },
+      { label: 'Out of Stock', value: outOfStockBatches, variant: 'rose', icon: FiAlertCircle },
+    ]
+  }, [batches, meta?.total])
 
   useEffect(() => {
     adminApi.listFresh('products', { per_page: 500 }).then(({ data }) => setProducts(data.data?.data || [])).catch(() => {})
@@ -100,6 +116,44 @@ export default function InventoryBatchesIndex() {
   }
 
   const hasActiveFilters = Boolean(search || params.status || params.product_id || params.supplier_id || params.stock_state)
+  const filterOptions = [
+    {
+      key: 'status',
+      value: params.status,
+      onChange: (value) => updateParams({ ...params, status: value, page: 1 }),
+      options: statuses.map((status) => ({
+        value: status,
+        label: status ? status[0].toUpperCase() + status.slice(1) : 'All Statuses',
+      })),
+    },
+    {
+      key: 'product_id',
+      value: params.product_id,
+      onChange: (value) => updateParams({ ...params, product_id: value, page: 1 }),
+      options: [
+        { value: '', label: 'All Products' },
+        ...products.map((item) => ({ value: String(item.id), label: item.product_name })),
+      ],
+    },
+    {
+      key: 'supplier_id',
+      value: params.supplier_id,
+      onChange: (value) => updateParams({ ...params, supplier_id: value, page: 1 }),
+      options: [
+        { value: '', label: 'All Suppliers' },
+        ...suppliers.map((item) => ({ value: String(item.id), label: item.supplier_name })),
+      ],
+    },
+    {
+      key: 'stock_state',
+      value: params.stock_state,
+      onChange: (value) => updateParams({ ...params, stock_state: value, page: 1 }),
+      options: stockStates.map((state) => ({
+        value: state,
+        label: state === 'in_stock' ? 'In Stock' : state === 'reserved' ? 'Reserved Stock' : state === 'out_of_stock' ? 'Out of Stock' : 'All Stock',
+      })),
+    },
+  ]
 
   const clearFilters = () => {
     setSearch('')
@@ -138,51 +192,33 @@ export default function InventoryBatchesIndex() {
 
   return (
     <>
-      <div className="mb-4 space-y-3">
-        <div className="grid gap-3 sm:grid-cols-[1fr_190px]">
-          <input className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" placeholder="Search by batch, product, supplier, or status" value={search} onChange={(event) => setSearch(event.target.value)} />
-          <Link to="/admin/inventory/batches/create" className="inline-flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700">
-            <FiPlus className="h-4 w-4" />
-            <span>Add Batch</span>
-          </Link>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(150px,0.9fr)_minmax(170px,1fr)_minmax(170px,1fr)_minmax(170px,1fr)_160px]">
-          <select value={params.status} onChange={(event) => updateParams({ ...params, status: event.target.value, page: 1 })} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100">
-            {statuses.map((status) => <option key={status || 'all'} value={status}>{status ? status[0].toUpperCase() + status.slice(1) : 'All Statuses'}</option>)}
-          </select>
-          <select value={params.product_id} onChange={(event) => updateParams({ ...params, product_id: event.target.value, page: 1 })} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100">
-            <option value="">All Products</option>
-            {products.map((item) => <option key={item.id} value={item.id}>{item.product_name}</option>)}
-          </select>
-          <select value={params.supplier_id} onChange={(event) => updateParams({ ...params, supplier_id: event.target.value, page: 1 })} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100">
-            <option value="">All Suppliers</option>
-            {suppliers.map((item) => <option key={item.id} value={item.id}>{item.supplier_name}</option>)}
-          </select>
-          <select value={params.stock_state} onChange={(event) => updateParams({ ...params, stock_state: event.target.value, page: 1 })} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100">
-            {stockStates.map((state) => (
-              <option key={state || 'all'} value={state}>
-                {state === 'in_stock' ? 'In Stock' : state === 'reserved' ? 'Reserved Stock' : state === 'out_of_stock' ? 'Out of Stock' : 'All Stock'}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={clearFilters}
-            disabled={!hasActiveFilters}
-            className="inline-flex items-center justify-center rounded-md border border-slate-500 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-gray-600 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Clear Filters
-          </button>
-        </div>
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {statItems.map((item) => (
+          <AdminStatCard key={item.label} label={item.label} value={item.value} variant={item.variant} icon={item.icon} />
+        ))}
       </div>
+
+      <AdminFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by batch, product, supplier, or status"
+        filters={filterOptions}
+        onClear={clearFilters}
+        hasActiveFilters={hasActiveFilters}
+      >
+        <Link to="/admin/inventory/batches/create" className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700">
+          <FiPlus className="h-4 w-4" />
+          <span>Add Batch</span>
+        </Link>
+      </AdminFilterBar>
 
       {updating ? <AdminLoadingState className="justify-start pb-3" /> : null}
       {loading && batches.length === 0 ? <AdminLoadingState className="py-8" /> : null}
       {!loading && batches.length === 0 ? <EmptyState title="No batches found" text="Try another search term or adjust the filters." /> : null}
 
       {batches.length > 0 ? (
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <table className="min-w-[1180px] divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-slate-600">
               <tr>
                 <th className="px-4 py-3">Batch</th>

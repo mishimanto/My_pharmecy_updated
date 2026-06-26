@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
+import { FiCheckCircle, FiPercent, FiShoppingBag } from 'react-icons/fi'
 import { adminApi } from '../../../api/adminApi'
+import AdminFilterBar from '../../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../../components/admin/AdminLoadingState'
+import AdminStatCard from '../../../components/admin/AdminStatCard'
 import { queryClient } from '../../../lib/queryClient'
 import { customerQueryKeys } from '../../../queries/customerQueries'
 import { toDateTimeLocal } from './dateUtils'
-import { toolCopy } from './marketingConfig'
-import { Field, FormHeader, MarketingList, SaveButton, StatCard, StatusField, ToolHeader, UploadField } from './shared'
+import { Field, FormHeader, MarketingList, SaveButton, StatusField, UploadField } from './shared'
 
 const emptyOffer = {
   label: '',
@@ -34,7 +36,6 @@ const emptyOffer = {
 }
 
 export default function OffersTool() {
-  const tool = toolCopy.offers
   const [items, setItems] = useState([])
   const [form, setForm] = useState(emptyOffer)
   const [editingId, setEditingId] = useState(null)
@@ -46,7 +47,55 @@ export default function OffersTool() {
   const [manufacturers, setManufacturers] = useState([])
   const [products, setProducts] = useState([])
   const [productSearch, setProductSearch] = useState('')
-  const stats = useMemo(() => [['Offers', items.length], ['Active', items.filter((item) => item.status === 'active').length], ['Rules', items.filter((item) => Number(item.discount_value || 0) > 0).length]], [items])
+  const [search, setSearch] = useState('')
+  const [filters, setFilters] = useState({ status: '', applies_to: '' })
+  const stats = useMemo(() => [
+    { label: 'Offers', value: items.length, variant: 'sky', icon: FiShoppingBag },
+    { label: 'Active', value: items.filter((item) => item.status === 'active').length, variant: 'emerald', icon: FiCheckCircle },
+    { label: 'Discount Offers', value: items.filter((item) => Number(item.discount_value || 0) > 0).length, variant: 'amber', icon: FiPercent },
+  ], [items])
+  const filteredItems = useMemo(() => {
+    const query = search.trim().toLowerCase()
+
+    return items.filter((item) => {
+      const matchesSearch = !query || [
+        item.title,
+        item.title_bn,
+        item.label,
+        item.label_bn,
+        item.discount_type,
+      ].filter(Boolean).some((value) => String(value).toLowerCase().includes(query))
+      const matchesStatus = !filters.status || item.status === filters.status
+      const matchesScope = !filters.applies_to || item.applies_to === filters.applies_to
+
+      return matchesSearch && matchesStatus && matchesScope
+    })
+  }, [filters.applies_to, filters.status, items, search])
+  const hasActiveFilters = Boolean(search || filters.status || filters.applies_to)
+  const filterOptions = [
+    {
+      key: 'status',
+      value: filters.status,
+      onChange: (value) => setFilters((current) => ({ ...current, status: value })),
+      options: [
+        { value: '', label: 'All Statuses' },
+        { value: 'active', label: 'Active' },
+        { value: 'inactive', label: 'Inactive' },
+      ],
+    },
+    {
+      key: 'applies_to',
+      value: filters.applies_to,
+      onChange: (value) => setFilters((current) => ({ ...current, applies_to: value })),
+      options: [
+        { value: '', label: 'All Scopes' },
+        { value: 'all', label: 'All products' },
+        { value: 'category', label: 'Category' },
+        { value: 'manufacturer', label: 'Manufacturer' },
+        { value: 'products', label: 'Selected products' },
+      ],
+    },
+  ]
   const selectedProductIds = useMemo(() => parseIds(form.product_ids), [form.product_ids])
   const filteredProducts = useMemo(() => {
     const search = productSearch.trim().toLowerCase()
@@ -106,6 +155,10 @@ export default function OffersTool() {
     setField('product_ids', ids.join(','))
   }
   const reset = () => { setForm(emptyOffer); setEditingId(null); setImageFile(null); setPreview('') }
+  const resetFilters = () => {
+    setSearch('')
+    setFilters({ status: '', applies_to: '' })
+  }
   const refreshStorefrontPricing = () => {
     queryClient.invalidateQueries({ queryKey: customerQueryKeys.offers })
     queryClient.invalidateQueries({ queryKey: ['products'] })
@@ -173,12 +226,23 @@ export default function OffersTool() {
 
   return (
     <div className="space-y-5">
-      <ToolHeader tool={tool} icon={tool.icon} actionLabel={editingId ? 'Editing Offer' : 'Add New'} />
-      <div className="grid gap-4 md:grid-cols-3">{stats.map(([label, value]) => <StatCard key={label} label={label} value={value} />)}</div>
+      <div className="grid gap-4 md:grid-cols-3">{stats.map((item) => <AdminStatCard key={item.label} label={item.label} value={item.value} variant={item.variant} icon={item.icon} />)}</div>
+      <AdminFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by title, label, or discount"
+        filters={filterOptions}
+        onClear={resetFilters}
+        hasActiveFilters={hasActiveFilters}
+        className="mb-0"
+      />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <MarketingList title="Storefront offers" items={items} emptyText="No offers yet." onEdit={edit} onRemove={remove} renderMeta={offerMeta} renderTitle={(item) => item.title} image />
-        <form onSubmit={submit} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <FormHeader title={editingId ? 'Edit offer' : 'Add offer'} editing={Boolean(editingId)} onCancel={reset} />
+        <MarketingList title="Storefront offers" items={filteredItems} emptyText="No offers found." onEdit={edit} onRemove={remove} renderMeta={offerMeta} renderTitle={(item) => item.title} image statusBelowTitle plainStatus />
+        <form onSubmit={submit} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
+            <FormHeader title={editingId ? 'Edit offer' : 'Add offer'} editing={Boolean(editingId)} onCancel={reset} />
+          </div>
+          <div className="space-y-4 p-5">
           <div className="grid gap-3 sm:grid-cols-2"><Field label="Label" value={form.label} onChange={(value) => setField('label', value)} /><Field label="Label BN" value={form.label_bn} onChange={(value) => setField('label_bn', value)} /></div>
           <Field label="Title" value={form.title} onChange={(value) => setField('title', value)} required />
           <Field label="Title (Bangla)" value={form.title_bn} onChange={(value) => setField('title_bn', value)} />
@@ -235,6 +299,7 @@ export default function OffersTool() {
           <div className="grid gap-3 sm:grid-cols-2"><Field label="Sort order" type="number" value={form.sort_order} onChange={(value) => setField('sort_order', value)} /><StatusField value={form.status} onChange={(value) => setField('status', value)} /></div>
           <ToggleField label="Show in top offer bar" checked={form.show_in_nav} onChange={(value) => setField('show_in_nav', value)} />
           <SaveButton saving={saving} label={editingId ? 'Update Offer' : 'Create Offer'} />
+          </div>
         </form>
       </div>
     </div>

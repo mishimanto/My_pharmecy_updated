@@ -1,9 +1,11 @@
+/* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FiEdit, FiPlus, FiTrash2 } from 'react-icons/fi'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../../api/adminApi'
+import AdminFilterBar from '../../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../../components/admin/AdminLoadingState'
 import EmptyState from '../../../components/common/EmptyState'
 import { getManufacturerImage, handleImageFallback } from '../../../utils/imageUrl'
@@ -81,6 +83,10 @@ export default function ManufacturerIndex() {
   const updateParams = (nextParams) => {
     setParams(nextParams)
   }
+  const statusFilterOptions = statuses.map((status) => ({
+    value: status,
+    label: status ? status[0].toUpperCase() + status.slice(1) : 'All Statuses',
+  }))
 
   const removeManufacturer = async (manufacturer) => {
     if (manufacturer.products_count > 0) {
@@ -115,25 +121,22 @@ export default function ManufacturerIndex() {
 
   return (
     <>
-      <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_180px_170px]">
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by manufacturer, country, or status"
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-        />
-        <select
-          value={params.status}
-          onChange={(event) => updateParams({ ...params, status: event.target.value, page: 1 })}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-        >
-          {statuses.map((status) => <option key={status || 'all'} value={status}>{status ? status[0].toUpperCase() + status.slice(1) : 'All Statuses'}</option>)}
-        </select>
+      <AdminFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by manufacturer, country, or status"
+        filters={[{
+          key: 'status',
+          value: params.status,
+          onChange: (value) => updateParams({ ...params, status: value, page: 1 }),
+          options: statusFilterOptions,
+        }]}
+      >
         <Link to="/admin/manufacturers/create" className="flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700">
           <FiPlus className="h-4 w-4" />
           <span>Add Manufacturer</span>
         </Link>
-      </div>
+      </AdminFilterBar>
 
       {updating ? <AdminLoadingState className="justify-start pb-3" /> : null}
       {loading && manufacturers.length === 0 ? <AdminLoadingState className="py-8" /> : null}

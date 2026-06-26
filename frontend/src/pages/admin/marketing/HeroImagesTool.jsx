@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { FiEdit, FiSave, FiTrash2, FiUploadCloud, FiX } from 'react-icons/fi'
+import { FiCheckCircle, FiEdit, FiImage, FiMonitor, FiSave, FiTrash2, FiUploadCloud, FiX } from 'react-icons/fi'
 import { adminApi } from '../../../api/adminApi'
+import AdminFilterBar from '../../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../../components/admin/AdminLoadingState'
-import { toolCopy } from './marketingConfig'
-import { Field, StatCard, ToolHeader } from './shared'
+import AdminStatCard from '../../../components/admin/AdminStatCard'
+import { Field } from './shared'
 
 const emptyHeroForm = {
   eyebrow: '',
@@ -23,7 +24,6 @@ const emptyHeroForm = {
 }
 
 export default function HeroImagesTool() {
-  const tool = toolCopy.heroImages
   const [slides, setSlides] = useState([])
   const [form, setForm] = useState(emptyHeroForm)
   const [editingId, setEditingId] = useState(null)
@@ -31,12 +31,42 @@ export default function HeroImagesTool() {
   const [preview, setPreview] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
+  const [filters, setFilters] = useState({ status: '' })
 
   const stats = useMemo(() => ([
-    ['Hero Slides', slides.length],
-    ['Published', slides.filter((item) => item.status === 'active').length],
-    ['Recommended', '1600x900'],
+    { label: 'Hero Slides', value: slides.length, variant: 'sky', icon: FiImage },
+    { label: 'Published', value: slides.filter((item) => item.status === 'active').length, variant: 'emerald', icon: FiCheckCircle },
+    { label: 'Recommended', value: '1600x900', variant: 'amber', icon: FiMonitor },
   ]), [slides])
+  const filteredSlides = useMemo(() => {
+    const query = search.trim().toLowerCase()
+
+    return slides.filter((slide) => {
+      const matchesSearch = !query || [
+        slide.title,
+        slide.title_bn,
+        slide.eyebrow,
+        slide.eyebrow_bn,
+      ].filter(Boolean).some((value) => String(value).toLowerCase().includes(query))
+      const matchesStatus = !filters.status || slide.status === filters.status
+
+      return matchesSearch && matchesStatus
+    })
+  }, [filters.status, search, slides])
+  const hasActiveFilters = Boolean(search || filters.status)
+  const filterOptions = [
+    {
+      key: 'status',
+      value: filters.status,
+      onChange: (value) => setFilters((current) => ({ ...current, status: value })),
+      options: [
+        { value: '', label: 'All Statuses' },
+        { value: 'active', label: 'Active' },
+        { value: 'inactive', label: 'Inactive' },
+      ],
+    },
+  ]
 
   const load = () => {
     setLoading(true)
@@ -62,6 +92,10 @@ export default function HeroImagesTool() {
     setEditingId(null)
     setImageFile(null)
     setPreview('')
+  }
+  const resetFilters = () => {
+    setSearch('')
+    setFilters({ status: '' })
   }
 
   const edit = (slide) => {
@@ -138,10 +172,18 @@ export default function HeroImagesTool() {
 
   return (
     <div className="space-y-5">
-      <ToolHeader tool={tool} icon={tool.icon} actionLabel={editingId ? 'Editing Slide' : 'Add New'} />
       <div className="grid gap-4 md:grid-cols-3">
-        {stats.map(([label, value]) => <StatCard key={label} label={label} value={value} />)}
+        {stats.map((item) => <AdminStatCard key={item.label} label={item.label} value={item.value} variant={item.variant} icon={item.icon} />)}
       </div>
+      <AdminFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by title or eyebrow"
+        filters={filterOptions}
+        onClear={resetFilters}
+        hasActiveFilters={hasActiveFilters}
+        className="mb-0"
+      />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
         <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -149,7 +191,7 @@ export default function HeroImagesTool() {
             <h2 className="text-base font-semibold text-slate-950">Homepage hero slides</h2>
           </div>
           <div className="divide-y divide-slate-100">
-            {slides.map((slide) => (
+            {filteredSlides.map((slide) => (
               <div key={slide.id} className="grid gap-4 px-5 py-4 lg:grid-cols-[180px_minmax(0,1fr)_auto] lg:items-center">
                 <img src={slide.image_src || slide.image_url} alt="" className="h-24 w-full rounded-md bg-slate-100 object-cover" />
                 <div className="min-w-0">
@@ -172,12 +214,12 @@ export default function HeroImagesTool() {
                 </div>
               </div>
             ))}
-            {slides.length === 0 ? <div className="px-5 py-10 text-center text-sm text-slate-500">No hero slides yet.</div> : null}
+            {filteredSlides.length === 0 ? <div className="px-5 py-10 text-center text-sm text-slate-500">No hero slides found.</div> : null}
           </div>
         </section>
 
-        <form onSubmit={submit} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
+        <form onSubmit={submit} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4">
             <h2 className="text-base font-semibold text-slate-950">{editingId ? 'Edit slide' : 'Add slide'}</h2>
             {editingId ? (
               <button type="button" onClick={resetForm} className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-900">
@@ -187,45 +229,47 @@ export default function HeroImagesTool() {
             ) : null}
           </div>
 
-          <Field label="Eyebrow" value={form.eyebrow} onChange={(value) => setField('eyebrow', value)} />
-          <Field label="Eyebrow (Bangla)" value={form.eyebrow_bn} onChange={(value) => setField('eyebrow_bn', value)} />
-          <Field label="Title" value={form.title} onChange={(value) => setField('title', value)} required />
-          <Field label="Title (Bangla)" value={form.title_bn} onChange={(value) => setField('title_bn', value)} />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Primary label" value={form.primary_label} onChange={(value) => setField('primary_label', value)} />
-            <Field label="Primary label BN" value={form.primary_label_bn} onChange={(value) => setField('primary_label_bn', value)} />
-          </div>
-          <Field label="Primary URL" value={form.primary_url} onChange={(value) => setField('primary_url', value)} placeholder="/products" />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Secondary label" value={form.secondary_label} onChange={(value) => setField('secondary_label', value)} />
-            <Field label="Secondary label BN" value={form.secondary_label_bn} onChange={(value) => setField('secondary_label_bn', value)} />
-          </div>
-          <Field label="Secondary URL" value={form.secondary_url} onChange={(value) => setField('secondary_url', value)} placeholder="/upload-prescription" />
-          <Field label="Image CDN URL" value={form.image_url} onChange={(value) => { setField('image_url', value); if (value.trim()) { setImageFile(null); setPreview(value.trim()) } }} placeholder="https://cdn.example.com/hero.jpg" />
+          <div className="space-y-4 p-5">
+            <Field label="Eyebrow" value={form.eyebrow} onChange={(value) => setField('eyebrow', value)} />
+            <Field label="Eyebrow (Bangla)" value={form.eyebrow_bn} onChange={(value) => setField('eyebrow_bn', value)} />
+            <Field label="Title" value={form.title} onChange={(value) => setField('title', value)} required />
+            <Field label="Title (Bangla)" value={form.title_bn} onChange={(value) => setField('title_bn', value)} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Primary label" value={form.primary_label} onChange={(value) => setField('primary_label', value)} />
+              <Field label="Primary label BN" value={form.primary_label_bn} onChange={(value) => setField('primary_label_bn', value)} />
+            </div>
+            <Field label="Primary URL" value={form.primary_url} onChange={(value) => setField('primary_url', value)} placeholder="/products" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Secondary label" value={form.secondary_label} onChange={(value) => setField('secondary_label', value)} />
+              <Field label="Secondary label BN" value={form.secondary_label_bn} onChange={(value) => setField('secondary_label_bn', value)} />
+            </div>
+            <Field label="Secondary URL" value={form.secondary_url} onChange={(value) => setField('secondary_url', value)} placeholder="/upload-prescription" />
+            <Field label="Image CDN URL" value={form.image_url} onChange={(value) => { setField('image_url', value); if (value.trim()) { setImageFile(null); setPreview(value.trim()) } }} placeholder="https://cdn.example.com/hero.jpg" />
 
-          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700">
-            <FiUploadCloud className="h-4 w-4" />
-            <span>Upload hero image</span>
-            <input type="file" accept="image/*" onChange={(event) => { setImageFile(event.target.files?.[0] || null); setField('image_url', '') }} className="hidden" />
-          </label>
-
-          {preview ? <img src={preview} alt="" className="h-36 w-full rounded-md border border-slate-200 object-cover" /> : null}
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Sort order" type="number" value={form.sort_order} onChange={(value) => setField('sort_order', value)} />
-            <label className="text-sm font-medium text-slate-700">
-              Status
-              <select value={form.status} onChange={(event) => setField('status', event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none">
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700">
+              <FiUploadCloud className="h-4 w-4" />
+              <span>Upload hero image</span>
+              <input type="file" accept="image/*" onChange={(event) => { setImageFile(event.target.files?.[0] || null); setField('image_url', '') }} className="hidden" />
             </label>
-          </div>
 
-          <button type="submit" disabled={saving} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60">
-            <FiSave className="h-4 w-4" />
-            {saving ? 'Saving...' : editingId ? 'Update Slide' : 'Create Slide'}
-          </button>
+            {preview ? <img src={preview} alt="" className="h-36 w-full rounded-md border border-slate-200 object-cover" /> : null}
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Sort order" type="number" value={form.sort_order} onChange={(value) => setField('sort_order', value)} />
+              <label className="text-sm font-medium text-slate-700">
+                Status
+                <select value={form.status} onChange={(event) => setField('status', event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none">
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </label>
+            </div>
+
+            <button type="submit" disabled={saving} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60">
+              <FiSave className="h-4 w-4" />
+              {saving ? 'Saving...' : editingId ? 'Update Slide' : 'Create Slide'}
+            </button>
+          </div>
         </form>
       </div>
     </div>

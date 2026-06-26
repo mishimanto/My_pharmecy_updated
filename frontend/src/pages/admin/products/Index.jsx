@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FiEdit, FiPlus, FiPower, FiTrash2 } from 'react-icons/fi'
+import { FiCheckCircle, FiEdit, FiFileText, FiPackage, FiPlus, FiPower, FiTrash2, FiXCircle } from 'react-icons/fi'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../../api/adminApi'
+import AdminFilterBar from '../../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../../components/admin/AdminLoadingState'
+import AdminStatCard from '../../../components/admin/AdminStatCard'
 import EmptyState from '../../../components/common/EmptyState'
 import OptimizedImage from '../../../components/common/OptimizedImage'
 import { money } from '../../../utils/formatters'
@@ -25,10 +27,42 @@ export default function ProductIndex() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(!initialCache)
   const [updating, setUpdating] = useState(false)
+  const [productStats, setProductStats] = useState(null)
+  const statItems = useMemo(() => {
+    const totalProducts = productStats?.total ?? meta?.total ?? products.length
+    const activeProducts = productStats?.active ?? products.filter((product) => product.is_active).length
+    const prescriptionProducts = productStats?.prescription ?? products.filter((product) => product.requires_prescription).length
+    const inactiveProducts = productStats?.inactive ?? products.filter((product) => !product.is_active).length
+
+    return [
+      { label: 'Total Products', value: totalProducts, variant: 'sky', icon: FiPackage },
+      { label: 'Active Products', value: activeProducts, variant: 'emerald', icon: FiCheckCircle },
+      { label: 'Prescription Required', value: prescriptionProducts, variant: 'amber', icon: FiFileText },
+      { label: 'Inactive Products', value: inactiveProducts, variant: 'rose', icon: FiXCircle },
+    ]
+  }, [meta?.total, productStats, products])
 
   useEffect(() => {
     adminApi.listFresh('categories', { per_page: 100 }).then(({ data }) => setCategories(data.data?.data || [])).catch(() => {})
     adminApi.listFresh('manufacturers', { per_page: 100 }).then(({ data }) => setManufacturers(data.data?.data || [])).catch(() => {})
+  }, [])
+
+  const loadProductStats = () => {
+    adminApi.listFresh('products', { per_page: 1000, page: 1 })
+      .then(({ data }) => {
+        const rows = data.data?.data || []
+        setProductStats({
+          total: data.data?.total ?? rows.length,
+          active: rows.filter((product) => product.is_active).length,
+          prescription: rows.filter((product) => product.requires_prescription).length,
+          inactive: rows.filter((product) => !product.is_active).length,
+        })
+      })
+      .catch(() => {})
+  }
+
+  useEffect(() => {
+    loadProductStats()
   }, [])
 
   useEffect(() => {
@@ -78,9 +112,48 @@ export default function ProductIndex() {
   }, [search])
 
   const updateParams = (nextParams) => setParams(nextParams)
+  const productFilterOptions = [
+    {
+      key: 'category_id',
+      value: params.category_id,
+      onChange: (value) => updateParams({ ...params, category_id: value, page: 1 }),
+      options: [
+        { value: '', label: 'All Categories' },
+        ...categories.map((category) => ({ value: String(category.id), label: category.category_name })),
+      ],
+    },
+    {
+      key: 'manufacturer_id',
+      value: params.manufacturer_id,
+      onChange: (value) => updateParams({ ...params, manufacturer_id: value, page: 1 }),
+      options: [
+        { value: '', label: 'All Manufacturers' },
+        ...manufacturers.map((manufacturer) => ({ value: String(manufacturer.id), label: manufacturer.manufacturer_name })),
+      ],
+    },
+    {
+      key: 'status',
+      value: params.status,
+      onChange: (value) => updateParams({ ...params, status: value, page: 1 }),
+      options: statusOptions.map((status) => ({
+        value: status,
+        label: status ? status[0].toUpperCase() + status.slice(1) : 'All Statuses',
+      })),
+    },
+    {
+      key: 'prescription',
+      value: params.prescription,
+      onChange: (value) => updateParams({ ...params, prescription: value, page: 1 }),
+      options: prescriptionOptions.map((option) => ({
+        value: option,
+        label: option === 'required' ? 'Prescription' : option === 'not_required' ? 'No Prescription' : 'All Types',
+      })),
+    },
+  ]
 
   const refreshAfterChange = () => {
     clearProductsCache()
+    loadProductStats()
     setParams((current) => ({ ...current }))
   }
 
@@ -104,31 +177,23 @@ export default function ProductIndex() {
 
   return (
     <>
-      <div className="mb-4 space-y-3">
-        <div className="grid gap-3 sm:grid-cols-[1fr_180px]">
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by product, generic, or brand" className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
-          <Link to="/admin/products/create" className="flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700">
-            <FiPlus className="h-4 w-4" />
-            <span>Add Product</span>
-          </Link>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <select value={params.category_id} onChange={(event) => updateParams({ ...params, category_id: event.target.value, page: 1 })} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100">
-            <option value="">All Categories</option>
-            {categories.map((category) => <option key={category.id} value={category.id}>{category.category_name}</option>)}
-          </select>
-          <select value={params.manufacturer_id} onChange={(event) => updateParams({ ...params, manufacturer_id: event.target.value, page: 1 })} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100">
-            <option value="">All Manufacturers</option>
-            {manufacturers.map((manufacturer) => <option key={manufacturer.id} value={manufacturer.id}>{manufacturer.manufacturer_name}</option>)}
-          </select>
-          <select value={params.status} onChange={(event) => updateParams({ ...params, status: event.target.value, page: 1 })} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100">
-            {statusOptions.map((status) => <option key={status || 'all'} value={status}>{status ? status[0].toUpperCase() + status.slice(1) : 'All Statuses'}</option>)}
-          </select>
-          <select value={params.prescription} onChange={(event) => updateParams({ ...params, prescription: event.target.value, page: 1 })} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100">
-            {prescriptionOptions.map((option) => <option key={option || 'all'} value={option}>{option === 'required' ? 'Prescription' : option === 'not_required' ? 'No Prescription' : 'All Types'}</option>)}
-          </select>
-        </div>
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {statItems.map((item) => (
+          <AdminStatCard key={item.label} label={item.label} value={item.value} variant={item.variant} icon={item.icon} />
+        ))}
       </div>
+
+      <AdminFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by product, generic, or brand"
+        filters={productFilterOptions}
+      >
+        <Link to="/admin/products/create" className="flex h-10 items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 text-center text-sm font-semibold text-white transition hover:bg-emerald-700">
+          <FiPlus className="h-4 w-4" />
+          <span>Add Product</span>
+        </Link>
+      </AdminFilterBar>
 
       {updating ? <AdminLoadingState className="justify-start pb-3" /> : null}
       {loading && products.length === 0 ? <AdminLoadingState className="py-8" /> : null}

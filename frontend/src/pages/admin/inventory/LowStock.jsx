@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react'
+/* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
+import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
+import { FiAlertCircle, FiArchive, FiPackage, FiSliders } from 'react-icons/fi'
 import EmptyState from '../../../components/common/EmptyState'
+import AdminFilterBar from '../../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../../components/admin/AdminLoadingState'
+import AdminStatCard from '../../../components/admin/AdminStatCard'
 import { adminApi } from '../../../api/adminApi'
 import { date, money } from '../../../utils/formatters'
 
@@ -30,6 +34,18 @@ export default function LowStock() {
   const [meta, setMeta] = useState(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const statItems = useMemo(() => {
+    const totalLowStock = meta?.total ?? rows.length
+    const outOfStock = rows.filter((batch) => Number(batch.available_stock || 0) <= 0).length
+    const availableStock = rows.reduce((total, batch) => total + Number(batch.available_stock || 0), 0)
+
+    return [
+      { label: 'Low Stock Batches', value: totalLowStock, variant: 'amber', icon: FiAlertCircle },
+      { label: 'Out of Stock', value: outOfStock, variant: 'rose', icon: FiArchive },
+      { label: 'Available Units', value: availableStock, variant: 'sky', icon: FiPackage },
+      { label: 'Threshold', value: params.threshold, variant: 'emerald', icon: FiSliders },
+    ]
+  }, [meta?.total, params.threshold, rows])
 
   useEffect(() => {
     let active = true
@@ -62,6 +78,17 @@ export default function LowStock() {
   }, [search])
 
   const hasActiveFilters = Boolean(search || Number(params.threshold) !== initialParams.threshold)
+  const filterOptions = [
+    {
+      key: 'threshold',
+      value: String(params.threshold),
+      onChange: (value) => setParams((current) => ({ ...current, threshold: Number(value), page: 1 })),
+      options: thresholdOptions.map((value) => ({
+        value: String(value),
+        label: `Threshold: ${value} pieces`,
+      })),
+    },
+  ]
 
   const clearFilters = () => {
     setSearch('')
@@ -70,43 +97,28 @@ export default function LowStock() {
 
   return (
     <>
-      <div className="mb-4 space-y-3">
-        <div className="grid gap-3 xl:grid-cols-[1fr_220px_150px]">
-          <input
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-            placeholder="Search by batch, product, supplier, or status"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <select
-            value={params.threshold}
-            onChange={(event) => setParams((current) => ({ ...current, threshold: Number(event.target.value), page: 1 }))}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-          >
-            {thresholdOptions.map((value) => (
-              <option key={value} value={value}>
-                Threshold: {value} pieces
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={clearFilters}
-            disabled={!hasActiveFilters}
-            className="inline-flex items-center justify-center rounded-md border border-slate-500 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-gray-600 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Clear Filters
-          </button>
-        </div>
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {statItems.map((item) => (
+          <AdminStatCard key={item.label} label={item.label} value={item.value} variant={item.variant} icon={item.icon} />
+        ))}
       </div>
+
+      <AdminFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by batch, product, supplier, or status"
+        filters={filterOptions}
+        onClear={clearFilters}
+        hasActiveFilters={hasActiveFilters}
+      />
 
       {updating ? <AdminLoadingState className="justify-start pb-3" /> : null}
       {loading && rows.length === 0 ? <AdminLoadingState className="py-8" /> : null}
       {!loading && rows.length === 0 ? <EmptyState title="No low stock batches found" text="Try another search term or change the threshold." /> : null}
 
       {rows.length > 0 ? (
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <table className="min-w-[1080px] divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-slate-600">
               <tr>
                 <th className="px-4 py-3">Batch</th>

@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
+import { FiCheckCircle, FiClock, FiLayers } from 'react-icons/fi'
 import { adminApi } from '../../../api/adminApi'
+import AdminFilterBar from '../../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../../components/admin/AdminLoadingState'
+import AdminStatCard from '../../../components/admin/AdminStatCard'
 import { toDateTimeLocal } from './dateUtils'
-import { toolCopy } from './marketingConfig'
-import { Field, FormHeader, MarketingList, SaveButton, StatCard, StatusField, ToolHeader, UploadField } from './shared'
+import { Field, FormHeader, MarketingList, SaveButton, StatusField, UploadField } from './shared'
 
 const emptyPopup = {
   source_offer_id: '',
@@ -24,7 +26,6 @@ const emptyPopup = {
 }
 
 export default function PopupsTool() {
-  const tool = toolCopy.popups
   const [items, setItems] = useState([])
   const [offers, setOffers] = useState([])
   const [form, setForm] = useState(emptyPopup)
@@ -33,7 +34,58 @@ export default function PopupsTool() {
   const [preview, setPreview] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const stats = useMemo(() => [['Popups', items.length], ['Active', items.filter((item) => item.is_active).length], ['Delay', '2 seconds']], [items])
+  const [search, setSearch] = useState('')
+  const [filters, setFilters] = useState({ status: '', source: '' })
+  const stats = useMemo(() => [
+    { label: 'Popups', value: items.length, variant: 'sky', icon: FiLayers },
+    { label: 'Active', value: items.filter((item) => item.is_active).length, variant: 'emerald', icon: FiCheckCircle },
+    { label: 'Delay', value: '2 seconds', variant: 'amber', icon: FiClock },
+  ], [items])
+  const filteredItems = useMemo(() => {
+    const query = search.trim().toLowerCase()
+
+    return items.filter((item) => {
+      const status = item.is_active ? 'active' : 'inactive'
+      const source = item.source_offer_id ? 'offer' : 'custom'
+      const matchesSearch = !query || [
+        item.title,
+        item.title_bn,
+        item.label,
+        item.label_bn,
+        item.source_offer?.title,
+      ].filter(Boolean).some((value) => String(value).toLowerCase().includes(query))
+      const matchesStatus = !filters.status || status === filters.status
+      const matchesSource = !filters.source || source === filters.source
+
+      return matchesSearch && matchesStatus && matchesSource
+    }).map((item) => ({
+      ...item,
+      status: item.is_active ? 'active' : 'inactive',
+    }))
+  }, [filters.source, filters.status, items, search])
+  const hasActiveFilters = Boolean(search || filters.status || filters.source)
+  const filterOptions = [
+    {
+      key: 'status',
+      value: filters.status,
+      onChange: (value) => setFilters((current) => ({ ...current, status: value })),
+      options: [
+        { value: '', label: 'All Statuses' },
+        { value: 'active', label: 'Active' },
+        { value: 'inactive', label: 'Inactive' },
+      ],
+    },
+    {
+      key: 'source',
+      value: filters.source,
+      onChange: (value) => setFilters((current) => ({ ...current, source: value })),
+      options: [
+        { value: '', label: 'All Sources' },
+        { value: 'custom', label: 'Custom popup' },
+        { value: 'offer', label: 'Offer content' },
+      ],
+    },
+  ]
 
   const load = () => {
     setLoading(true)
@@ -59,6 +111,10 @@ export default function PopupsTool() {
 
   const setField = (field, value) => setForm((current) => ({ ...current, [field]: value }))
   const reset = () => { setForm(emptyPopup); setEditingId(null); setImageFile(null); setPreview('') }
+  const resetFilters = () => {
+    setSearch('')
+    setFilters({ status: '', source: '' })
+  }
   const edit = (item) => {
     setEditingId(item.id)
     setForm({
@@ -126,35 +182,48 @@ export default function PopupsTool() {
 
   return (
     <div className="space-y-5">
-      <ToolHeader tool={tool} icon={tool.icon} actionLabel={editingId ? 'Editing Popup' : 'Add New'} />
-      <div className="grid gap-4 md:grid-cols-3">{stats.map(([label, value]) => <StatCard key={label} label={label} value={value} />)}</div>
+      
+      <div className="grid gap-4 md:grid-cols-3">{stats.map((item) => <AdminStatCard key={item.label} label={item.label} value={item.value} variant={item.variant} icon={item.icon} />)}</div>
+      <AdminFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by title, label, or offer"
+        filters={filterOptions}
+        onClear={resetFilters}
+        hasActiveFilters={hasActiveFilters}
+        className="mb-0"
+      />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
-        <MarketingList title="Entry popups" items={items} emptyText="No popups yet." onEdit={edit} onRemove={remove} renderMeta={(item) => [item.is_active ? 'Active' : 'Inactive', item.source_offer?.title ? `From offer: ${item.source_offer.title}` : null].filter(Boolean).join(' / ')} renderTitle={(item) => item.title} image />
-        <form onSubmit={submit} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <FormHeader title={editingId ? 'Edit popup' : 'Add popup'} editing={Boolean(editingId)} onCancel={reset} />
-          <label className="block text-sm font-medium text-slate-700">
-            Use offer content
-            <select value={form.source_offer_id} onChange={(event) => selectOffer(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none">
-              <option value="">Custom popup</option>
-              {offers.map((offer) => <option key={offer.id} value={offer.id}>{offer.title}</option>)}
-            </select>
-          </label>
-          <div className="grid gap-3 sm:grid-cols-2"><Field label="Label" value={form.label} onChange={(value) => setField('label', value)} /><Field label="Label BN" value={form.label_bn} onChange={(value) => setField('label_bn', value)} /></div>
-          <Field label="Title" value={form.title} onChange={(value) => setField('title', value)} required />
-          <Field label="Title (Bangla)" value={form.title_bn} onChange={(value) => setField('title_bn', value)} />
-          <Field label="Body" value={form.body} onChange={(value) => setField('body', value)} />
-          <Field label="Body (Bangla)" value={form.body_bn} onChange={(value) => setField('body_bn', value)} />
-          <div className="grid gap-3 sm:grid-cols-2"><Field label="Button label" value={form.button_label} onChange={(value) => setField('button_label', value)} /><Field label="Button label BN" value={form.button_label_bn} onChange={(value) => setField('button_label_bn', value)} /></div>
-          <Field label="Link URL" value={form.link_url} onChange={(value) => setField('link_url', value)} placeholder="/products" />
-          <Field label="Image CDN URL" value={form.image_url} onChange={(value) => { setField('image_url', value); if (value.trim()) { setImageFile(null); setPreview(value.trim()) } }} />
-          <UploadField label="Upload popup image" onChange={(file) => { setImageFile(file); setField('image_url', '') }} />
-          {preview ? <img src={preview} alt="" className="h-36 w-full rounded-md border border-slate-200 object-cover" /> : null}
-          <div className="grid gap-3 sm:grid-cols-2"><Field label="Starts at" type="datetime-local" value={form.starts_at} onChange={(value) => setField('starts_at', value)} /><Field label="Ends at" type="datetime-local" value={form.ends_at} onChange={(value) => setField('ends_at', value)} /></div>
-          <div className="grid gap-3">
-            <StatusField value={form.is_active ? 'active' : 'inactive'} onChange={(value) => setField('is_active', value === 'active')} />
-            <ToggleField label="Active popup" checked={form.is_active} onChange={(value) => setField('is_active', value)} />            
+        <MarketingList title="Entry popups" items={filteredItems} emptyText="No popups found." onEdit={edit} onRemove={remove} renderMeta={(item) => item.source_offer?.title ? `From offer: ${item.source_offer.title}` : 'Custom popup'} renderTitle={(item) => item.title} image statusBelowTitle plainStatus />
+        <form onSubmit={submit} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
+            <FormHeader title={editingId ? 'Edit popup' : 'Add popup'} editing={Boolean(editingId)} onCancel={reset} />
           </div>
-          <SaveButton saving={saving} label={editingId ? 'Update Popup' : 'Create Popup'} />
+          <div className="space-y-4 p-5">
+            <label className="block text-sm font-medium text-slate-700">
+              Use offer content
+              <select value={form.source_offer_id} onChange={(event) => selectOffer(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none">
+                <option value="">Custom popup</option>
+                {offers.map((offer) => <option key={offer.id} value={offer.id}>{offer.title}</option>)}
+              </select>
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2"><Field label="Label" value={form.label} onChange={(value) => setField('label', value)} /><Field label="Label BN" value={form.label_bn} onChange={(value) => setField('label_bn', value)} /></div>
+            <Field label="Title" value={form.title} onChange={(value) => setField('title', value)} required />
+            <Field label="Title (Bangla)" value={form.title_bn} onChange={(value) => setField('title_bn', value)} />
+            <Field label="Body" value={form.body} onChange={(value) => setField('body', value)} />
+            <Field label="Body (Bangla)" value={form.body_bn} onChange={(value) => setField('body_bn', value)} />
+            <div className="grid gap-3 sm:grid-cols-2"><Field label="Button label" value={form.button_label} onChange={(value) => setField('button_label', value)} /><Field label="Button label BN" value={form.button_label_bn} onChange={(value) => setField('button_label_bn', value)} /></div>
+            <Field label="Link URL" value={form.link_url} onChange={(value) => setField('link_url', value)} placeholder="/products" />
+            <Field label="Image CDN URL" value={form.image_url} onChange={(value) => { setField('image_url', value); if (value.trim()) { setImageFile(null); setPreview(value.trim()) } }} />
+            <UploadField label="Upload popup image" onChange={(file) => { setImageFile(file); setField('image_url', '') }} />
+            {preview ? <img src={preview} alt="" className="h-36 w-full rounded-md border border-slate-200 object-cover" /> : null}
+            <div className="grid gap-3 sm:grid-cols-2"><Field label="Starts at" type="datetime-local" value={form.starts_at} onChange={(value) => setField('starts_at', value)} /><Field label="Ends at" type="datetime-local" value={form.ends_at} onChange={(value) => setField('ends_at', value)} /></div>
+            <div className="grid gap-3">
+              <StatusField value={form.is_active ? 'active' : 'inactive'} onChange={(value) => setField('is_active', value === 'active')} />
+              <ToggleField label="Active popup" checked={form.is_active} onChange={(value) => setField('is_active', value)} />            
+            </div>
+            <SaveButton saving={saving} label={editingId ? 'Update Popup' : 'Create Popup'} />
+          </div>
         </form>
       </div>
     </div>

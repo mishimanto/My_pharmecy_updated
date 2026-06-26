@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react'
+/* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
+import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
+import { FiAlertTriangle, FiArchive, FiCalendar, FiPackage } from 'react-icons/fi'
 import EmptyState from '../../../components/common/EmptyState'
+import AdminFilterBar from '../../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../../components/admin/AdminLoadingState'
+import AdminStatCard from '../../../components/admin/AdminStatCard'
 import { adminApi } from '../../../api/adminApi'
 import { date, money } from '../../../utils/formatters'
 
@@ -30,6 +34,18 @@ export default function NearExpiry() {
   const [meta, setMeta] = useState(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const statItems = useMemo(() => {
+    const totalNearExpiry = meta?.total ?? rows.length
+    const expiredRows = rows.filter((batch) => batch.status === 'expired').length
+    const availableStock = rows.reduce((total, batch) => total + Number(batch.available_stock || 0), 0)
+
+    return [
+      { label: 'Near Expiry Batches', value: totalNearExpiry, variant: 'amber', icon: FiAlertTriangle },
+      { label: 'Expired Batches', value: expiredRows, variant: 'rose', icon: FiArchive },
+      { label: 'Available Units', value: availableStock, variant: 'sky', icon: FiPackage },
+      { label: 'Date Range', value: `${params.days} days`, variant: 'emerald', icon: FiCalendar },
+    ]
+  }, [meta?.total, params.days, rows])
 
   useEffect(() => {
     let active = true
@@ -62,6 +78,17 @@ export default function NearExpiry() {
   }, [search])
 
   const hasActiveFilters = Boolean(search || Number(params.days) !== initialParams.days)
+  const filterOptions = [
+    {
+      key: 'days',
+      value: String(params.days),
+      onChange: (value) => setParams((current) => ({ ...current, days: Number(value), page: 1 })),
+      options: dayOptions.map((value) => ({
+        value: String(value),
+        label: `Within ${value} days`,
+      })),
+    },
+  ]
 
   const clearFilters = () => {
     setSearch('')
@@ -70,43 +97,28 @@ export default function NearExpiry() {
 
   return (
     <>
-      <div className="mb-4 space-y-3">
-        <div className="grid gap-3 xl:grid-cols-[1fr_220px_150px]">
-          <input
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-            placeholder="Search by batch, product, supplier, or status"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <select
-            value={params.days}
-            onChange={(event) => setParams((current) => ({ ...current, days: Number(event.target.value), page: 1 }))}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-          >
-            {dayOptions.map((value) => (
-              <option key={value} value={value}>
-                Within {value} days
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={clearFilters}
-            disabled={!hasActiveFilters}
-            className="inline-flex items-center justify-center rounded-md border border-slate-500 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-gray-600 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Clear Filters
-          </button>
-        </div>
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {statItems.map((item) => (
+          <AdminStatCard key={item.label} label={item.label} value={item.value} variant={item.variant} icon={item.icon} />
+        ))}
       </div>
+
+      <AdminFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by batch, product, supplier, or status"
+        filters={filterOptions}
+        onClear={clearFilters}
+        hasActiveFilters={hasActiveFilters}
+      />
 
       {updating ? <AdminLoadingState className="justify-start pb-3" /> : null}
       {loading && rows.length === 0 ? <AdminLoadingState className="py-8" /> : null}
       {!loading && rows.length === 0 ? <EmptyState title="No near expiry batches found" text="Try another search term or change the date range." /> : null}
 
       {rows.length > 0 ? (
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <table className="min-w-[1080px] divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-slate-600">
               <tr>
                 <th className="px-4 py-3">Batch</th>

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Swal from 'sweetalert2'
@@ -5,6 +6,7 @@ import toast from 'react-hot-toast'
 import { FiCheckCircle, FiClock, FiCreditCard, FiRotateCcw } from 'react-icons/fi'
 import { adminApi } from '../../api/adminApi'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
+import AdminStatCard from '../../components/admin/AdminStatCard'
 import EmptyState from '../../components/common/EmptyState'
 // import PageHeader from '../../components/common/PageHeader'
 import { date, money } from '../../utils/formatters'
@@ -21,28 +23,6 @@ const paymentStatusTextStyles = {
   failed: 'text-rose-700',
   cancelled: 'text-slate-500',
   refunded: 'text-violet-700',
-}
-const statStyles = {
-  emerald: {
-    panel: 'border-emerald-200 bg-[linear-gradient(135deg,#ecfdf5_0%,#d1fae5_100%)] shadow-[0_18px_45px_-34px_rgba(16,185,129,0.9)]',
-    bubble: 'from-white/80 via-emerald-100 to-emerald-300/80 shadow-[-14px_18px_34px_-24px_rgba(5,150,105,0.9),inset_12px_-12px_24px_rgba(5,150,105,0.22),inset_-10px_10px_18px_rgba(255,255,255,0.8)]',
-    value: 'text-emerald-700',
-  },
-  sky: {
-    panel: 'border-sky-200 bg-[linear-gradient(135deg,#f0f9ff_0%,#dbeafe_100%)] shadow-[0_18px_45px_-34px_rgba(14,165,233,0.9)]',
-    bubble: 'from-white/80 via-sky-100 to-sky-300/80 shadow-[-14px_18px_34px_-24px_rgba(2,132,199,0.9),inset_12px_-12px_24px_rgba(2,132,199,0.22),inset_-10px_10px_18px_rgba(255,255,255,0.8)]',
-    value: 'text-sky-700',
-  },
-  amber: {
-    panel: 'border-amber-200 bg-[linear-gradient(135deg,#fffbeb_0%,#fef3c7_100%)] shadow-[0_18px_45px_-34px_rgba(245,158,11,0.9)]',
-    bubble: 'from-white/80 via-amber-100 to-amber-300/80 shadow-[-14px_18px_34px_-24px_rgba(217,119,6,0.9),inset_12px_-12px_24px_rgba(217,119,6,0.22),inset_-10px_10px_18px_rgba(255,255,255,0.8)]',
-    value: 'text-amber-700',
-  },
-  violet: {
-    panel: 'border-violet-200 bg-[linear-gradient(135deg,#f5f3ff_0%,#ede9fe_100%)] shadow-[0_18px_45px_-34px_rgba(139,92,246,0.9)]',
-    bubble: 'from-white/80 via-violet-100 to-violet-300/80 shadow-[-14px_18px_34px_-24px_rgba(124,58,237,0.9),inset_12px_-12px_24px_rgba(124,58,237,0.22),inset_-10px_10px_18px_rgba(255,255,255,0.8)]',
-    value: 'text-violet-700',
-  },
 }
 
 function getPaymentMethodLabel(method) {
@@ -203,7 +183,7 @@ export default function Payments() {
       {/* <PageHeader title="Payments" subtitle="Review manual payment proofs, transaction IDs, and the verification workflow." /> */}
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {statItems.map((item) => (
-          <StatCard key={item.label} label={item.label} value={item.value} variant={item.variant} icon={item.icon} />
+          <AdminStatCard key={item.label} label={item.label} value={item.value} variant={item.variant} icon={item.icon} />
         ))}
       </div>
       <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_220px]">
@@ -331,27 +311,6 @@ export default function Payments() {
         <span className="font-bold">Note:</span> Keep <span className="font-semibold">Cash On Delivery</span> payments pending until delivery is completed. For full-payment (bKash or Nagad) orders, move the status to <span className="font-semibold text-green-700">Paid</span> after the proof is verified.
       </div>
     </>
-  )
-}
-
-function StatCard({ label, value, variant = 'emerald', icon: Icon = FiCreditCard }) {
-  const style = statStyles[variant] || statStyles.emerald
-
-  return (
-    <div className={`relative overflow-hidden rounded-lg border p-4 ${style.panel}`}>
-      <span className={`pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-linear-to-br ${style.bubble}`}>
-        <span className="absolute left-5 top-5 h-5 w-5 rounded-full bg-white/70 blur-[1px]" />
-      </span>
-      <div className="relative flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-medium text-slate-500">{label}</p>
-          <p className={`mt-2 text-2xl font-semibold ${style.value}`}>{value}</p>
-        </div>
-        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center text-slate-500">
-          <Icon className="h-6 w-6" />
-        </span>
-      </div>
-    </div>
   )
 }
 

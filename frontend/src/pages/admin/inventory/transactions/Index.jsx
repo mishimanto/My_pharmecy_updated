@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react'
+/* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
+import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
+import { FiArchive, FiMinusCircle, FiPlusCircle, FiRepeat } from 'react-icons/fi'
 import EmptyState from '../../../../components/common/EmptyState'
+import AdminFilterBar from '../../../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../../../components/admin/AdminLoadingState'
+import AdminStatCard from '../../../../components/admin/AdminStatCard'
 import { adminApi } from '../../../../api/adminApi'
 import { date } from '../../../../utils/formatters'
 import {
@@ -58,6 +62,19 @@ export default function InventoryTransactionsIndex() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(!initialCache)
   const [updating, setUpdating] = useState(false)
+  const statItems = useMemo(() => {
+    const totalTransactions = meta?.total ?? rows.length
+    const stockInRows = rows.filter((row) => Number(row.quantity_change || 0) > 0).length
+    const stockOutRows = rows.filter((row) => Number(row.quantity_change || 0) < 0).length
+    const adjustmentRows = rows.filter((row) => String(row.transaction_type || '').toLowerCase() === 'adjustment').length
+
+    return [
+      { label: 'Transactions', value: totalTransactions, variant: 'sky', icon: FiArchive },
+      { label: 'Stock In', value: stockInRows, variant: 'emerald', icon: FiPlusCircle },
+      { label: 'Stock Out', value: stockOutRows, variant: 'rose', icon: FiMinusCircle },
+      { label: 'Adjustments', value: adjustmentRows, variant: 'amber', icon: FiRepeat },
+    ]
+  }, [meta?.total, rows])
 
   useEffect(() => {
     let active = true
@@ -113,30 +130,27 @@ export default function InventoryTransactionsIndex() {
 
   return (
     <>
-      <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_150px]">
-        <input
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-          placeholder="Search by type, batch, or product"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        <button
-          type="button"
-          onClick={clearFilters}
-          disabled={!hasActiveFilters}
-          className="inline-flex items-center justify-center rounded-md border border-slate-500 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-gray-600 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Clear Filters
-        </button>
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {statItems.map((item) => (
+          <AdminStatCard key={item.label} label={item.label} value={item.value} variant={item.variant} icon={item.icon} />
+        ))}
       </div>
+
+      <AdminFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by type, batch, or product"
+        onClear={clearFilters}
+        hasActiveFilters={hasActiveFilters}
+      />
 
       {updating ? <AdminLoadingState className="justify-start pb-3" /> : null}
       {loading && rows.length === 0 ? <AdminLoadingState className="py-8" /> : null}
       {!loading && rows.length === 0 ? <EmptyState title="No transactions found" text="Try another search term." /> : null}
 
       {rows.length > 0 ? (
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <table className="min-w-[980px] divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-slate-600">
               <tr>
                 <th className="px-4 py-3">Date</th>

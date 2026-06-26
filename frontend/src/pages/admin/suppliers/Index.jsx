@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+/* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FiEdit, FiPlus, FiTrash2 } from 'react-icons/fi'
+import { FiArchive, FiCheckCircle, FiEdit, FiPlus, FiTrash2, FiTruck, FiXCircle } from 'react-icons/fi'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../../api/adminApi'
+import AdminFilterBar from '../../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../../components/admin/AdminLoadingState'
+import AdminStatCard from '../../../components/admin/AdminStatCard'
 import EmptyState from '../../../components/common/EmptyState'
 import { clearSuppliersCache, readSuppliersCache, writeSuppliersCache } from '../../../utils/adminSupplierCache'
 
@@ -27,6 +30,19 @@ export default function SupplierIndex() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(!initialCache)
   const [updating, setUpdating] = useState(false)
+  const statItems = useMemo(() => {
+    const totalSuppliers = meta?.total ?? suppliers.length
+    const activeSuppliers = suppliers.filter((supplier) => supplier.status === 'active').length
+    const inactiveSuppliers = suppliers.filter((supplier) => supplier.status === 'inactive').length
+    const linkedBatches = suppliers.reduce((total, supplier) => total + Number(supplier.batches_count || 0), 0)
+
+    return [
+      { label: 'Total Suppliers', value: totalSuppliers, variant: 'sky', icon: FiTruck },
+      { label: 'Active Suppliers', value: activeSuppliers, variant: 'emerald', icon: FiCheckCircle },
+      { label: 'Inactive Suppliers', value: inactiveSuppliers, variant: 'rose', icon: FiXCircle },
+      { label: 'Linked Batches', value: linkedBatches, variant: 'amber', icon: FiArchive },
+    ]
+  }, [meta?.total, suppliers])
 
   useEffect(() => {
     let active = true
@@ -76,6 +92,10 @@ export default function SupplierIndex() {
   const updateParams = (nextParams) => {
     setParams(nextParams)
   }
+  const statusFilterOptions = statuses.map((status) => ({
+    value: status,
+    label: status ? status[0].toUpperCase() + status.slice(1) : 'All Statuses',
+  }))
 
   const removeSupplier = async (supplier) => {
     if (supplier.batches_count > 0) {
@@ -110,25 +130,28 @@ export default function SupplierIndex() {
 
   return (
     <>
-      <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_180px_160px]">
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by supplier, phone, email, or status"
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-        />
-        <select
-          value={params.status}
-          onChange={(event) => updateParams({ ...params, status: event.target.value, page: 1 })}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-        >
-          {statuses.map((status) => <option key={status || 'all'} value={status}>{status ? status[0].toUpperCase() + status.slice(1) : 'All Statuses'}</option>)}
-        </select>
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {statItems.map((item) => (
+          <AdminStatCard key={item.label} label={item.label} value={item.value} variant={item.variant} icon={item.icon} />
+        ))}
+      </div>
+
+      <AdminFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by supplier, phone, email, or status"
+        filters={[{
+          key: 'status',
+          value: params.status,
+          onChange: (value) => updateParams({ ...params, status: value, page: 1 }),
+          options: statusFilterOptions,
+        }]}
+      >
         <Link to="/admin/suppliers/create" className="flex items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-700">
           <FiPlus className="h-4 w-4" />
           <span>Add Supplier</span>
         </Link>
-      </div>
+      </AdminFilterBar>
 
       {updating ? <AdminLoadingState className="justify-start pb-3" /> : null}
       {loading && suppliers.length === 0 ? <AdminLoadingState className="py-8" /> : null}
@@ -159,7 +182,7 @@ export default function SupplierIndex() {
                       </div>
                       <div>
                         <div className="font-semibold text-slate-950">{supplier.supplier_name}</div>
-                        <div className="text-xs text-slate-500">Supplier ID #{supplier.id}</div>
+                        {/* <div className="text-xs text-slate-500">Supplier ID #{supplier.id}</div> */}
                       </div>
                     </div>
                   </td>

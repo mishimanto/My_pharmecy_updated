@@ -1,33 +1,44 @@
 import { FiEdit, FiPlus, FiSave, FiTrash2, FiUploadCloud, FiX } from 'react-icons/fi'
+import AdminStatCard from '../../../components/admin/AdminStatCard'
 
 export function StatCard({ label, value }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white px-4 py-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-slate-950">{value}</p>
-    </div>
-  )
+  return <AdminStatCard label={label} value={value} variant="sky" />
 }
 
-export function MarketingList({ title, items, emptyText, onEdit, onRemove, renderTitle, renderMeta, image = false }) {
+export function MarketingList({ title, items, emptyText, onEdit, onRemove, renderTitle, renderMeta, image = false, showIndex = false, statusBelowTitle = false, plainStatus = false }) {
   return (
     <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
         <h2 className="text-base font-semibold text-slate-950">{title}</h2>
       </div>
       <div className="divide-y divide-slate-100">
-        {items.map((item) => (
-          <div key={item.id} className={`grid gap-4 px-5 py-4 ${image ? 'lg:grid-cols-[120px_minmax(0,1fr)_auto]' : 'lg:grid-cols-[minmax(0,1fr)_auto]'} lg:items-center`}>
+        {items.map((item, index) => (
+          <div key={item.id} className={`grid gap-4 px-5 py-4 ${image ? 'lg:grid-cols-[120px_minmax(0,1fr)_auto]' : showIndex ? 'lg:grid-cols-[42px_minmax(0,1fr)_auto]' : 'lg:grid-cols-[minmax(0,1fr)_auto]'} lg:items-center`}>
             {image ? <img src={item.image_src || item.image_url} alt="" className="h-20 w-full rounded-md bg-slate-100 object-cover" /> : null}
+            {showIndex ? (
+              <span className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600">
+                {index + 1}
+              </span>
+            ) : null}
             <div className="min-w-0">
-              {item.status ? (
+              {item.status && !statusBelowTitle ? (
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${item.status === 'active' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
                     {item.status}
                   </span>
                 </div>
               ) : null}
-              <h3 className="mt-2 truncate text-sm font-semibold text-slate-950">{renderTitle(item)}</h3>
+              <h3 className={`${item.status && !statusBelowTitle ? 'mt-2' : ''} truncate text-sm font-semibold text-slate-950`}>{renderTitle(item)}</h3>
+              {item.status && statusBelowTitle ? (
+                <span className="mt-1 inline-flex text-xs font-semibold text-slate-500">
+                  {plainStatus ? (
+                    <>
+                      <span>Status:&nbsp;</span>
+                      <span className={item.status === 'active' ? 'text-emerald-700' : 'text-slate-500'}>{formatStatus(item.status)}</span>
+                    </>
+                  ) : item.status}
+                </span>
+              ) : null}
               <p className="mt-1 truncate text-xs text-slate-500">{renderMeta(item)}</p>
             </div>
             <div className="flex items-center gap-2">
@@ -40,6 +51,11 @@ export function MarketingList({ title, items, emptyText, onEdit, onRemove, rende
       </div>
     </section>
   )
+}
+
+function formatStatus(status) {
+  if (!status) return 'Unknown'
+  return status.charAt(0).toUpperCase() + status.slice(1)
 }
 
 export function FormHeader({ title, editing, onCancel }) {
