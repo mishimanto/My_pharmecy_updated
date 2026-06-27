@@ -30,9 +30,9 @@ function typeLabel(type) {
 
 function typeClass(type) {
   const value = String(type || '').toLowerCase()
-  if (['stock_in', 'return', 'release'].includes(value)) return 'bg-emerald-50 text-emerald-700'
-  if (['reserve', 'sold', 'expired', 'damaged'].includes(value)) return 'bg-rose-50 text-rose-700'
-  return 'bg-slate-100 text-slate-700'
+  if (['stock_in', 'return', 'release'].includes(value)) return 'text-emerald-700'
+  if (['reserve', 'sold', 'expired', 'damaged'].includes(value)) return 'text-rose-700'
+  return 'text-slate-700'
 }
 
 function quantityClass(change) {
@@ -149,33 +149,38 @@ export default function InventoryTransactionsIndex() {
       {!loading && rows.length === 0 ? <EmptyState title="No transactions found" text="Try another search term." /> : null}
 
       {rows.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-          <table className="min-w-[980px] divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-left text-slate-600">
+        <div className="w-full overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+          <table className="w-full min-w-[880px] divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-[0.04em] text-slate-600">
               <tr>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Product</th>
-                <th className="px-4 py-3">Batch</th>
-                <th className="px-4 py-3 text-center">Type</th>
-                <th className="px-4 py-3 text-center">Change</th>
-                <th className="px-4 py-3">Reference</th>
-                <th className="px-4 py-3">Note</th>
+                <th className="w-[150px] px-5 py-3">Date</th>
+                <th className="min-w-[250px] px-5 py-3">Item</th>
+                <th className="w-[160px] px-5 py-3">Transaction</th>
+                <th className="w-[130px] px-5 py-3 text-center">Quantity</th>
+                <th className="w-[180px] px-5 py-3">Reference</th>
+                <th className="min-w-[220px] px-5 py-3">Note</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {rows.map((row) => (
-                <tr key={row.id}>
-                  <td className="px-4 py-3 text-slate-600">{date(row.transaction_date, 'en-US')}</td>
-                  <td className="px-4 py-3 text-slate-800">{row.product_name || '-'}</td>
-                  <td className="px-4 py-3 font-medium text-slate-950">{row.batch_number || '-'}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${typeClass(row.transaction_type)}`}>
+                <tr key={row.id} className="transition hover:bg-slate-50/80">
+                  <td className="whitespace-nowrap px-5 py-4 align-middle text-slate-600">
+                    {date(row.transaction_date, 'en-US')}
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-4 align-middle">
+                    <div className="font-semibold text-slate-950">{row.product_name || '-'}</div>
+                    <div className="mt-1 text-xs font-medium text-slate-500">{row.batch_number || 'No batch'}</div>
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-4 align-middle">
+                    <span className={`text-sm font-semibold ${typeClass(row.transaction_type)}`}>
                       {typeLabel(row.transaction_type)}
                     </span>
                   </td>
-                  <td className={`px-4 py-3 text-center font-semibold ${quantityClass(row.quantity_change)}`}>{formatQuantity(row.quantity_change)}</td>
-                  <td className="px-4 py-3 text-slate-600">{referenceLabel(row)}</td>
-                  <td className="px-4 py-3 text-slate-500">{row.note || '-'}</td>
+                  <td className={`whitespace-nowrap px-5 py-4 text-center align-middle text-base font-semibold ${quantityClass(row.quantity_change)}`}>
+                    {formatQuantity(row.quantity_change)}
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-4 align-middle font-medium text-slate-700">{referenceLabel(row)}</td>
+                  <td className="max-w-[360px] truncate px-5 py-4 align-middle text-slate-500" title={row.note || ''}>{row.note || '-'}</td>
                 </tr>
               ))}
             </tbody>

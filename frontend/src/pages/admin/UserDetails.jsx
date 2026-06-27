@@ -14,7 +14,7 @@ import {
 } from 'react-icons/fi'
 import { adminApi } from '../../api/adminApi'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
-import PageHeader from '../../components/common/PageHeader'
+// import PageHeader from '../../components/common/PageHeader'
 import { date, money } from '../../utils/formatters'
 import { getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
 
@@ -56,52 +56,58 @@ export default function UserDetails() {
 
   return (
     <>
-      <PageHeader title="User Details" subtitle="Profile, account status, and activity history in one view." />
+      {/* <PageHeader title="User Details" subtitle="Profile, account status, and activity history in one view." /> */}
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-900 px-5 py-6 text-white sm:px-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-start gap-4">
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-white/12 text-xl font-semibold backdrop-blur">
+      <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex min-w-0 items-start gap-4">
+              <div className="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 text-xl font-semibold text-emerald-700">
                 {getInitials(user.full_name)}
               </div>
-              <div>
-                <h2 className="text-2xl font-semibold tracking-tight">{user.full_name}</h2>
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-200">
-                  <span className="inline-flex items-center gap-2">
-                    <FiPhone className="h-4 w-4" />
-                    {user.phone || '-'}
-                  </span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="truncate text-2xl font-semibold tracking-tight text-slate-950">{user.full_name}</h2>
                   <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${statusPillClass(user.status)}`}>
                     <FiShield className="h-3.5 w-3.5" />
                     {formatStatus(user.status)}
                   </span>
                 </div>
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                  <span className="inline-flex items-center gap-2">
+                    <FiPhone className="h-4 w-4" />
+                    {user.phone || '-'}
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <FiMail className="h-4 w-4" />
+                    {user.email || 'No email added'}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[520px]">
               <MetricCard label="Joined" value={date(user.created_at, 'en-US')} icon={FiCalendar} />
-              <MetricCard label="Email" value={user.email || '-'} icon={FiMail} />
+              <MetricCard label="Addresses" value={user.addresses?.length || 0} icon={FiMapPin} />
               <MetricCard
-                label="Address"
-                value={user.default_address ? `${user.default_address.area}, ${user.default_address.city}` : '-'}
-                icon={FiMapPin}
+                label="Sessions"
+                value={user.sessions?.length || 0}
+                icon={FiShield}
               />
             </div>
           </div>
         </div>
 
-        <div className="grid gap-4 border-t border-slate-200 bg-slate-50/70 px-5 py-5 sm:grid-cols-3 sm:px-6">
+        <div className="grid gap-4 bg-slate-50/60 px-5 py-5 md:grid-cols-3 sm:px-6">
           <Info label="User ID" value={`#${user.id}`} />
           <Info label="Default Address" value={user.default_address ? `${user.default_address.area}, ${user.default_address.city}` : 'No default address'} />
           <Info label="Account Email" value={user.email || 'No email added'} />
         </div>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 bg-slate-50/80 px-5 py-4 sm:px-6">
-          <div className="flex flex-wrap gap-2">
+      <div className="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
+          <div className="flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-1">
             {tabs.map(([key, label]) => {
               const Icon = tabIcons[key]
               const isActive = active === key
@@ -111,10 +117,10 @@ export default function UserDetails() {
                   key={key}
                   type="button"
                   onClick={() => { setLoading(true); setActive(key) }}
-                  className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+                  className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition ${
                     isActive
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
+                      ? 'bg-slate-950 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -126,8 +132,8 @@ export default function UserDetails() {
         </div>
 
         <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
-          <h3 className="text-sm font-semibold text-slate-950">{historyTitle(active)}</h3>
-          <p className="mt-1 text-sm text-slate-500">{historySubtitle(active)}</p>
+          <h3 className="text-md font-semibold text-slate-950">{historyTitle(active)}</h3>
+          {/* <p className="mt-1 text-sm text-slate-500">{historySubtitle(active)}</p> */}
         </div>
 
         {loading ? <AdminLoadingState className="py-8" /> : null}
@@ -145,9 +151,9 @@ export default function UserDetails() {
 
 function Info({ label, value }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+    <div className="rounded-lg border border-slate-200 bg-white px-4 py-4">
       <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">{label}</p>
-      <p className="mt-2 text-sm font-medium text-slate-950">{value}</p>
+      <p className="mt-2 min-h-5 text-sm font-semibold text-slate-950">{value}</p>
     </div>
   )
 }
@@ -177,29 +183,38 @@ function HistoryRow({ type, row }) {
   }
 
   return (
-    <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 text-sm last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-      <div className="min-w-0">
-        <p className="truncate font-semibold text-slate-950">{title}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${rowMetaClass(type, row, meta)}`}>
-            {formatMeta(meta)}
-          </span>
-          <span className="text-xs text-slate-400">{historyMetaLabel(type)}</span>
+    <div className="grid gap-3 border-b border-slate-100 px-5 py-4 text-sm last:border-b-0 sm:grid-cols-[minmax(0,1fr)_180px_160px] sm:items-center sm:px-6">
+      <div className="min-w-0 flex items-center gap-3">
+        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-500">
+          {historyIcon(type)}
+        </span>
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-slate-950">{title}</p>
+          <p className="mt-1 text-xs text-slate-500">{historyMetaLabel(type)}</p>
         </div>
       </div>
-      <div className="text-sm font-semibold text-slate-700">{value}</div>
+      <div className="sm:text-center">
+        <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${rowMetaClass(type, row, meta)}`}>
+          {formatMeta(meta)}
+        </span>
+      </div>
+      <div className="text-sm font-semibold text-slate-700 sm:text-right">{value}</div>
     </div>
   )
 }
 
 function MetricCard({ label, value, icon: Icon }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-200">
-        <Icon className="h-3.5 w-3.5" />
-        {label}
+    <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium text-slate-500">{label}</p>
+          <p className="mt-2 truncate text-sm font-semibold text-slate-950">{value}</p>
+        </div>
+        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white text-slate-500">
+          <Icon className="h-4 w-4" />
+        </span>
       </div>
-      <div className="mt-2 text-sm font-medium text-white">{value}</div>
     </div>
   )
 }
@@ -224,10 +239,15 @@ function formatMeta(meta) {
 }
 
 function statusPillClass(status) {
-  if (status === 'active') return 'border-emerald-300/40 bg-emerald-400/15 text-emerald-100'
-  if (status === 'blocked') return 'border-rose-300/40 bg-rose-400/15 text-rose-100'
-  if (status === 'inactive') return 'border-slate-300/40 bg-slate-200/10 text-slate-100'
-  return 'border-white/20 bg-white/10 text-white'
+  if (status === 'active') return 'border-emerald-200 bg-emerald-50 text-emerald-700'
+  if (status === 'blocked') return 'border-rose-200 bg-rose-50 text-rose-700'
+  if (status === 'inactive') return 'border-slate-200 bg-slate-100 text-slate-600'
+  return 'border-slate-200 bg-slate-50 text-slate-600'
+}
+
+function historyIcon(type) {
+  const Icon = tabIcons[type] || FiFileText
+  return <Icon className="h-4 w-4" />
 }
 
 function rowMetaClass(type, row, meta) {
@@ -260,13 +280,13 @@ function historyTitle(type) {
   return 'History'
 }
 
-function historySubtitle(type) {
-  if (type === 'orders') return 'Track orders, order amounts, and current fulfillment state.'
-  if (type === 'prescriptions') return 'Review uploaded prescriptions and their approval status.'
-  if (type === 'support-tickets') return 'See support communication and ticket progress.'
-  if (type === 'returns') return 'Monitor return requests and related order references.'
-  return 'Review activity records for this user.'
-}
+// function historySubtitle(type) {
+//   if (type === 'orders') return 'Track orders, order amounts, and current fulfillment state.'
+//   if (type === 'prescriptions') return 'Review uploaded prescriptions and their approval status.'
+//   if (type === 'support-tickets') return 'See support communication and ticket progress.'
+//   if (type === 'returns') return 'Monitor return requests and related order references.'
+//   return 'Review activity records for this user.'
+// }
 
 function historyMetaLabel(type) {
   if (type === 'orders') return 'Current order status'

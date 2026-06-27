@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { FiArrowLeft, FiImage, FiSave, FiTrash2, FiUploadCloud, FiX } from 'react-icons/fi'
+import { FiArrowLeft, FiImage, FiPlusCircle, FiSave, FiTrash2, FiUploadCloud, FiX } from 'react-icons/fi'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../../api/adminApi'
@@ -24,6 +24,11 @@ const initialForm = {
   requires_prescription: false,
   description: '',
   description_bn: '',
+  description_draft: '',
+  description_bn_draft: '',
+  description_draft_status: '',
+  alternative_product_ids: [],
+  drug_interactions: [],
   is_active: true,
 }
 
@@ -119,11 +124,13 @@ export default function ProductForm({ mode = 'create' }) {
   const [categories, setCategories] = useState([])
   const [manufacturers, setManufacturers] = useState([])
   const [suppliers, setSuppliers] = useState([])
+  const [productOptions, setProductOptions] = useState([])
   const [batchForm, setBatchForm] = useState(initialBatchForm)
   const [images, setImages] = useState([])
   const [files, setFiles] = useState([])
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
+  const [draftSaving, setDraftSaving] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -132,11 +139,13 @@ export default function ProductForm({ mode = 'create' }) {
       adminApi.listFresh('categories', { per_page: 100 }),
       adminApi.listFresh('manufacturers', { per_page: 100 }),
       adminApi.listFresh('suppliers', { per_page: 100, status: 'active' }),
-    ]).then(([categoryResponse, manufacturerResponse, supplierResponse]) => {
+      adminApi.listFresh('products', { per_page: 500 }),
+    ]).then(([categoryResponse, manufacturerResponse, supplierResponse, productResponse]) => {
       if (!active) return
       setCategories(categoryResponse.data.data?.data || [])
       setManufacturers(manufacturerResponse.data.data?.data || [])
       setSuppliers(supplierResponse.data.data?.data || [])
+      setProductOptions(productResponse.data.data?.data || [])
     }).catch(() => active && toast.error('Unable to load product options.'))
 
     return () => { active = false }
@@ -163,6 +172,10 @@ export default function ProductForm({ mode = 'create' }) {
   const preview = useMemo(() => filePreview(files, images), [files, images])
   const selectedCategory = categories.find((category) => String(category.id) === String(form.category_id))
   const selectedManufacturer = manufacturers.find((manufacturer) => String(manufacturer.id) === String(form.manufacturer_id))
+  const selectableAlternativeProducts = useMemo(
+    () => productOptions.filter((product) => String(product.id) !== String(id || form.id || '')),
+    [form.id, id, productOptions],
+  )
 
   const setField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }))
@@ -170,6 +183,82 @@ export default function ProductForm({ mode = 'create' }) {
 
   const setBatchField = (field, value) => {
     setBatchForm((current) => ({ ...current, [field]: value }))
+  }
+
+  const setProductFromResponse = (product) => {
+    setForm(formFromProduct(product))
+    setImages(product.images || [])
+    clearProductsCache()
+    productApi.clearCache()
+  }
+
+  const setAlternativeIds = (options) => {
+    setField('alternative_product_ids', Array.from(options).map((option) => Number(option.value)))
+  }
+
+  const addInteraction = () => {
+    setField('drug_interactions', [
+      ...(form.drug_interactions || []),
+      { interacts_with_generic_name: '', severity: 'moderate', warning: '', is_active: true },
+    ])
+  }
+
+  const updateInteraction = (index, field, value) => {
+    setField('drug_interactions', (form.drug_interactions || []).map((item, currentIndex) => (
+      currentIndex === index ? { ...item, [field]: value } : item
+    )))
+  }
+
+  const removeInteraction = (index) => {
+    setField('drug_interactions', (form.drug_interactions || []).filter((_, currentIndex) => currentIndex !== index))
+  }
+
+  const generateDescriptionDraft = async () => {
+    if (!isEdit) return
+
+    setDraftSaving(true)
+    try {
+      const response = await adminApi.generateProductDescriptionDraft(id)
+      setProductFromResponse(response.data.data)
+      toast.success('Description draft generated for review.')
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to generate description draft.')
+    } finally {
+      setDraftSaving(false)
+    }
+  }
+
+  const publishDescriptionDraft = async () => {
+    if (!isEdit || !form.description_draft?.trim()) return
+
+    setDraftSaving(true)
+    try {
+      const response = await adminApi.publishProductDescriptionDraft(id, {
+        description_draft: form.description_draft,
+        description_bn_draft: form.description_bn_draft || null,
+      })
+      setProductFromResponse(response.data.data)
+      toast.success('Description draft published.')
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to publish description draft.')
+    } finally {
+      setDraftSaving(false)
+    }
+  }
+
+  const discardDescriptionDraft = async () => {
+    if (!isEdit) return
+
+    setDraftSaving(true)
+    try {
+      const response = await adminApi.discardProductDescriptionDraft(id)
+      setProductFromResponse(response.data.data)
+      toast.success('Description draft discarded.')
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to discard description draft.')
+    } finally {
+      setDraftSaving(false)
+    }
   }
 
   const handleFiles = (event) => {
@@ -196,6 +285,15 @@ export default function ProductForm({ mode = 'create' }) {
         dosage_form: form.dosage_form?.trim() || null,
         description: form.description?.trim() || null,
         description_bn: form.description_bn?.trim() || null,
+        alternative_product_ids: (form.alternative_product_ids || []).map((item) => Number(item)),
+        drug_interactions: (form.drug_interactions || [])
+          .filter((item) => item.interacts_with_generic_name?.trim())
+          .map((item) => ({
+            interacts_with_generic_name: item.interacts_with_generic_name.trim(),
+            severity: item.severity || 'moderate',
+            warning: item.warning?.trim() || null,
+            is_active: Boolean(item.is_active),
+          })),
         pieces_per_strip: Number(form.pieces_per_strip || 1),
         strips_per_box: Number(form.strips_per_box || 1),
         strip_price: form.strip_price === '' ? null : Number(form.strip_price),
@@ -389,6 +487,113 @@ export default function ProductForm({ mode = 'create' }) {
           </section>
 
           <section className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="mb-4 flex flex-col gap-1">
+              <div className="text-sm font-semibold text-slate-900">Product quality</div>
+              <p className="text-sm text-slate-500">Configure alternatives and generic-based safety warnings for customer product pages and carts.</p>
+            </div>
+
+            <div className="grid gap-5">
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-slate-700">Medicine alternatives</span>
+                <select
+                  multiple
+                  size={Math.min(6, Math.max(3, selectableAlternativeProducts.length || 3))}
+                  value={(form.alternative_product_ids || []).map(String)}
+                  onChange={(event) => setAlternativeIds(event.target.selectedOptions)}
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+                >
+                  {selectableAlternativeProducts.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.product_name} {product.generic_name ? `- ${product.generic_name}` : ''}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1 block text-xs text-slate-500">Hold Ctrl to select multiple alternatives. Alternatives are saved both ways.</span>
+              </label>
+
+              <div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="text-sm font-medium text-slate-700">Drug interaction warnings</div>
+                    <p className="mt-1 text-xs text-slate-500">These rules are matched by generic name and shown in cart when both medicines are selected.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addInteraction}
+                    className="inline-flex items-center justify-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300"
+                  >
+                    <FiPlusCircle className="h-4 w-4" />
+                    Add warning
+                  </button>
+                </div>
+
+                <div className="mt-3 space-y-3">
+                  {(form.drug_interactions || []).length === 0 ? (
+                    <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-sm text-slate-500">
+                      No interaction warning has been added for this generic yet.
+                    </div>
+                  ) : null}
+
+                  {(form.drug_interactions || []).map((interaction, index) => (
+                    <div key={`${interaction.id || 'new'}-${index}`} className="grid gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 lg:grid-cols-[1fr_160px_1.4fr_auto] lg:items-start">
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Interacts with generic</span>
+                        <input
+                          value={interaction.interacts_with_generic_name || ''}
+                          onChange={(event) => updateInteraction(index, 'interacts_with_generic_name', event.target.value)}
+                          placeholder="Warfarin"
+                          className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Severity</span>
+                        <select
+                          value={interaction.severity || 'moderate'}
+                          onChange={(event) => updateInteraction(index, 'severity', event.target.value)}
+                          className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+                        >
+                          <option value="low">Low</option>
+                          <option value="moderate">Moderate</option>
+                          <option value="high">High</option>
+                          <option value="critical">Critical</option>
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Warning</span>
+                        <input
+                          value={interaction.warning || ''}
+                          onChange={(event) => updateInteraction(index, 'warning', event.target.value)}
+                          placeholder="Ask a pharmacist before using together."
+                          className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+                        />
+                      </label>
+                      <div className="flex items-center gap-3 lg:pt-6">
+                        <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={interaction.is_active !== false}
+                            onChange={(event) => updateInteraction(index, 'is_active', event.target.checked)}
+                            className="h-4 w-4 accent-emerald-600"
+                          />
+                          Active
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => removeInteraction(index)}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-rose-100 bg-white text-rose-600 transition hover:bg-rose-50"
+                          title="Remove warning"
+                        >
+                          <FiTrash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-slate-200 bg-white p-4">
             <div className="mb-4 text-sm font-semibold text-slate-900">Description</div>
             <div className="grid gap-4">
               <label className="block">
@@ -400,6 +605,71 @@ export default function ProductForm({ mode = 'create' }) {
                 <textarea rows="4" value={form.description_bn || ''} onChange={(event) => setField('description_bn', event.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
               </label>
             </div>
+
+            {isEdit ? (
+              <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-amber-900">Local description draft</div>
+                    <p className="mt-1 text-sm leading-6 text-amber-800">
+                      Generate a local draft from product fields. It stays hidden from customers until an admin publishes it.
+                    </p>
+                    {form.description_draft_status ? (
+                      <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">Status: {String(form.description_draft_status).replace(/_/g, ' ')}</p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={draftSaving}
+                    onClick={generateDescriptionDraft}
+                    className="inline-flex items-center justify-center rounded-md border border-amber-300 bg-white px-3 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {draftSaving ? 'Working...' : 'Generate draft'}
+                  </button>
+                </div>
+
+                {form.description_draft ? (
+                  <div className="mt-4 grid gap-4">
+                    <label className="block">
+                      <span className="mb-1 block text-sm font-medium text-amber-900">Draft description</span>
+                      <textarea
+                        rows="5"
+                        value={form.description_draft || ''}
+                        onChange={(event) => setField('description_draft', event.target.value)}
+                        className="w-full rounded-md border border-amber-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-sm font-medium text-amber-900">Draft description BN</span>
+                      <textarea
+                        rows="4"
+                        value={form.description_bn_draft || ''}
+                        onChange={(event) => setField('description_bn_draft', event.target.value)}
+                        className="w-full rounded-md border border-amber-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                      />
+                    </label>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                      <button
+                        type="button"
+                        disabled={draftSaving || !form.description_draft?.trim()}
+                        onClick={publishDescriptionDraft}
+                        className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                      >
+                        Publish reviewed draft
+                      </button>
+                      <button
+                        type="button"
+                        disabled={draftSaving}
+                        onClick={discardDescriptionDraft}
+                        className="inline-flex items-center justify-center rounded-md border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Discard draft
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </section>
         </div>
 

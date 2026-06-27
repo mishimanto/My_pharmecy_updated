@@ -88,6 +88,63 @@ class InventoryBatchFlowTest extends TestCase
         ]);
     }
 
+    public function test_expired_active_batches_are_marked_expired_by_inventory_command(): void
+    {
+        $product = $this->createProduct();
+        $supplier = Supplier::create([
+            'supplier_name' => 'Central Supply',
+            'status' => 'active',
+        ]);
+
+        $expiredBatch = InventoryBatch::create([
+            'product_id' => $product->id,
+            'supplier_id' => $supplier->id,
+            'batch_number' => 'BATCH-EXPIRED',
+            'expiry_date' => now()->subDay()->toDateString(),
+            'manufactured_date' => now()->subMonths(2)->toDateString(),
+            'purchase_price' => 10,
+            'selling_price' => 14,
+            'stock_quantity' => 12,
+            'reserved_quantity' => 0,
+            'status' => 'active',
+        ]);
+
+        $futureBatch = InventoryBatch::create([
+            'product_id' => $product->id,
+            'supplier_id' => $supplier->id,
+            'batch_number' => 'BATCH-FUTURE',
+            'expiry_date' => now()->addMonth()->toDateString(),
+            'manufactured_date' => now()->subMonth()->toDateString(),
+            'purchase_price' => 10,
+            'selling_price' => 14,
+            'stock_quantity' => 12,
+            'reserved_quantity' => 0,
+            'status' => 'active',
+        ]);
+
+        $this->artisan('inventory:expire-batches')
+            ->expectsOutput('Expired 1 inventory batch(es).')
+            ->assertExitCode(0);
+
+        $this->assertDatabaseHas('inventory_batches', [
+            'id' => $expiredBatch->id,
+            'status' => 'expired',
+        ]);
+
+        $this->assertDatabaseHas('inventory_batches', [
+            'id' => $futureBatch->id,
+            'status' => 'active',
+        ]);
+
+        $this->assertDatabaseHas('inventory_transactions', [
+            'batch_id' => $expiredBatch->id,
+            'transaction_type' => 'expired',
+            'quantity_change' => 0,
+            'reference_type' => 'inventory_batch',
+            'reference_id' => $expiredBatch->id,
+        ]);
+    }
+
     private function actingAsInventoryAdmin(): void
     {
         $role = Role::create(['name' => 'Inventory Admin', 'guard_name' => 'staff']);

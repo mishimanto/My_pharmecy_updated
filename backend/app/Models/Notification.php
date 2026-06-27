@@ -9,6 +9,7 @@ class Notification extends PharmacyModel
         return [
             'metadata' => 'array',
             'read_at' => 'datetime',
+            'archived_at' => 'datetime',
         ];
     }
 

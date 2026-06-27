@@ -138,6 +138,11 @@ class CartController extends Controller
             $warnings[] = 'This cart contains prescription products.';
         }
 
+        $warnings = array_merge(
+            $warnings,
+            app(\App\Services\DrugInteractionService::class)->warningsForProducts($cart->items->pluck('product'))
+        );
+
         return [
             'cart_id' => $cart->id,
             'items' => $items,

@@ -4,7 +4,9 @@ import { FiArrowUpRight, FiCheckCircle, FiClock, FiDollarSign, FiRefreshCw } fro
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
+import AdminFilterBar from '../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
+import AdminStatCard from '../../components/admin/AdminStatCard'
 import EmptyState from '../../components/common/EmptyState'
 import { date, money } from '../../utils/formatters'
 
@@ -64,27 +66,14 @@ function statusBadgeClass(status) {
   return 'border-slate-200 bg-slate-50 text-slate-600'
 }
 
-function StatCard({ icon: Icon, label, value, tone = 'slate' }) {
+function actionButtonClass(tone = 'slate') {
   const tones = {
-    slate: 'border-slate-200 bg-white text-slate-700',
-    amber: 'border-amber-200 bg-amber-50/70 text-amber-700',
-    sky: 'border-sky-200 bg-sky-50/70 text-sky-700',
-    emerald: 'border-emerald-200 bg-emerald-50/70 text-emerald-700',
+    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300',
+    sky: 'border-sky-200 bg-sky-50 text-sky-700 hover:border-sky-300',
+    slate: 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50',
   }
 
-  return (
-    <div className={`rounded-lg border px-4 py-4 ${tones[tone] || tones.slate}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em]">{label}</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-950">{value}</p>
-        </div>
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-sm">
-          <Icon className="h-4 w-4" />
-        </span>
-      </div>
-    </div>
-  )
+  return `inline-flex h-9 w-9 items-center justify-center rounded-md border transition ${tones[tone] || tones.slate}`
 }
 
 export default function Refunds() {
@@ -105,7 +94,28 @@ export default function Refunds() {
     completed: allRefunds.filter((refund) => refund.status === 'completed').length,
   }), [allRefunds])
 
+  const updateParams = (nextParams) => {
+    setParams(nextParams)
+  }
+
   const hasActiveFilters = Boolean(search || params.status)
+  const statItems = [
+    { label: 'Total Refunds', value: stats.total, variant: 'slate', icon: FiRefreshCw },
+    { label: 'Pending', value: stats.pending, variant: 'amber', icon: FiClock },
+    { label: 'Processing', value: stats.processing, variant: 'sky', icon: FiDollarSign },
+    { label: 'Completed', value: stats.completed, variant: 'emerald', icon: FiCheckCircle },
+  ]
+  const filterOptions = [
+    {
+      key: 'status',
+      value: params.status,
+      onChange: (value) => updateParams({ ...params, status: value, page: 1 }),
+      options: [
+        { value: '', label: 'All Statuses' },
+        ...statuses.map((status) => ({ value: status, label: statusLabel(status) })),
+      ],
+    },
+  ]
 
   const loadStats = () => {
     adminApi.listFresh('refunds', { page: 1, per_page: 100 })
@@ -168,10 +178,6 @@ export default function Refunds() {
     setParams((current) => ({ ...current }))
   }
 
-  const updateParams = (nextParams) => {
-    setParams(nextParams)
-  }
-
   const updateStatus = async (refund, status) => {
     if (refund.status === status) return
 
@@ -206,41 +212,22 @@ export default function Refunds() {
   return (
     <>
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={FiRefreshCw} label="Total Refunds" value={stats.total} tone="slate" />
-        <StatCard icon={FiClock} label="Pending" value={stats.pending} tone="amber" />
-        <StatCard icon={FiDollarSign} label="Processing" value={stats.processing} tone="sky" />
-        <StatCard icon={FiCheckCircle} label="Completed" value={stats.completed} tone="emerald" />
+        {statItems.map((item) => (
+          <AdminStatCard key={item.label} label={item.label} value={item.value} variant={item.variant} icon={item.icon} />
+        ))}
       </div>
 
-      <div className="mb-4">
-        <div className="grid gap-3 xl:grid-cols-[1fr_220px_140px]">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by order, customer, method, or transaction ID"
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-          />
-          <select
-            value={params.status}
-            onChange={(event) => updateParams({ ...params, status: event.target.value, page: 1 })}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-          >
-            <option value="">All Statuses</option>
-            {statuses.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
-          </select>
-          <button
-            type="button"
-            onClick={() => {
-              setSearch('')
-              updateParams({ search: '', status: '', page: 1 })
-            }}
-            disabled={!hasActiveFilters}
-            className="inline-flex items-center justify-center rounded-md border border-slate-500 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-gray-600 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Clear Filters
-          </button>
-        </div>
-      </div>
+      <AdminFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by order, customer, method, or transaction ID"
+        filters={filterOptions}
+        onClear={() => {
+          setSearch('')
+          updateParams({ search: '', status: '', page: 1 })
+        }}
+        hasActiveFilters={hasActiveFilters}
+      />
 
       {updating ? <AdminLoadingState className="justify-start pb-3" /> : null}
       {loading && refunds.length === 0 ? <AdminLoadingState className="py-8" /> : null}
@@ -249,8 +236,9 @@ export default function Refunds() {
       ) : null}
 
       {refunds.length > 0 ? (
-          <table className="min-w-full border border-slate-300 divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-left text-slate-600">
+        <div className="w-full overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+          <table className="w-full min-w-[1120px] divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               <tr>
                 <th className="px-4 py-3">Refund</th>
                 <th className="px-4 py-3">Customer</th>
@@ -266,9 +254,14 @@ export default function Refunds() {
               {refunds.map((refund) => (
                 <tr key={refund.id} className="transition hover:bg-slate-50/80">
                   <td className="px-4 py-3">
-                    <div>
-                      <div className="font-medium text-slate-950">{refund.return_request?.order?.order_number || `Refund #${refund.id}`}</div>
-                      <div className="text-xs text-slate-500">Return #{refund.return_id}</div>
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-sky-100 bg-sky-50 text-sky-700">
+                        <FiRefreshCw className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <div className="font-medium text-slate-950">{refund.return_request?.order?.order_number || `Refund #${refund.id}`}</div>
+                        <div className="text-xs text-slate-500">Return #{refund.return_id}</div>
+                      </div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -298,12 +291,12 @@ export default function Refunds() {
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-3">
                       {refund.return_request?.user?.id ? (
-                        <Link to={`/admin/users/${refund.return_request.user.id}`} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:border-emerald-300" title="Open user">
+                        <Link to={`/admin/users/${refund.return_request.user.id}`} className={actionButtonClass('emerald')} title="Open user">
                           <FiArrowUpRight className="h-4 w-4" />
                         </Link>
                       ) : null}
                       {refund.return_request?.order?.id ? (
-                        <Link to={`/admin/orders/${refund.return_request.order.id}`} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:border-emerald-300" title="Open order">
+                        <Link to={`/admin/orders/${refund.return_request.order.id}`} className={actionButtonClass('sky')} title="Open order">
                           <FiRefreshCw className="h-4 w-4" />
                         </Link>
                       ) : null}
@@ -313,6 +306,7 @@ export default function Refunds() {
               ))}
             </tbody>
           </table>
+        </div>
       ) : null}
 
       {meta?.last_page > 1 ? (

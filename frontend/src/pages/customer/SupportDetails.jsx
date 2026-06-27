@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { FiArrowLeft, FiClock, FiFileText, FiMessageSquare, FiPaperclip, FiSend, FiUpload } from 'react-icons/fi'
+import { FiArrowLeft, FiClock, FiFileText, FiHeadphones, FiMessageSquare, FiPaperclip, FiSend, FiUpload } from 'react-icons/fi'
+import { BiSupport } from "react-icons/bi";
 import { supportApi } from '../../api/supportApi'
 import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
@@ -111,7 +112,7 @@ export default function SupportDetails() {
                 <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">{ticket.subject}</h1>
                 <p className="mt-3 max-w-3xl text-sm leading-8 text-slate-600">{ticket.description}</p>
               </div>
-              <div className="grid min-w-[220px] gap-3 border border-slate-200 bg-slate-50 p-4 text-sm">
+              <div className="grid min-w-55 gap-3 border border-slate-200 bg-slate-50 p-4 text-sm">
                 <MetaItem icon={FiClock} label={t('খোলা হয়েছে', 'Opened')} value={date(ticket.created_at, locale)} />
                 <MetaItem icon={FiMessageSquare} label={t('মোট মেসেজ', 'Messages')} value={timeline.length.toLocaleString(locale)} />
                 <MetaItem icon={FiFileText} label={t('সম্পর্কিত অর্ডার', 'Related order')} value={ticket.order?.order_number || t('নেই', 'None')} />
@@ -126,14 +127,14 @@ export default function SupportDetails() {
             <div className="space-y-5 p-5 sm:p-6">
               {timeline.map((item) => (
                 <article key={item.id} className="grid gap-3 sm:grid-cols-[44px_1fr]">
-                  <div className={`flex h-11 w-11 items-center rounded-full justify-center border text-sm font-semibold ${item.tone === 'staff' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
-                    {item.tone === 'staff' ? 'T' : 'Me'}
+                  <div className={`flex h-11 w-11 items-center justify-center rounded-full border text-sm font-semibold ${item.tone === 'staff' ? 'border-emerald-200 bg-emerald-100 shadow-sm shadow-emerald-100' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
+                    {item.tone === 'staff' ? <BiSupport className="h-5 w-5" /> : 'Me'}
                   </div>
                   <div className={`border rounded-lg p-4 ${item.tone === 'staff' ? 'border-emerald-100 bg-emerald-50/50' : 'border-slate-200 bg-white'}`}>
                     <div className="flex flex-col gap-1 border-b border-slate-200/80 pb-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         {/* <h2 className="text-sm font-semibold text-slate-950">{item.author}</h2> */}
-                        <p className="mt-1 text-xs text-slate-500">{item.role}</p>
+                        <p className="text-xs text-slate-500">{item.role}</p>
                       </div>
                       <time className="text-xs font-medium text-slate-500">{date(item.created_at, locale)}</time>
                     </div>

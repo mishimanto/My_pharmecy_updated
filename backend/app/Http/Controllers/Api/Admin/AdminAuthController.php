@@ -31,6 +31,24 @@ class AdminAuthController extends Controller
         return $this->ok($result['data'], $result['message']);
     }
 
+    public function verifyTwoFactor(Request $request, StaffAuthService $auth)
+    {
+        $data = $request->validate([
+            'challenge_token' => ['required', 'string'],
+            'code' => ['required', 'digits:6'],
+            'device_type' => ['nullable', 'string', 'max:100'],
+            'device_token' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $result = $auth->verifyTwoFactor($data['challenge_token'], $data['code'], $request);
+
+        if (! $result['ok']) {
+            return $this->fail($result['message'], $result['status']);
+        }
+
+        return $this->ok($result['data'], $result['message']);
+    }
+
     public function profile(Request $request, StaffAuthService $auth)
     {
         return $this->ok($auth->profile($request->user()), 'স্টাফ প্রোফাইল পাওয়া গেছে।');

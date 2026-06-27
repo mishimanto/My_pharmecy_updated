@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { FiArrowLeft, FiCalendar, FiExternalLink, FiFileText, FiUser } from 'react-icons/fi'
@@ -6,7 +6,7 @@ import { prescriptionApi } from '../../api/prescriptionApi'
 import EmptyState from '../../components/common/EmptyState'
 import { useLanguage } from '../../context/LanguageContext'
 import { date } from '../../utils/formatters'
-import { prescriptionDisplayName, prescriptionDisplayNameById, prescriptionIndexFromSlug } from '../../utils/prescriptionDisplay'
+import { prescriptionIndexFromSlug } from '../../utils/prescriptionDisplay'
 
 function getPreviewKind(fileUrl = '') {
   const url = fileUrl.toLowerCase().split('?')[0]
@@ -17,20 +17,31 @@ function getPreviewKind(fileUrl = '') {
   return 'file'
 }
 
+function localizedNumber(value, isBangla) {
+  return Number(value || 0).toLocaleString(isBangla ? 'bn-BD' : 'en-US')
+}
+
+function fallbackPrescriptionName(index, id, isBangla) {
+  if (index >= 0) {
+    return isBangla ? `প্রেসক্রিপশন ${localizedNumber(index + 1, true)}` : `Prescription ${index + 1}`
+  }
+
+  return isBangla ? `প্রেসক্রিপশন #${localizedNumber(id, true)}` : `Prescription #${id}`
+}
+
 export default function PrescriptionDetails() {
   const { id: routeKey } = useParams()
   const { isBangla } = useLanguage()
   const [item, setItem] = useState(null)
   const [loading, setLoading] = useState(true)
-  const cachedItems = prescriptionApi.getCachedList()
-  const t = (bn, en) => (isBangla ? bn : en)
+  const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
+  const locale = isBangla ? 'bn-BD' : 'en-US'
   const routeIndex = prescriptionIndexFromSlug(routeKey)
   const isNumericRoute = /^\d+$/.test(String(routeKey || ''))
   const title = useMemo(() => {
-    if (routeIndex >= 0) return prescriptionDisplayName(routeIndex)
-
-    return prescriptionDisplayNameById(cachedItems, routeKey)
-  }, [cachedItems, routeIndex, routeKey])
+    if (!item) return routeIndex >= 0 ? fallbackPrescriptionName(routeIndex, routeKey, isBangla) : t('প্রেসক্রিপশন', 'Prescription')
+    return fallbackPrescriptionName(routeIndex, item.id, isBangla)
+  }, [isBangla, item, routeIndex, routeKey, t])
   const previewKind = getPreviewKind(item?.file_url)
 
   useEffect(() => {
@@ -55,7 +66,7 @@ export default function PrescriptionDetails() {
           setItem(data.data)
         }
       })
-      .catch(() => toast.error(t('প্রেসক্রিপশন বিস্তারিত লোড করা যায়নি।', 'Prescription details could not be loaded.')))
+      .catch(() => toast.error(t('প্রেসক্রিপশনের বিস্তারিত লোড করা যায়নি।', 'Prescription details could not be loaded.')))
       .finally(() => {
         if (!cancelled) {
           setLoading(false)
@@ -65,7 +76,7 @@ export default function PrescriptionDetails() {
     return () => {
       cancelled = true
     }
-  }, [isNumericRoute, routeIndex, routeKey])
+  }, [isNumericRoute, routeIndex, routeKey, t])
 
   if (loading) {
     return (
@@ -79,7 +90,10 @@ export default function PrescriptionDetails() {
   if (!item) {
     return (
       <div className="border border-slate-200 bg-white p-6">
-        <EmptyState title={t('প্রেসক্রিপশন পাওয়া যায়নি', 'Prescription not found')} text={t('প্রেসক্রিপশনটি ডিলিট করা হয়েছে অথবা আর পাওয়া যাচ্ছে না।', 'The prescription may have been deleted or is no longer available.')} />
+        <EmptyState
+          title={t('প্রেসক্রিপশন পাওয়া যায়নি', 'Prescription not found')}
+          text={t('প্রেসক্রিপশনটি ডিলিট করা হয়েছে অথবা আর পাওয়া যাচ্ছে না।', 'The prescription may have been deleted or is no longer available.')}
+        />
       </div>
     )
   }
@@ -91,16 +105,13 @@ export default function PrescriptionDetails() {
           <h1 className="text-2xl font-semibold tracking-tight text-slate-950">{title}</h1>
           <div className="mt-2 flex items-center gap-2 text-sm text-slate-500">
             <FiCalendar className="h-4 w-4" />
-            {t('আপলোড হয়েছে', 'Uploaded')} {date(item.uploaded_at || item.created_at)}
+            {t('আপলোড হয়েছে', 'Uploaded')} {date(item.uploaded_at || item.created_at, locale)}
           </div>
-          
-        </div> 
-        <div className="shrink-0 inline-flex items-center gap-1 text-sm font-semibold text-slate-500 transition hover:text-slate-950 hover:underline">
-            <Link to="/prescriptions" className="inline-flex        items-center gap-1 text-sm font-semibold text-slate-500 transition hover:text-slate-950 hover:underline">
-              <FiArrowLeft className="h-4 w-4" />
-              {t('সব প্রেসক্রিপশন', 'All prescriptions')}
-            </Link>
-          </div>       
+        </div>
+        <Link to="/prescriptions" className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500 transition hover:text-slate-950 hover:underline">
+          <FiArrowLeft className="h-4 w-4" />
+          {t('সব প্রেসক্রিপশন', 'All prescriptions')}
+        </Link>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_460px]">
@@ -110,7 +121,7 @@ export default function PrescriptionDetails() {
             <div className="mt-5 grid gap-3">
               <InfoRow icon={FiUser} label={t('রোগী', 'Patient')} value={item.patient_name || '-'} />
               <InfoRow icon={FiUser} label={t('ডাক্তার', 'Doctor')} value={item.doctor_name || '-'} />
-              <InfoRow icon={FiCalendar} label={t('আপলোড', 'Uploaded')} value={date(item.uploaded_at || item.created_at)} />
+              <InfoRow icon={FiCalendar} label={t('আপলোড', 'Uploaded')} value={date(item.uploaded_at || item.created_at, locale)} />
             </div>
           </div>
 
@@ -121,7 +132,9 @@ export default function PrescriptionDetails() {
 
           <div className="border border-slate-200 bg-white p-5">
             <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0e6574]">{t('রিভিউ নোট', 'Review note')}</div>
-            <p className="mt-3 text-sm leading-7 text-slate-600">{item.reviews?.[0]?.review_note || t('এখনও কোনো রিভিউ নোট যোগ করা হয়নি।', 'No review note added yet.')}</p>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              {item.reviews?.[0]?.review_note || t('এখনও কোনো রিভিউ নোট যোগ করা হয়নি।', 'No review note added yet.')}
+            </p>
           </div>
         </aside>
 

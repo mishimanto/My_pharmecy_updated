@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import {
@@ -8,6 +8,7 @@ import {
   FiCheckCircle,
   FiClock,
   FiCreditCard,
+  FiDownload,
   FiMapPin,
   FiPackage,
   FiTruck,
@@ -71,6 +72,15 @@ export default function OrderDetails() {
     }
   }
 
+  const downloadMemo = async () => {
+    try {
+      const response = await orderApi.memo(order.order_number || order.id, true)
+      openPdfBlob(response.data, `${order.memo_number || order.order_number}.pdf`, true)
+    } catch {
+      toast.error(t('ইনভয়েস ডাউনলোড করা যায়নি।', 'Invoice could not be downloaded.'))
+    }
+  }
+
   const formattedDate = useMemo(
     () => date(order?.order_date, locale),
     [locale, order?.order_date],
@@ -104,6 +114,9 @@ export default function OrderDetails() {
   const deliveryStatus = getDeliveryStatusLabel(order.delivery?.delivery_status, isBangla)
   const orderStatus = getOrderStatusLabel(order.order_status, isBangla)
   const showMakePayment = !paymentOverview.isSettled && canOpenPaymentPage && !hasSubmittedTransaction
+  const canDownloadInvoice = canCustomerDownloadInvoice(order)
+  const hasPrescriptionClarification = Boolean(order.prescription_match_note)
+    || ['mismatch', 'need_clarification'].includes(order.prescription_match_status)
 
   return (
     <>
@@ -111,6 +124,17 @@ export default function OrderDetails() {
         title={order.order_number}
         action={(
           <div className="flex flex-wrap gap-2">
+            {canDownloadInvoice ? (
+              <button
+                type="button"
+                onClick={downloadMemo}
+                className="inline-flex items-center gap-2 border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300"
+              >
+                <FiDownload className="h-4 w-4" />
+                {t('ইনভয়েস ডাউনলোড', 'Download invoice')}
+              </button>
+            ) : null}
+
             <button
               type="button"
               onClick={() => navigate(getOrderPath(order, 'tracking'))}
@@ -120,7 +144,7 @@ export default function OrderDetails() {
               {t('ডেলিভারি ট্র্যাকিং', 'Delivery tracking')}
             </button>
 
-            {cancellable.includes(order.order_status) ? (
+            {cancellable.includes(order.order_status) && !order.delivery ? (
               <button
                 type="button"
                 onClick={cancelOrder}
@@ -183,6 +207,43 @@ export default function OrderDetails() {
               />
             </div>
           </div>
+
+          {hasPrescriptionClarification ? (
+            <div className="border border-rose-200 bg-rose-50 p-5 text-sm leading-7 text-rose-800 shadow-[0_18px_50px_-40px_rgba(190,18,60,0.35)]">
+              <div className="flex items-start gap-3">
+
+                <div className="min-w-0">
+                  <div className='flex gap-2 items-center'>
+                    <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center border border-rose-200 bg-white text-rose-700">
+                      <FiAlertCircle className="h-5 w-5" />
+                    </span>
+                    <div className="text-lg font-semibold uppercase tracking-[0.16em] text-rose-700">
+                      {t('প্রেসক্রিপশন ক্ল্যারিফিকেশন', 'Prescription clarification needed')}
+                    </div>
+                    {/* <p className="mt-2 font-semibold text-rose-950">
+                      {getPrescriptionMatchMessage(order.prescription_match_status, isBangla)}
+                    </p> */}
+                  </div>
+
+                  {order.prescription_match_note ? (
+                    <p className="mt-2 text-rose-800 ml-11">
+                      <span className="font-semibold">{t('নোট', 'Note')}:</span> {order.prescription_match_note}
+                    </p>
+                  ) : null}
+
+                  {order.prescription?.id ? (
+                    <Link
+                      to={`/prescriptions/${order.prescription.id}`}
+                      className="mt-4 ml-11 inline-flex items-center gap-2 underline py-2 text-sm font-semibold text-rose-700 transition hover:text-rose-500"
+                    >
+                      {t('প্রেসক্রিপশন দেখুন', 'View prescription')}
+                      <FiArrowRight className="h-4 w-4" />
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <div className="border border-slate-200 bg-white shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
             <div className="border-b border-slate-200 p-6">
@@ -298,7 +359,7 @@ export default function OrderDetails() {
 
             {order.admin_note ? (
               <div className="mt-4 border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                <span className="font-semibold text-slate-950">{t('অ্যাডমিন নোট', 'Admin note')}:</span> {order.admin_note}
+                <span className="font-semibold text-slate-950">{t('নোট', 'Note')}:</span> {order.admin_note}
               </div>
             ) : null}
 
@@ -353,6 +414,24 @@ function getPaymentOverview(status, isBangla) {
   }
 }
 
+function getPrescriptionMatchMessage(status, isBangla) {
+  if (status === 'mismatch') {
+    return isBangla
+      ? 'আপনার অর্ডারের পণ্যের সাথে প্রেসক্রিপশন পুরোপুরি মিলছে না।'
+      : 'The prescription does not fully match the ordered products.'
+  }
+
+  if (status === 'need_clarification') {
+    return isBangla
+      ? 'এই অর্ডার এগোনোর আগে প্রেসক্রিপশন নিয়ে আরও তথ্য প্রয়োজন।'
+      : 'More prescription information is needed before this order can continue.'
+  }
+
+  return isBangla
+    ? 'এই অর্ডারের প্রেসক্রিপশন নিয়ে অ্যাডমিনের একটি নোট আছে।'
+    : 'The admin added a note about this order prescription.'
+}
+
 function getPaymentMethodLabel(method, isBangla) {
   const labels = {
     COD: isBangla ? 'ক্যাশ অন ডেলিভারি' : 'Cash on delivery',
@@ -361,6 +440,19 @@ function getPaymentMethodLabel(method, isBangla) {
   }
 
   return labels[method] || method || '-'
+}
+
+function canCustomerDownloadInvoice(order) {
+  if (!order) return false
+
+  const availableStatuses = ['confirmed', 'processing', 'delivered', 'returned', 'refunded']
+  if (!availableStatuses.includes(order.order_status)) return false
+
+  if (String(order.payment_method || '').toUpperCase() === 'COD') {
+    return order.order_status === 'delivered'
+  }
+
+  return true
 }
 
 function SurfaceCard({ children }) {
@@ -423,4 +515,22 @@ function DataRow({ label, value, emphasized = false }) {
       <span className={`${emphasized ? 'text-slate-950' : 'text-slate-700'} text-right`}>{value}</span>
     </div>
   )
+}
+
+function openPdfBlob(blob, filename, download = false) {
+  const url = window.URL.createObjectURL(blob)
+
+  if (download) {
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+    return
+  }
+
+  window.open(url, '_blank', 'noopener,noreferrer')
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 60 * 1000)
 }

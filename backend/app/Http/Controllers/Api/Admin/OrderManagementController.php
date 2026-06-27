@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Services\NotificationService;
+use App\Services\OrderMemoService;
 use App\Services\OrderStatusService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
@@ -41,6 +43,20 @@ class OrderManagementController extends Controller
             Order::query()->with($orders->relations())->findOrFail($id),
             'Order details loaded successfully.'
         );
+    }
+
+    public function memo(Request $request, int $id, OrderStatusService $orders, OrderMemoService $memo)
+    {
+        $order = Order::query()->with($orders->relations())->findOrFail($id);
+        abort_unless($memo->isAvailableForAdmin($order), 422, 'Confirm this order before generating the invoice.');
+
+        $pdf = $memo->pdf($order);
+        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => $disposition.'; filename="'.$memo->filename($order).'"',
+        ]);
     }
 
     public function status(Request $request, int $id, OrderStatusService $orders)
@@ -94,7 +110,7 @@ class OrderManagementController extends Controller
         return $this->ok($updatedOrder, 'Emergency status correction saved successfully.');
     }
 
-    public function prescriptionMatch(Request $request, int $id, OrderStatusService $orders)
+    public function prescriptionMatch(Request $request, int $id, OrderStatusService $orders, NotificationService $notifications)
     {
         $data = $request->validate([
             'prescription_match_status' => ['required', Rule::in(['matched', 'mismatch', 'need_clarification'])],
@@ -110,7 +126,7 @@ class OrderManagementController extends Controller
         abort_unless($orders->requiresPrescriptionReview($order), 422, 'This order does not need a prescription review.');
         abort_unless($order->prescription, 422, 'No prescription is linked to this order yet.');
 
-        $updatedOrder = DB::transaction(function () use ($order, $request, $data, $orders) {
+        $updatedOrder = DB::transaction(function () use ($order, $request, $data, $orders, $notifications) {
             $nextOrderStatus = $order->order_status;
 
             if ($data['prescription_match_status'] !== 'matched') {
@@ -132,6 +148,27 @@ class OrderManagementController extends Controller
                 'prescription_matched_at' => now(),
                 'order_status' => $nextOrderStatus,
             ]);
+
+            if ($order->user_id && in_array($data['prescription_match_status'], ['mismatch', 'need_clarification'], true)) {
+                $note = trim((string) ($data['prescription_match_note'] ?? ''));
+
+                $notifications->create([
+                    'user_id' => $order->user_id,
+                    'notification_type' => 'prescription_clarification',
+                    'title' => 'Prescription clarification needed',
+                    'message' => $note
+                        ? "Your order {$order->order_number} needs prescription clarification. {$note}"
+                        : "Your order {$order->order_number} needs prescription clarification.",
+                    'metadata' => [
+                        'resource' => 'orders',
+                        'resource_id' => $order->id,
+                        'link' => "/orders/{$order->id}",
+                        'order_number' => $order->order_number,
+                        'prescription_id' => $order->prescription?->id,
+                        'prescription_match_status' => $data['prescription_match_status'],
+                    ],
+                ]);
+            }
 
             DB::table('admin_activity_logs')->insert([
                 'staff_id' => $request->user()->id,

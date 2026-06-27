@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\Admin\ReturnManagementController;
 use App\Http\Controllers\Api\Admin\RiderController;
 use App\Http\Controllers\Api\Admin\RolePermissionController;
 use App\Http\Controllers\Api\Admin\ReportController;
+use App\Http\Controllers\Api\Admin\SecurityController;
 use App\Http\Controllers\Api\Admin\SiteSettingsController as AdminSiteSettingsController;
 use App\Http\Controllers\Api\Admin\StaffController;
 use App\Http\Controllers\Api\Admin\SupplierController;
@@ -92,10 +93,10 @@ Route::post('/broadcasting/auth', function (Request $request) {
 
 Route::prefix('customer')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
     Route::post('/guest-session', [GuestSessionController::class, 'store']);
-    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');
     Route::get('/products', [ProductBrowseController::class, 'index']);
     Route::get('/products/{slug}', [ProductBrowseController::class, 'show']);
     Route::get('/auth/{provider}/redirect', [AuthController::class, 'redirect']);
@@ -109,9 +110,10 @@ Route::prefix('customer')->group(function () {
     Route::post('/checkout', [CheckoutController::class, 'store']);
     Route::get('/orders/{id}/tracking', [DeliveryTrackingController::class, 'show']);
     Route::post('/orders/{id}/payment/cod', [PaymentController::class, 'cod']);
-    Route::post('/orders/{id}/payment-proof', [PaymentController::class, 'submitProof']);
-    Route::get('/orders/{id}', [OrderController::class, 'show']);
-    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);
+        Route::post('/orders/{id}/payment-proof', [PaymentController::class, 'submitProof']);
+        Route::get('/orders/{id}', [OrderController::class, 'show']);
+        Route::get('/orders/{id}/memo', [OrderController::class, 'memo']);
+        Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);
     Route::middleware(['auth:sanctum', 'customer.auth'])->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::get('/profile', [AuthController::class, 'profile']);
@@ -139,7 +141,8 @@ Route::prefix('customer')->group(function () {
 });
 
 Route::prefix('admin')->group(function () {
-    Route::post('/login', [AdminAuthController::class, 'login']);
+    Route::post('/login', [AdminAuthController::class, 'login'])->middleware('throttle:5,1');
+    Route::post('/login/2fa', [AdminAuthController::class, 'verifyTwoFactor'])->middleware('throttle:5,1');
 
     Route::middleware(['auth:sanctum', 'staff.auth'])->group(function () {
         Route::get('/me', [AdminAuthController::class, 'me']);
@@ -147,6 +150,11 @@ Route::prefix('admin')->group(function () {
         Route::put('/profile', [AdminAuthController::class, 'updateProfile']);
         Route::put('/profile/password', [AdminAuthController::class, 'changePassword']);
         Route::post('/logout', [AdminAuthController::class, 'logout']);
+        Route::get('/security/summary', [SecurityController::class, 'summary']);
+        Route::get('/security/login-history', [SecurityController::class, 'loginHistory'])->middleware('permission:activity-log.view');
+        Route::post('/security/password-confirm', [SecurityController::class, 'confirmPassword']);
+        Route::patch('/security/2fa', [SecurityController::class, 'updateTwoFactor']);
+        Route::post('/security/staff-sessions/{id}/revoke', [SecurityController::class, 'revokeStaffSession'])->middleware(['permission:staff.manage', 'sensitive.confirm']);
         Route::get('/dashboard', [DashboardController::class, 'summary'])->middleware('permission:report.view');
         Route::get('/dashboard/summary', [DashboardController::class, 'summary'])->middleware('permission:report.view');
         Route::get('/dashboard/recent-orders', [DashboardController::class, 'recentOrders'])->middleware('permission:report.view');
@@ -157,29 +165,29 @@ Route::prefix('admin')->group(function () {
         Route::get('/users', [UserManagementController::class, 'index'])->middleware('permission:user.view');
         Route::get('/users/customers', [UserManagementController::class, 'customers'])->middleware('permission:user.view');
         Route::get('/users/{id}', [UserManagementController::class, 'show'])->middleware('permission:user.view');
-        Route::patch('/users/{id}/status', [UserManagementController::class, 'status'])->middleware('permission:user.manage');
-        Route::delete('/users/{id}', [UserManagementController::class, 'destroy'])->middleware('permission:user.manage');
+        Route::patch('/users/{id}/status', [UserManagementController::class, 'status'])->middleware(['permission:user.manage', 'sensitive.confirm']);
+        Route::delete('/users/{id}', [UserManagementController::class, 'destroy'])->middleware(['permission:user.manage', 'sensitive.confirm']);
         Route::get('/users/{id}/orders', [UserManagementController::class, 'orders'])->middleware('permission:user.view');
         Route::get('/users/{id}/prescriptions', [UserManagementController::class, 'prescriptions'])->middleware('permission:user.view');
         Route::get('/users/{id}/support-tickets', [UserManagementController::class, 'supportTickets'])->middleware('permission:user.view');
         Route::get('/users/{id}/returns', [UserManagementController::class, 'returns'])->middleware('permission:user.view');
 
         Route::get('/staff', [StaffController::class, 'index'])->middleware('permission:staff.view');
-        Route::post('/staff', [StaffController::class, 'store'])->middleware('permission:staff.manage');
+        Route::post('/staff', [StaffController::class, 'store'])->middleware(['permission:staff.manage', 'sensitive.confirm']);
         Route::get('/staff/{id}', [StaffController::class, 'show'])->middleware('permission:staff.view');
-        Route::put('/staff/{id}', [StaffController::class, 'update'])->middleware('permission:staff.manage');
-        Route::patch('/staff/{id}/status', [StaffController::class, 'status'])->middleware('permission:staff.manage');
-        Route::delete('/staff/{id}', [StaffController::class, 'destroy'])->middleware('permission:staff.manage');
+        Route::put('/staff/{id}', [StaffController::class, 'update'])->middleware(['permission:staff.manage', 'sensitive.confirm']);
+        Route::patch('/staff/{id}/status', [StaffController::class, 'status'])->middleware(['permission:staff.manage', 'sensitive.confirm']);
+        Route::delete('/staff/{id}', [StaffController::class, 'destroy'])->middleware(['permission:staff.manage', 'sensitive.confirm']);
 
         Route::get('/roles', [RolePermissionController::class, 'roles'])->middleware('permission:role.manage');
-        Route::post('/roles', [RolePermissionController::class, 'storeRole'])->middleware('permission:role.manage');
+        Route::post('/roles', [RolePermissionController::class, 'storeRole'])->middleware(['permission:role.manage', 'sensitive.confirm']);
         Route::get('/roles/{id}', [RolePermissionController::class, 'showRole'])->middleware('permission:role.manage');
-        Route::put('/roles/{id}', [RolePermissionController::class, 'updateRole'])->middleware('permission:role.manage');
-        Route::delete('/roles/{id}', [RolePermissionController::class, 'destroyRole'])->middleware('permission:role.manage');
+        Route::put('/roles/{id}', [RolePermissionController::class, 'updateRole'])->middleware(['permission:role.manage', 'sensitive.confirm']);
+        Route::delete('/roles/{id}', [RolePermissionController::class, 'destroyRole'])->middleware(['permission:role.manage', 'sensitive.confirm']);
         Route::get('/permissions', [RolePermissionController::class, 'permissions'])->middleware('permission:role.manage');
-        Route::post('/roles/{id}/permissions', [RolePermissionController::class, 'syncPermissions'])->middleware('permission:role.manage');
+        Route::post('/roles/{id}/permissions', [RolePermissionController::class, 'syncPermissions'])->middleware(['permission:role.manage', 'sensitive.confirm']);
         Route::get('/site-settings', [AdminSiteSettingsController::class, 'show'])->middleware('permission:role.manage');
-        Route::put('/site-settings', [AdminSiteSettingsController::class, 'update'])->middleware('permission:role.manage');
+        Route::put('/site-settings', [AdminSiteSettingsController::class, 'update'])->middleware(['permission:role.manage', 'sensitive.confirm']);
         Route::apiResource('hero-slides', AdminHeroSlideController::class)->except(['show']);
         Route::apiResource('banner-images', AdminBannerImageController::class)->except(['show']);
         Route::apiResource('coupons', CouponController::class)->except(['show']);
@@ -191,37 +199,40 @@ Route::prefix('admin')->group(function () {
         Route::post('/categories', [CategoryController::class, 'store'])->middleware('permission:product.create');
         Route::get('/categories/{id}', [CategoryController::class, 'show'])->middleware('permission:product.view');
         Route::put('/categories/{id}', [CategoryController::class, 'update'])->middleware('permission:product.edit');
-        Route::delete('/categories/{id}', [CategoryController::class, 'destroy'])->middleware('permission:product.delete');
+        Route::delete('/categories/{id}', [CategoryController::class, 'destroy'])->middleware(['permission:product.delete', 'sensitive.confirm']);
 
         Route::get('/manufacturers', [ManufacturerController::class, 'index'])->middleware('permission:product.view');
         Route::post('/manufacturers', [ManufacturerController::class, 'store'])->middleware('permission:product.create');
         Route::get('/manufacturers/{id}', [ManufacturerController::class, 'show'])->middleware('permission:product.view');
         Route::post('/manufacturers/{id}', [ManufacturerController::class, 'update'])->middleware('permission:product.edit');
         Route::put('/manufacturers/{id}', [ManufacturerController::class, 'update'])->middleware('permission:product.edit');
-        Route::delete('/manufacturers/{id}', [ManufacturerController::class, 'destroy'])->middleware('permission:product.delete');
+        Route::delete('/manufacturers/{id}', [ManufacturerController::class, 'destroy'])->middleware(['permission:product.delete', 'sensitive.confirm']);
 
         Route::get('/products', [ProductController::class, 'index'])->middleware('permission:product.view');
         Route::post('/products', [ProductController::class, 'store'])->middleware('permission:product.create');
         Route::get('/products/{id}', [ProductController::class, 'show'])->middleware('permission:product.view');
         Route::put('/products/{id}', [ProductController::class, 'update'])->middleware('permission:product.edit');
-        Route::delete('/products/{id}', [ProductController::class, 'destroy'])->middleware('permission:product.delete');
+        Route::post('/products/{id}/description-draft', [ProductController::class, 'generateDescriptionDraft'])->middleware('permission:product.edit');
+        Route::post('/products/{id}/description-draft/publish', [ProductController::class, 'publishDescriptionDraft'])->middleware('permission:product.edit');
+        Route::delete('/products/{id}/description-draft', [ProductController::class, 'discardDescriptionDraft'])->middleware('permission:product.edit');
+        Route::delete('/products/{id}', [ProductController::class, 'destroy'])->middleware(['permission:product.delete', 'sensitive.confirm']);
         Route::put('/products/{id}/images', [ProductImageController::class, 'store'])->middleware('permission:product.edit');
         Route::get('/products/{id}/images/chunk', [ProductImageController::class, 'chunk'])->middleware('permission:product.edit');
-        Route::delete('/product-images/{id}', [ProductImageController::class, 'destroy'])->middleware('permission:product.delete');
-        Route::patch('/products/{id}/status', [ProductController::class, 'status'])->middleware('permission:product.edit');
+        Route::delete('/product-images/{id}', [ProductImageController::class, 'destroy'])->middleware(['permission:product.delete', 'sensitive.confirm']);
+        Route::patch('/products/{id}/status', [ProductController::class, 'status'])->middleware(['permission:product.edit', 'sensitive.confirm']);
 
         Route::get('/suppliers', [SupplierController::class, 'index'])->middleware('permission:inventory.view');
         Route::post('/suppliers', [SupplierController::class, 'store'])->middleware('permission:inventory.manage');
         Route::get('/suppliers/{id}', [SupplierController::class, 'show'])->middleware('permission:inventory.view');
         Route::put('/suppliers/{id}', [SupplierController::class, 'update'])->middleware('permission:inventory.manage');
-        Route::delete('/suppliers/{id}', [SupplierController::class, 'destroy'])->middleware('permission:inventory.manage');
+        Route::delete('/suppliers/{id}', [SupplierController::class, 'destroy'])->middleware(['permission:inventory.manage', 'sensitive.confirm']);
 
         Route::get('/inventory/batches', [InventoryBatchController::class, 'index'])->middleware('permission:inventory.view');
         Route::post('/inventory/batches', [InventoryBatchController::class, 'store'])->middleware('permission:inventory.manage');
         Route::get('/inventory/batches/{id}', [InventoryBatchController::class, 'show'])->middleware('permission:inventory.view');
         Route::put('/inventory/batches/{id}', [InventoryBatchController::class, 'update'])->middleware('permission:inventory.manage');
-        Route::delete('/inventory/batches/{id}', [InventoryBatchController::class, 'destroy'])->middleware('permission:inventory.manage');
-        Route::patch('/inventory/batches/{id}/status', [InventoryBatchController::class, 'status'])->middleware('permission:inventory.manage');
+        Route::delete('/inventory/batches/{id}', [InventoryBatchController::class, 'destroy'])->middleware(['permission:inventory.manage', 'sensitive.confirm']);
+        Route::patch('/inventory/batches/{id}/status', [InventoryBatchController::class, 'status'])->middleware(['permission:inventory.manage', 'sensitive.confirm']);
 
         Route::get('/inventory/transactions', [InventoryTransactionController::class, 'index'])->middleware('permission:inventory.view');
         Route::get('/inventory/low-stock', [InventoryTransactionController::class, 'lowStock'])->middleware('permission:inventory.view');
@@ -232,26 +243,27 @@ Route::prefix('admin')->group(function () {
         Route::post('/prescriptions/{id}/review', [PrescriptionReviewController::class, 'review'])->middleware('permission:prescription.review');
 
         Route::get('/orders', [OrderManagementController::class, 'index'])->middleware('permission:order.view');
+        Route::get('/orders/{id}/memo', [OrderManagementController::class, 'memo'])->middleware('permission:order.view');
         Route::get('/orders/{id}', [OrderManagementController::class, 'show'])->middleware('permission:order.view');
         Route::patch('/orders/{id}/prescription-match', [OrderManagementController::class, 'prescriptionMatch'])->middleware('permission:prescription.review');
         Route::patch('/orders/{id}/status', [OrderManagementController::class, 'status'])->middleware('permission:order.update');
-        Route::patch('/orders/{id}/force-status', [OrderManagementController::class, 'forceStatus'])->middleware('permission:order.update');
+        Route::patch('/orders/{id}/force-status', [OrderManagementController::class, 'forceStatus'])->middleware(['permission:order.update', 'sensitive.confirm']);
 
         Route::get('/payments', [PaymentManagementController::class, 'index'])->middleware('permission:payment.view');
         Route::get('/payments/{id}', [PaymentManagementController::class, 'show'])->middleware('permission:payment.view');
-        Route::patch('/payments/{id}/status', [PaymentManagementController::class, 'status'])->middleware('permission:payment.view');
+        Route::patch('/payments/{id}/status', [PaymentManagementController::class, 'status'])->middleware(['permission:payment.view', 'sensitive.confirm']);
 
         Route::get('/delivery-areas', [DeliveryAreaController::class, 'index'])->middleware('permission:delivery.manage');
         Route::post('/delivery-areas', [DeliveryAreaController::class, 'store'])->middleware('permission:delivery.manage');
         Route::get('/delivery-areas/{id}', [DeliveryAreaController::class, 'show'])->middleware('permission:delivery.manage');
         Route::put('/delivery-areas/{id}', [DeliveryAreaController::class, 'update'])->middleware('permission:delivery.manage');
-        Route::delete('/delivery-areas/{id}', [DeliveryAreaController::class, 'destroy'])->middleware('permission:delivery.manage');
+        Route::delete('/delivery-areas/{id}', [DeliveryAreaController::class, 'destroy'])->middleware(['permission:delivery.manage', 'sensitive.confirm']);
 
         Route::get('/riders', [RiderController::class, 'index'])->middleware('permission:delivery.manage');
         Route::post('/riders', [RiderController::class, 'store'])->middleware('permission:delivery.manage');
         Route::get('/riders/{id}', [RiderController::class, 'show'])->middleware('permission:delivery.manage');
         Route::put('/riders/{id}', [RiderController::class, 'update'])->middleware('permission:delivery.manage');
-        Route::delete('/riders/{id}', [RiderController::class, 'destroy'])->middleware('permission:delivery.manage');
+        Route::delete('/riders/{id}', [RiderController::class, 'destroy'])->middleware(['permission:delivery.manage', 'sensitive.confirm']);
 
         Route::get('/deliveries', [DeliveryController::class, 'index'])->middleware('permission:delivery.manage');
         Route::get('/deliveries/{id}', [DeliveryController::class, 'show'])->middleware('permission:delivery.manage');
@@ -266,23 +278,30 @@ Route::prefix('admin')->group(function () {
 
         Route::get('/returns', [ReturnManagementController::class, 'index'])->middleware('permission:return.manage');
         Route::get('/returns/{id}', [ReturnManagementController::class, 'show'])->middleware('permission:return.manage');
-        Route::patch('/returns/{id}/status', [ReturnManagementController::class, 'status'])->middleware('permission:return.manage');
-        Route::post('/returns/{id}/refund', [ReturnManagementController::class, 'refund'])->middleware('permission:refund.approve');
+        Route::patch('/returns/{id}/status', [ReturnManagementController::class, 'status'])->middleware(['permission:return.manage', 'sensitive.confirm']);
+        Route::post('/returns/{id}/refund', [ReturnManagementController::class, 'refund'])->middleware(['permission:refund.approve', 'sensitive.confirm']);
 
         Route::get('/refunds', [RefundController::class, 'index'])->middleware('permission:refund.approve');
         Route::get('/refunds/{id}', [RefundController::class, 'show'])->middleware('permission:refund.approve');
-        Route::patch('/refunds/{id}/status', [RefundController::class, 'status'])->middleware('permission:refund.approve');
+        Route::patch('/refunds/{id}/status', [RefundController::class, 'status'])->middleware(['permission:refund.approve', 'sensitive.confirm']);
 
         Route::get('/notifications', [NotificationManagementController::class, 'index']);
+        Route::get('/notifications/types', [NotificationManagementController::class, 'types']);
+        Route::get('/notifications/preferences', [NotificationManagementController::class, 'preferences']);
+        Route::put('/notifications/preferences', [NotificationManagementController::class, 'updatePreferences']);
+        Route::patch('/notifications/read-all', [NotificationManagementController::class, 'markAllRead']);
+        Route::post('/notifications/bulk', [NotificationManagementController::class, 'bulk']);
         Route::patch('/notifications/{id}/read', [NotificationManagementController::class, 'read']);
 
         Route::get('/reports/sales', [ReportController::class, 'sales'])->middleware('permission:report.view');
         Route::get('/reports/orders', [ReportController::class, 'orders'])->middleware('permission:report.view');
         Route::get('/reports/inventory', [ReportController::class, 'inventory'])->middleware('permission:report.view');
+        Route::get('/reports/profit', [ReportController::class, 'profit'])->middleware('permission:report.view');
         Route::get('/reports/payments', [ReportController::class, 'payments'])->middleware('permission:report.view');
         Route::get('/reports/prescriptions', [ReportController::class, 'prescriptions'])->middleware('permission:report.view');
         Route::get('/reports/deliveries', [ReportController::class, 'deliveries'])->middleware('permission:report.view');
         Route::get('/reports/refunds', [ReportController::class, 'refunds'])->middleware('permission:report.view');
+        Route::get('/reports/{type}/pdf', [ReportController::class, 'pdf'])->middleware('permission:report.view');
 
         Route::get('/admin_activity_logs', [AdminActivityLogController::class, 'index'])->middleware('permission:activity-log.view');
         Route::get('/admin_activity_logs/{id}', [AdminActivityLogController::class, 'show'])->middleware('permission:activity-log.view');

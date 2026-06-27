@@ -217,38 +217,38 @@ export default function InventoryBatchesIndex() {
       {!loading && batches.length === 0 ? <EmptyState title="No batches found" text="Try another search term or adjust the filters." /> : null}
 
       {batches.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-          <table className="min-w-[1180px] divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-left text-slate-600">
+        <div className="w-full overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+          <table className="w-full min-w-[1320px] divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-[0.04em] text-slate-600">
               <tr>
-                <th className="px-4 py-3">Batch</th>
-                <th className="px-4 py-3">Product</th>
-                <th className="px-4 py-3">Supplier</th>
-                <th className="px-4 py-3 text-center">Total Stock</th>
-                <th className="px-4 py-3 text-center">Reserved</th>
-                <th className="px-4 py-3 text-center">Available Stock</th>
-                <th className="px-4 py-3 text-center">Price</th>
-                <th className="px-4 py-3 text-center">Expiry</th>
-                <th className="px-4 py-3 text-center">Status</th>
-                <th className="px-4 py-3 text-center">Actions</th>
+                <th className="w-[130px] px-4 py-3">Batch</th>
+                <th className="w-[220px] px-4 py-3">Product</th>
+                <th className="w-[220px] px-4 py-3">Supplier</th>
+                <th className="w-[120px] px-4 py-3 text-center">Total Stock</th>
+                <th className="w-[110px] px-4 py-3 text-center">Reserved</th>
+                <th className="w-[140px] px-4 py-3 text-center">Available Stock</th>
+                <th className="w-[110px] px-4 py-3 text-center">Price</th>
+                <th className="w-[130px] px-4 py-3 text-center">Expiry</th>
+                <th className="w-[110px] px-4 py-3 text-center">Status</th>
+                <th className="w-[150px] px-4 py-3 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {batches.map((batch) => (
-                <tr key={batch.id}>
-                  <td className="px-4 py-3">
+                <tr key={batch.id} className="transition hover:bg-slate-50/80">
+                  <td className="whitespace-nowrap px-4 py-4 align-middle">
                     <div className="font-semibold text-slate-950">{batch.batch_number}</div>
                     <div className="text-xs text-slate-500">{stockLabel(batch)}</div>
                   </td>
-                  <td className="px-4 py-3 text-slate-700">{batch.product?.product_name || '-'}</td>
-                  <td className="px-4 py-3 text-slate-600">{batch.supplier?.supplier_name || '-'}</td>
-                  <td className="px-4 py-3 text-center font-semibold text-slate-800">{batch.stock_quantity}</td>
-                  <td className="px-4 py-3 text-center text-slate-600">{batch.reserved_quantity || 0}</td>
-                  <td className="px-4 py-3 text-center font-semibold text-slate-800">{batch.available_stock}</td>
-                  <td className="px-4 py-3 text-center text-slate-700">{money(batch.selling_price)}</td>
-                  <td className="px-4 py-3 text-center text-slate-600">{date(batch.expiry_date, 'en-US')}</td>
-                  <td className="px-4 py-3 text-center"><span className={`text-xs font-semibold ${statusClass(batch.status)}`}>{batch.status ? batch.status[0].toUpperCase() + batch.status.slice(1) : '-'}</span></td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="whitespace-nowrap px-4 py-4 align-middle text-slate-700">{batch.product?.product_name || '-'}</td>
+                  <td className="whitespace-nowrap px-4 py-4 align-middle text-slate-600">{batch.supplier?.supplier_name || '-'}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-center align-middle font-semibold text-slate-800">{batch.stock_quantity}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-center align-middle text-slate-600">{batch.reserved_quantity || 0}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-center align-middle font-semibold text-slate-800">{batch.available_stock}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-center align-middle text-slate-700">{money(batch.selling_price)}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-center align-middle text-slate-600">{date(batch.expiry_date, 'en-US')}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-center align-middle"><span className={`text-xs font-semibold ${statusClass(batch.status)}`}>{batch.status ? batch.status[0].toUpperCase() + batch.status.slice(1) : '-'}</span></td>
+                  <td className="whitespace-nowrap px-4 py-4 text-center align-middle">
                     <div className="flex justify-center gap-3">
                       <Link to={`/admin/inventory/batches/${batch.id}/edit`} className="flex h-8 w-8 items-center justify-center rounded-md border border-emerald-100 text-emerald-700 transition hover:bg-emerald-50" title="Edit batch">
                         <FiEdit className="h-4 w-4" />

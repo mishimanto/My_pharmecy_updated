@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom'
 import { FiCheckCircle, FiClock, FiEye, FiHeadphones, FiMessageSquare } from 'react-icons/fi'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
+import AdminFilterBar from '../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
+import AdminStatCard from '../../components/admin/AdminStatCard'
 import EmptyState from '../../components/common/EmptyState'
 import { date } from '../../utils/formatters'
 
@@ -57,27 +59,13 @@ function statusLabel(status) {
   return status.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
-function StatCard({ icon: Icon, label, value, tone = 'slate' }) {
+function actionButtonClass(tone = 'slate') {
   const tones = {
-    slate: 'border-slate-200 bg-white text-slate-700',
-    amber: 'border-amber-200 bg-amber-50/70 text-amber-700',
-    sky: 'border-sky-200 bg-sky-50/70 text-sky-700',
-    emerald: 'border-emerald-200 bg-emerald-50/70 text-emerald-700',
+    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300',
+    slate: 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50',
   }
 
-  return (
-    <div className={`rounded-lg border px-4 py-4 ${tones[tone] || tones.slate}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em]">{label}</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-950">{value}</p>
-        </div>
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-sm">
-          <Icon className="h-4 w-4" />
-        </span>
-      </div>
-    </div>
-  )
+  return `inline-flex h-9 w-9 items-center justify-center rounded-md border transition ${tones[tone] || tones.slate}`
 }
 
 export default function SupportTickets() {
@@ -98,7 +86,28 @@ export default function SupportTickets() {
     resolved: allTickets.filter((ticket) => ticket.status === 'resolved').length,
   }), [allTickets])
 
+  const updateParams = (nextParams) => {
+    setParams(nextParams)
+  }
+
   const hasActiveFilters = Boolean(search || params.status)
+  const statItems = [
+    { label: 'Total Tickets', value: stats.total, variant: 'slate', icon: FiHeadphones },
+    { label: 'Open Tickets', value: stats.open, variant: 'amber', icon: FiClock },
+    { label: 'In Progress', value: stats.inProgress, variant: 'sky', icon: FiMessageSquare },
+    { label: 'Resolved', value: stats.resolved, variant: 'emerald', icon: FiCheckCircle },
+  ]
+  const filterOptions = [
+    {
+      key: 'status',
+      value: params.status,
+      onChange: (value) => updateParams({ ...params, status: value, page: 1 }),
+      options: statuses.map((status) => ({
+        value: status,
+        label: status ? statusLabel(status) : 'All Statuses',
+      })),
+    },
+  ]
 
   const loadStats = () => {
     adminApi.listFresh('support-tickets', { page: 1, per_page: 100 })
@@ -155,51 +164,25 @@ export default function SupportTickets() {
     return () => clearTimeout(timeout)
   }, [search])
 
-  const updateParams = (nextParams) => {
-    setParams(nextParams)
-  }
-
   return (
     <>
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={FiHeadphones} label="Total Tickets" value={stats.total} tone="slate" />
-        <StatCard icon={FiClock} label="Open Tickets" value={stats.open} tone="amber" />
-        <StatCard icon={FiMessageSquare} label="In Progress" value={stats.inProgress} tone="sky" />
-        <StatCard icon={FiCheckCircle} label="Resolved" value={stats.resolved} tone="emerald" />
+        {statItems.map((item) => (
+          <AdminStatCard key={item.label} label={item.label} value={item.value} variant={item.variant} icon={item.icon} />
+        ))}
       </div>
 
-      <div className="mb-4">
-        <div className="grid gap-3 xl:grid-cols-[1fr_220px_140px]">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by subject, customer, phone, or order number"
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-          />
-          <select
-            value={params.status}
-            onChange={(event) => updateParams({ ...params, status: event.target.value, page: 1 })}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-          >
-            {statuses.map((status) => (
-              <option key={status || 'all'} value={status}>
-                {status ? statusLabel(status) : 'All Statuses'}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => {
-              setSearch('')
-              updateParams({ search: '', status: '', page: 1 })
-            }}
-            disabled={!hasActiveFilters}
-            className="inline-flex items-center justify-center rounded-md border border-slate-500 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-gray-600 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Clear Filters
-          </button>
-        </div>
-      </div>
+      <AdminFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by subject, customer, phone, or order number"
+        filters={filterOptions}
+        onClear={() => {
+          setSearch('')
+          updateParams({ search: '', status: '', page: 1 })
+        }}
+        hasActiveFilters={hasActiveFilters}
+      />
 
       {updating ? <AdminLoadingState className="justify-start pb-3" /> : null}
       {loading && tickets.length === 0 ? <AdminLoadingState className="py-8" /> : null}
@@ -208,58 +191,65 @@ export default function SupportTickets() {
       ) : null}
 
       {tickets.length > 0 ? (
-        <table className="min-w-full border border-slate-300 divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-slate-600">
-            <tr>
-              <th className="px-4 py-3">Ticket</th>
-              <th className="px-4 py-3">Customer</th>
-              <th className="px-4 py-3">Linked Order</th>
-              <th className="px-4 py-3 text-center">Replies</th>
-              <th className="px-4 py-3">Assigned To</th>
-              <th className="px-4 py-3 text-center">Status</th>
-              <th className="px-4 py-3 text-center">Created</th>
-              <th className="px-4 py-3 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {tickets.map((ticket) => (
-              <tr key={ticket.id} className="transition hover:bg-slate-50/80">
-                <td className="px-4 py-3">
-                  <div>
-                    <div className="font-medium text-slate-950">{ticket.subject}</div>
-                    <div className="text-xs text-slate-500">Ticket #{ticket.id}</div>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div>
-                    <div className="font-medium text-slate-800">{ticket.user?.full_name || '-'}</div>
-                    <div className="text-xs text-slate-500">{ticket.user?.phone || '-'}</div>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-slate-600">{ticket.order?.order_number || '-'}</td>
-                <td className="px-4 py-3 text-center font-semibold text-slate-700">{ticket.replies_count || 0}</td>
-                <td className="px-4 py-3 text-slate-600">{ticket.assigned_staff?.full_name || 'Unassigned'}</td>
-                <td className="px-4 py-3 text-center">
-                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(ticket.status)}`}>
-                    {statusLabel(ticket.status)}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-center text-slate-600">{date(ticket.created_at, 'en-US')}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-center gap-3">
-                    <Link
-                      to={`/admin/support/${ticket.id}`}
-                      title="Open ticket"
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:border-emerald-300"
-                    >
-                      <FiEye className="h-4 w-4" />
-                    </Link>
-                  </div>
-                </td>
+        <div className="w-full overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+          <table className="w-full min-w-[1080px] divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Ticket</th>
+                <th className="px-4 py-3">Customer</th>
+                <th className="px-4 py-3">Linked Order</th>
+                <th className="px-4 py-3 text-center">Replies</th>
+                <th className="px-4 py-3">Assigned To</th>
+                <th className="px-4 py-3 text-center">Status</th>
+                <th className="px-4 py-3 text-center">Created</th>
+                <th className="px-4 py-3 text-center">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {tickets.map((ticket) => (
+                <tr key={ticket.id} className="transition hover:bg-slate-50/80">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-sky-100 bg-sky-50 text-sky-700">
+                        <FiHeadphones className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-slate-950">{ticket.subject}</div>
+                        <div className="text-xs text-slate-500">Ticket #{ticket.id}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div>
+                      <div className="font-medium text-slate-800">{ticket.user?.full_name || '-'}</div>
+                      <div className="text-xs text-slate-500">{ticket.user?.phone || '-'}</div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 font-medium text-slate-700">{ticket.order?.order_number || '-'}</td>
+                  <td className="px-4 py-3 text-center font-semibold text-slate-700">{ticket.replies_count || 0}</td>
+                  <td className="px-4 py-3 text-slate-600">{ticket.assigned_staff?.full_name || 'Unassigned'}</td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(ticket.status)}`}>
+                      {statusLabel(ticket.status)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-center text-slate-600">{date(ticket.created_at, 'en-US')}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-3">
+                      <Link
+                        to={`/admin/support/${ticket.id}`}
+                        title="Open ticket"
+                        className={actionButtonClass('emerald')}
+                      >
+                        <FiEye className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
 
       {meta?.last_page > 1 ? (

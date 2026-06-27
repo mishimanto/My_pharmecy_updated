@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
+  FiBell,
   FiChevronDown,
   FiFileText,
   FiHeart,
@@ -16,16 +17,18 @@ import {
   FiX,
 } from 'react-icons/fi'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { notificationApi } from '../../api/notificationApi'
 import { productApi } from '../../api/productApi'
 import OptimizedImage from '../common/OptimizedImage'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
-import { customerQueryKeys, getOfferPricingSignature, useOffersQuery } from '../../queries/customerQueries'
+import { customerQueryKeys, getOfferPricingSignature, useNotificationsQuery, useOffersQuery } from '../../queries/customerQueries'
 import { getCategoryName } from '../../utils/categoryNames'
 import { getProductThumbnail, handleImageFallback } from '../../utils/imageUrl'
 import { getLocalizedOffer, getOfferTimeLeft } from '../../utils/offerDisplay'
 import { getProductPath, getProductRouteKey } from '../../utils/productRouting'
+import { date } from '../../utils/formatters'
 import { useRealtimeNotifications } from '../../hooks/useRealtimeNotifications'
 import CustomerLogo from './CustomerLogo'
 
@@ -38,6 +41,7 @@ export default function CustomerHeader() {
   const location = useLocation()
   const searchContainerRef = useRef(null)
   const accountMenuRef = useRef(null)
+  const notificationMenuRef = useRef(null)
   const searchRequestRef = useRef(0)
   const offerBarHiddenRef = useRef(false)
   const [search, setSearch] = useState('')
@@ -45,6 +49,7 @@ export default function CustomerHeader() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
+  const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const offersQuery = useOffersQuery()
   const offerRecords = offersQuery.data || []
@@ -59,6 +64,16 @@ export default function CustomerHeader() {
   const visibleSearchResults = searchResults.length > 0 ? searchResults : cachedSearchResults
   const isAuthPending = authLoading && !customer
   const customerToken = typeof window !== 'undefined' ? window.localStorage.getItem('customer_token') : null
+  const notificationsQuery = useNotificationsQuery({
+    enabled: Boolean(customer?.id && customerToken),
+    staleTime: 1000 * 30,
+  })
+  const notifications = useMemo(
+    () => (customer ? notificationsQuery.data || [] : []),
+    [customer, notificationsQuery.data],
+  )
+  const unreadNotificationCount = notifications.filter((item) => item.status !== 'read').length
+  const latestNotifications = notifications.slice(0, 5)
 
   const handleRealtimeNotification = useCallback(
     (notification) => {
@@ -134,6 +149,7 @@ export default function CustomerHeader() {
 
   const closeMenus = () => {
     setIsAccountMenuOpen(false)
+    setIsNotificationMenuOpen(false)
     setIsMobileMenuOpen(false)
     setIsSearchOpen(false)
   }
@@ -158,6 +174,10 @@ export default function CustomerHeader() {
 
       if (!accountMenuRef.current?.contains(event.target)) {
         setIsAccountMenuOpen(false)
+      }
+
+      if (!notificationMenuRef.current?.contains(event.target)) {
+        setIsNotificationMenuOpen(false)
       }
     }
 
@@ -244,6 +264,24 @@ export default function CustomerHeader() {
     navigate(getProductPath(product), { state: { product } })
   }
 
+  const markNotificationRead = async (notification) => {
+    closeMenus()
+
+    if (notification?.status !== 'read') {
+      try {
+        await notificationApi.read(notification.id)
+        queryClient.setQueryData(customerQueryKeys.notifications, (current = []) => (
+          current.map((item) => item.id === notification.id ? { ...item, status: 'read', read_at: new Date().toISOString() } : item)
+        ))
+      } catch {
+        queryClient.invalidateQueries({ queryKey: customerQueryKeys.notifications })
+      }
+    }
+
+    const link = notification?.metadata?.link
+    navigate(link && String(link).startsWith('/') ? link : '/notifications')
+  }
+
   const trackOrdersTo = customer ? '/orders' : '/track-order'
   const t = (bn, en) => (isBangla ? bn : en)
   const liveOffers = offerRecords.filter((offer) => getOfferTimeLeft(offer.ends_at)?.expired !== true)
@@ -306,6 +344,9 @@ export default function CustomerHeader() {
           </Link>
 
           <div className="order-2 ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2 lg:hidden">
+            {customer ? (
+              <HeaderActionLink to="/notifications" label={t('নোটিফিকেশন', 'Notifications')} count={unreadNotificationCount} icon={FiBell} mobileOnly onClick={closeMenus} />
+            ) : null}
             <HeaderActionLink to="/wishlist" label={t('উইশলিস্ট', 'Wishlist')} count={wishlistCount} icon={FiHeart} mobileOnly onClick={closeMenus} />
             <HeaderActionLink to="/cart" label={t('কার্ট', 'Cart')} count={cartCount} icon={FiShoppingCart} mobileOnly onClick={closeMenus} />
             <button
@@ -441,6 +482,64 @@ export default function CustomerHeader() {
 
             <div className="flex items-center gap-2">
               <HeaderActionLink to={trackOrdersTo} icon={FiTruck} compact onClick={closeMenus} />
+              {customer ? (
+                <div ref={notificationMenuRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsNotificationMenuOpen((current) => !current)
+                      setIsAccountMenuOpen(false)
+                    }}
+                    className="relative inline-flex h-11 items-center justify-center border border-transparent bg-[#f4fffd] px-3 text-[#132238] shadow-sm transition hover:border-slate-200 hover:bg-[#e7f8f6]"
+                    aria-label={t('নোটিফিকেশন', 'Notifications')}
+                  >
+                    <FiBell className="h-5 w-5 shrink-0 text-[#0f6475]" />
+                    {unreadNotificationCount > 0 ? (
+                      <span className="absolute -right-1.5 -top-1.5 inline-flex h-5.5 min-w-5.5 items-center justify-center rounded-full border border-white/85 bg-red-600 px-1.5 text-[12px] font-extrabold leading-none text-white shadow-[0_14px_28px_-12px_rgba(220,38,38,0.78)] ring-2 ring-[#e7f8f6]">
+                        {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                      </span>
+                    ) : null}
+                  </button>
+
+                  {isNotificationMenuOpen ? (
+                    <div className="absolute right-0 top-full mt-3 w-[22rem] overflow-hidden border border-slate-200 bg-[#f4fffd] shadow-[0_30px_60px_-36px_rgba(15,23,42,0.38)]">
+                      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                        <div className="text-sm font-semibold text-slate-950">{t('নোটিফিকেশন', 'Notifications')}</div>
+                        <Link to="/notifications" onClick={closeMenus} className="text-xs font-semibold text-[#0e6574] hover:underline">
+                          {t('সব দেখুন', 'View all')}
+                        </Link>
+                      </div>
+                      <div className="max-h-96 overflow-y-auto p-2">
+                        {notificationsQuery.isLoading ? (
+                          <div className="px-3 py-4 text-sm text-slate-500">{t('লোড হচ্ছে...', 'Loading...')}</div>
+                        ) : latestNotifications.length ? (
+                          latestNotifications.map((notification) => (
+                            <button
+                              key={notification.id}
+                              type="button"
+                              onClick={() => markNotificationRead(notification)}
+                              className={`w-full border-b border-slate-100 px-3 py-3 text-left transition last:border-b-0 hover:bg-[#e7f8f6] ${notification.status !== 'read' ? 'bg-white' : ''}`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-semibold text-slate-950">{notification.title}</p>
+                                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">{notification.message}</p>
+                                  <p className="mt-2 text-[11px] text-slate-400">{date(notification.created_at)}</p>
+                                </div>
+                                {notification.status !== 'read' ? (
+                                  <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#13b8b0]" />
+                                ) : null}
+                              </div>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-3 py-6 text-center text-sm text-slate-500">{t('এখনও কোনো নোটিফিকেশন নেই।', 'No notifications yet.')}</div>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               <HeaderActionLink to="/wishlist" count={wishlistCount} icon={FiHeart} compact onClick={closeMenus} />
               <HeaderActionLink to="/cart" count={cartCount} icon={FiShoppingCart} compact onClick={closeMenus} />
             </div>
@@ -463,6 +562,7 @@ export default function CustomerHeader() {
                 {isAccountMenuOpen ? (
                   <div className="absolute right-0 top-full mt-3 w-60 overflow-hidden border border-slate-200 bg-[#f4fffd] shadow-[0_30px_60px_-36px_rgba(15,23,42,0.38)]">
                     <div className="p-2">
+                      <AccountMenuLink to="/notifications" label={t('নোটিফিকেশন', 'Notifications')} icon={FiBell} onClick={closeMenus} />
                       <AccountMenuLink to="/account" label={t('অ্যাকাউন্ট', 'Account')} icon={FiUser} onClick={closeMenus} />
                       <AccountMenuLink to="/orders" label={t('আমার অর্ডার', 'My orders')} icon={FiPackage} onClick={closeMenus} />                      
                       <AccountMenuLink to="/upload-prescription" label={t('প্রেসক্রিপশন আপলোড', 'Upload prescription')} icon={FiFileText} onClick={closeMenus} />
@@ -588,6 +688,10 @@ export default function CustomerHeader() {
 }
 
 function HeaderActionLink({ to, label, count, icon: Icon, mobileOnly = false, compact = false, onClick }) {
+  const badgeClass = to === '/notifications'
+    ? 'bg-red-600 shadow-[0_14px_28px_-12px_rgba(220,38,38,0.78)]'
+    : 'bg-[linear-gradient(135deg,#0f766e,#13b8b0)] shadow-[0_14px_28px_-12px_rgba(15,118,110,0.9)]'
+
   return (
     <Link
       to={to}
@@ -609,7 +713,7 @@ function HeaderActionLink({ to, label, count, icon: Icon, mobileOnly = false, co
       ) : null}
       {count > 0 ? (
         <span
-          className={`absolute inline-flex min-w-5.5 items-center justify-center rounded-full border border-white/85 bg-[linear-gradient(135deg,#0f766e,#13b8b0)] px-1.5 text-[12px] font-extrabold leading-none text-white shadow-[0_14px_28px_-12px_rgba(15,118,110,0.9)] ring-2 ring-[#e7f8f6] ${
+          className={`absolute inline-flex min-w-5.5 items-center justify-center rounded-full border border-white/85 px-1.5 text-[12px] font-extrabold leading-none text-white ring-2 ring-[#e7f8f6] ${badgeClass} ${
             mobileOnly ? '-right-1.5 -top-1.5 h-5.5' : compact ? '-right-1.5 -top-1.5 h-5.5' : 'left-4 top-0 h-5.5'
           }`}
         >

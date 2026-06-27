@@ -8,6 +8,10 @@ export const orderApi = {
   quote: (payload) => api.post('/customer/checkout/quote', payload),
   checkout: (payload) => api.post('/customer/checkout', payload),
   cancel: (id) => api.post(`/customer/orders/${orderKey(id)}/cancel`),
+  memo: (id, download = false) => api.get(`/customer/orders/${orderKey(id)}/memo`, {
+    params: download ? { download: 1 } : undefined,
+    responseType: 'blob',
+  }),
   codPayment: (id) => api.post(`/customer/orders/${orderKey(id)}/payment/cod`),
   deliveryAreas: () => api.get('/delivery-areas'),
   submitPaymentProof: (id, formData) => api.post(`/customer/orders/${orderKey(id)}/payment-proof`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),

@@ -37,12 +37,12 @@ class PaymentController extends Controller
 
         abort_unless($order->payment_requires_proof, 422, 'Payment proof is only required for full-payment orders.');
         abort_unless(
-            in_array($order->order_status, ['pending', 'confirmed'], true),
+            in_array($order->order_status, ['pending_confirmation', 'prescription_review', 'confirmed'], true),
             422,
-            'Payment proof can only be submitted before the order is shipped.'
+            'Payment proof can only be submitted before delivery processing starts.'
         );
         abort_unless(
-            in_array($order->payment_status, ['pending', 'awaiting_proof', 'rejected'], true),
+            in_array($order->payment_status, ['pending', 'awaiting_proof', 'failed', 'rejected'], true),
             422,
             'Payment proof is not ready for resubmission.'
         );

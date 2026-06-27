@@ -100,7 +100,10 @@ class AuthService
 
     private function issueToken(User $user, Request $request, string $message): array
     {
+        $token = $user->createToken('customer-token', ['customer']);
+
         $user->sessions()->create([
+            'personal_access_token_id' => $token->accessToken->id,
             'device_type' => $request->input('device_type'),
             'device_token' => $request->input('device_token'),
             'ip_address' => $request->ip(),
@@ -112,7 +115,7 @@ class AuthService
             'message' => $message,
             'data' => [
                 'user' => $user->load('addresses', 'defaultAddress'),
-                'token' => $user->createToken('customer-token', ['customer'])->plainTextToken,
+                'token' => $token->plainTextToken,
                 'token_type' => 'Bearer',
                 'ability' => 'customer',
             ],

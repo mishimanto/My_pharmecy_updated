@@ -8,7 +8,34 @@ import { prescriptionApi } from '../../api/prescriptionApi'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { date } from '../../utils/formatters'
-import { prescriptionDisplayName, prescriptionSlug } from '../../utils/prescriptionDisplay'
+import { prescriptionSlug } from '../../utils/prescriptionDisplay'
+
+const statusLabels = {
+  pending: ['পেন্ডিং', 'Pending'],
+  approved: ['অনুমোদিত', 'Approved'],
+  rejected: ['রিজেক্টেড', 'Rejected'],
+  need_clarification: ['আরও তথ্য প্রয়োজন', 'Needs clarification'],
+}
+
+const statusClasses = {
+  pending: 'border-amber-200 bg-amber-50 text-amber-700',
+  approved: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  rejected: 'border-rose-200 bg-rose-50 text-rose-700',
+  need_clarification: 'border-violet-200 bg-violet-50 text-violet-700',
+}
+
+function localizedNumber(value, isBangla) {
+  return Number(value || 0).toLocaleString(isBangla ? 'bn-BD' : 'en-US')
+}
+
+function prescriptionName(index, isBangla) {
+  return isBangla ? `প্রেসক্রিপশন ${localizedNumber(index + 1, true)}` : `Prescription ${index + 1}`
+}
+
+function statusText(status, isBangla) {
+  const labels = statusLabels[status] || [status || 'স্ট্যাটাস নেই', status || 'No status']
+  return isBangla ? labels[0] : labels[1]
+}
 
 export default function Prescriptions() {
   const { loading: authLoading, ensureGuestToken } = useCustomerAuth()
@@ -17,6 +44,7 @@ export default function Prescriptions() {
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState(null)
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
+  const locale = isBangla ? 'bn-BD' : 'en-US'
 
   useEffect(() => {
     if (authLoading) return
@@ -24,8 +52,7 @@ export default function Prescriptions() {
     ensureGuestToken()
       .then(() => prescriptionApi.list())
       .then(({ data }) => {
-        const nextItems = data.data.data || []
-        setItems(nextItems)
+        setItems(data.data.data || [])
       })
       .catch(() => toast.error(t('প্রেসক্রিপশন লোড করা যায়নি।', 'Prescriptions could not be loaded.')))
       .finally(() => setLoading(false))
@@ -50,8 +77,7 @@ export default function Prescriptions() {
 
     try {
       await prescriptionApi.destroy(item.id)
-      const nextItems = items.filter((current) => String(current.id) !== String(item.id))
-      setItems(nextItems)
+      setItems((current) => current.filter((prescription) => String(prescription.id) !== String(item.id)))
       toast.success(t('প্রেসক্রিপশন ডিলিট হয়েছে।', 'Prescription deleted successfully.'))
     } catch (error) {
       toast.error(error.response?.data?.message || t('প্রেসক্রিপশন ডিলিট করা যায়নি।', 'Prescription could not be deleted.'))
@@ -64,7 +90,9 @@ export default function Prescriptions() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4 border border-slate-200 bg-white p-5 sm:p-6">
         <div>
-          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0e6574]">{t('সব প্রেসক্রিপশন', 'All Prescriptions')}</div>
+          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0e6574]">
+            {t('সব প্রেসক্রিপশন', 'All Prescriptions')}
+          </div>
         </div>
         <Link
           className={`inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold transition ${
@@ -86,21 +114,21 @@ export default function Prescriptions() {
         </div>
       ) : null}
 
-      {loading && items.length === 0 && (
+      {loading && items.length === 0 ? (
         <div className="grid gap-4 lg:grid-cols-2">
           {[1, 2, 3, 4].map((item) => (
             <div key={item} className="h-48 animate-pulse border border-slate-200 bg-white" />
           ))}
         </div>
-      )}
+      ) : null}
 
-      {!loading && items.length === 0 && (
+      {!loading && items.length === 0 ? (
         <div className="border border-slate-200 bg-white p-6">
           <EmptyState title={t('এখনও কোনো প্রেসক্রিপশন নেই', 'No prescriptions yet')} text={t('চেকআউটে ব্যবহার করার জন্য একটি প্রেসক্রিপশন আপলোড করুন।', 'Upload a prescription to use it during checkout.')} />
         </div>
-      )}
+      ) : null}
 
-      {items.length > 0 && (
+      {items.length > 0 ? (
         <div className="grid gap-4 lg:grid-cols-2">
           {items.map((item, index) => (
             <article key={item.id} className="border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md">
@@ -110,15 +138,18 @@ export default function Prescriptions() {
                     <FiFileText className="h-5 w-5" />
                   </span>
                   <div className="min-w-0">
-                    <h2 className="truncate text-lg font-semibold text-slate-950">{prescriptionDisplayName(index)}</h2>
+                    <h2 className="truncate text-lg font-semibold text-slate-950">{prescriptionName(index, isBangla)}</h2>
                     <div className="mt-1 flex items-center gap-2 text-sm text-slate-500">
                       <FiCalendar className="h-4 w-4" />
-                      {date(item.uploaded_at || item.created_at)}
+                      {date(item.uploaded_at || item.created_at, locale)}
                     </div>
                   </div>
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2">
+                  <span className={`hidden border px-2.5 py-1 text-xs font-semibold sm:inline-flex ${statusClasses[item.status] || 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                    {statusText(item.status, isBangla)}
+                  </span>
                   <Link
                     className="inline-flex items-center gap-2 border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
                     to={`/prescriptions/${prescriptionSlug(index)}`}
@@ -131,26 +162,22 @@ export default function Prescriptions() {
                     disabled={deletingId === item.id}
                     onClick={() => deletePrescription(item)}
                     className="inline-flex h-10 w-10 items-center justify-center border border-rose-100 text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
-                    aria-label={`Delete ${prescriptionDisplayName(index)}`}
+                    aria-label={`${t('ডিলিট', 'Delete')} ${prescriptionName(index, isBangla)}`}
                   >
                     <FiTrash2 className="h-4 w-4" />
                   </button>
                 </div>
               </div>
 
-              {/* <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <InfoTile icon={FiUser} label="Patient" value={item.patient_name || '-'} />
-                <InfoTile icon={FiUser} label="Doctor" value={item.doctor_name || '-'} />
+              <div className="mt-4 flex flex-wrap items-center gap-2 sm:hidden">
+                <span className={`border px-2.5 py-1 text-xs font-semibold ${statusClasses[item.status] || 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                  {statusText(item.status, isBangla)}
+                </span>
               </div>
-
-              <div className="mt-4 border border-slate-100 bg-slate-50 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Review note</div>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{item.reviews?.[0]?.review_note || 'No review note added yet.'}</p>
-              </div> */}
             </article>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FiEye, FiShield, FiShoppingBag, FiTrash2, FiUser, FiUsers } from 'react-icons/fi'
+import { FiEye, FiShield, FiShoppingBag, FiTrash2, FiUser, FiUserCheck, FiUserX, FiUsers } from 'react-icons/fi'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
+import AdminFilterBar from '../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
+import AdminStatCard from '../../components/admin/AdminStatCard'
 import EmptyState from '../../components/common/EmptyState'
 import { date, money } from '../../utils/formatters'
 
@@ -64,6 +66,24 @@ function statusChipClass(status) {
   return 'border-slate-200 bg-slate-50 text-slate-500'
 }
 
+function actionButtonClass(tone = 'slate', disabled = false) {
+  const tones = {
+    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300',
+    sky: 'border-sky-200 bg-sky-50 text-sky-700 hover:border-sky-300',
+    rose: 'border-rose-200 bg-rose-50 text-rose-600 hover:border-rose-300 hover:text-rose-700',
+    violet: 'border-violet-200 bg-violet-50 text-violet-700 hover:border-violet-300',
+    slate: 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50',
+  }
+
+  return `inline-flex h-9 w-9 items-center justify-center rounded-md border transition ${
+    disabled ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed' : tones[tone] || tones.slate
+  }`
+}
+
+function nextAccountStatus(status) {
+  return status === 'active' ? 'blocked' : 'active'
+}
+
 function getInitials(name) {
   return String(name || 'G')
     .trim()
@@ -71,30 +91,6 @@ function getInitials(name) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() || '')
     .join('') || 'G'
-}
-
-function StatCard({ icon: Icon, label, value, tone = 'slate' }) {
-  const tones = {
-    slate: 'border-slate-200 bg-white text-slate-700',
-    emerald: 'border-emerald-200 bg-emerald-50/70 text-emerald-700',
-    rose: 'border-rose-200 bg-rose-50/70 text-rose-700',
-    sky: 'border-sky-200 bg-sky-50/70 text-sky-700',
-    violet: 'border-violet-200 bg-violet-50/70 text-violet-700',
-  }
-
-  return (
-    <div className={`rounded-lg border px-4 py-4 ${tones[tone] || tones.slate}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em]">{label}</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-950">{value}</p>
-        </div>
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-sm">
-          <Icon className="h-4 w-4" />
-        </span>
-      </div>
-    </div>
-  )
 }
 
 export default function Users() {
@@ -276,14 +272,48 @@ export default function Users() {
         registered: rows.filter((row) => row.customer_type === 'registered').length,
         guest: rows.filter((row) => row.customer_type === 'guest').length,
       }
+  const statItems = view === 'users'
+    ? [
+        { label: 'Listed Users', value: currentStats.total, variant: 'slate', icon: FiUsers },
+        { label: 'Active Users', value: currentStats.active, variant: 'emerald', icon: FiUser },
+        { label: 'Blocked Users', value: currentStats.blocked, variant: 'rose', icon: FiShield },
+      ]
+    : [
+        { label: 'Listed Customers', value: currentStats.total, variant: 'slate', icon: FiUsers },
+        { label: 'Registered', value: currentStats.registered, variant: 'sky', icon: FiUser },
+        { label: 'Guest Checkouts', value: currentStats.guest, variant: 'violet', icon: FiShield },
+      ]
+  const filterOptions = view === 'users'
+    ? [
+        {
+          key: 'status',
+          value: status,
+          onChange: (value) => { setStatus(value); setPage(1) },
+          options: userStatuses.map((item) => ({
+            value: item,
+            label: item ? item[0].toUpperCase() + item.slice(1) : 'All Statuses',
+          })),
+        },
+      ]
+    : [
+        {
+          key: 'type',
+          value: customerType,
+          onChange: (value) => { setCustomerType(value); setPage(1) },
+          options: customerTypes.map((item) => ({
+            value: item,
+            label: item === 'registered' ? 'Registered Customers' : item === 'guest' ? 'Guest Customers' : 'All Customers',
+          })),
+        },
+      ]
 
   const renderUsersTable = () => (
-
-      <table className="min-w-full border border-slate-300 divide-y divide-slate-200 text-sm">
-        <thead className="bg-slate-50 text-left text-slate-600">
+    <div className="w-full overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+      <table className="w-full min-w-[920px] divide-y divide-slate-200 text-sm">
+        <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
           <tr>
-            <th className="px-4 py-3">Name</th>
-            <th className="px-4 py-3">Phone</th>
+            <th className="px-4 py-3">User</th>
+            <th className="px-4 py-3">Contact</th>
             <th className="px-4 py-3">Email</th>
             <th className="px-4 py-3 text-center">Status</th>
             <th className="px-4 py-3 text-center">Joined</th>
@@ -304,21 +334,12 @@ export default function Users() {
                   </div>
                 </div>
               </td>
-              <td className="px-4 py-3 text-slate-600">{user.phone}</td>
+              <td className="px-4 py-3 font-medium text-slate-700">{user.phone}</td>
               <td className="px-4 py-3 text-slate-600">{user.email || '-'}</td>
               <td className="px-4 py-3 text-center">
-                <div className="flex flex-wrap items-center gap-3 justify-center">
-                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusChipClass(user.status)}`}>
-                    {user.status ? user.status[0].toUpperCase() + user.status.slice(1) : '-'}
-                  </span>
-                  <select
-                    value={user.status}
-                    onChange={(event) => updateStatus(user, event.target.value)}
-                    className="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-                  >
-                    {userStatuses.filter(Boolean).map((item) => <option key={item} value={item}>{item[0].toUpperCase() + item.slice(1)}</option>)}
-                  </select>
-                </div>
+                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusChipClass(user.status)}`}>
+                  {user.status ? user.status[0].toUpperCase() + user.status.slice(1) : '-'}
+                </span>
               </td>
               <td className="px-4 py-3 text-slate-600 text-center">{date(user.created_at, 'en-US')}</td>
               <td className="px-4 py-3">
@@ -326,15 +347,23 @@ export default function Users() {
                   <Link
                     to={`/admin/users/${user.id}`}
                     title="View user"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:border-emerald-300"
+                    className={actionButtonClass('emerald')}
                   >
                     <FiEye className="h-4 w-4" />
                   </Link>
                   <button
                     type="button"
+                    title={user.status === 'active' ? 'Block user' : 'Activate user'}
+                    onClick={() => updateStatus(user, nextAccountStatus(user.status))}
+                    className={actionButtonClass(user.status === 'active' ? 'rose' : 'sky')}
+                  >
+                    {user.status === 'active' ? <FiUserX className="h-4 w-4" /> : <FiUserCheck className="h-4 w-4" />}
+                  </button>
+                  <button
+                    type="button"
                     title="Delete user"
                     onClick={() => deleteUser(user)}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-600 transition hover:border-rose-300 hover:text-rose-700"
+                    className={actionButtonClass('rose')}
                   >
                     <FiTrash2 className="h-4 w-4" />
                   </button>
@@ -344,16 +373,18 @@ export default function Users() {
           ))}
         </tbody>
       </table>
+    </div>
   )
 
   const renderCustomersTable = () => (
-      <table className="min-w-full border border-slate-300 divide-y divide-slate-200 text-sm">
-        <thead className="bg-slate-50 text-left text-slate-600">
+    <div className="w-full overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+      <table className="w-full min-w-[1080px] divide-y divide-slate-200 text-sm">
+        <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
           <tr>
             <th className="px-4 py-3">Customer</th>
-            <th className="px-4 py-3">Phone</th>
+            <th className="px-4 py-3">Contact</th>
             <th className="px-4 py-3">Email</th>
-            <th className="px-4 py-3 text-center">Type</th>
+            <th className="px-4 py-3">Type</th>
             <th className="px-4 py-3 text-center">Orders</th>
             <th className="px-4 py-3 text-center">Total Spent</th>
             <th className="px-4 py-3 text-center">Last Order</th>
@@ -376,10 +407,10 @@ export default function Users() {
                   </div>
                 </div>
               </td>
-              <td className="px-4 py-3 text-slate-600">{customer.customer_phone || '-'}</td>
+              <td className="px-4 py-3 font-medium text-slate-700">{customer.customer_phone || '-'}</td>
               <td className="px-4 py-3 text-slate-600">{customer.customer_email || '-'}</td>
-              <td className="px-4 py-3 text-center">
-                <div className="flex flex-wrap items-center justify-center gap-2">
+              <td className="px-4 py-3">
+                <div className="space-y-1">
                   <div className={`text-xs font-semibold ${customerTypeClasses[customer.customer_type] || 'text-slate-600'}`}>
                     {customer.customer_type === 'guest' ? 'Guest customer' : 'Registered customer'}
                   </div>
@@ -396,17 +427,10 @@ export default function Users() {
               <td className="px-4 py-3 text-center">
                 {customer.user_id ? (
                   <div className="flex items-center justify-center gap-3">
-                    <select
-                      value={customer.account_status || 'active'}
-                      onChange={(event) => updateStatus({ id: customer.user_id, full_name: customer.customer_name, status: customer.account_status || 'active' }, event.target.value)}
-                      className="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-                    >
-                      {userStatuses.filter(Boolean).map((item) => <option key={item} value={item}>{item[0].toUpperCase() + item.slice(1)}</option>)}
-                    </select>
                     <Link
                       to={`/admin/users/${customer.user_id}`}
                       title="View customer"
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:border-emerald-300"
+                      className={actionButtonClass('emerald')}
                     >
                       <FiEye className="h-4 w-4" />
                     </Link>
@@ -414,16 +438,28 @@ export default function Users() {
                       <Link
                         to={`/admin/orders/${customer.latest_order_id}`}
                         title={customer.latest_order_number ? `Open ${customer.latest_order_number}` : 'Open latest order'}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-sky-200 bg-sky-50 text-sky-700 transition hover:border-sky-300"
+                        className={actionButtonClass('sky')}
                       >
                         <FiShoppingBag className="h-4 w-4" />
                       </Link>
                     ) : null}
                     <button
                       type="button"
+                      title={(customer.account_status || 'active') === 'active' ? 'Block customer' : 'Activate customer'}
+                      onClick={() => updateStatus({
+                        id: customer.user_id,
+                        full_name: customer.customer_name,
+                        status: customer.account_status || 'active',
+                      }, nextAccountStatus(customer.account_status || 'active'))}
+                      className={actionButtonClass((customer.account_status || 'active') === 'active' ? 'rose' : 'sky')}
+                    >
+                      {(customer.account_status || 'active') === 'active' ? <FiUserX className="h-4 w-4" /> : <FiUserCheck className="h-4 w-4" />}
+                    </button>
+                    <button
+                      type="button"
                       disabled
                       title="Customers with order history cannot be deleted."
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-slate-100 text-slate-400 disabled:cursor-not-allowed"
+                      className={actionButtonClass('slate', true)}
                     >
                       <FiTrash2 className="h-4 w-4" />
                     </button>
@@ -434,14 +470,12 @@ export default function Users() {
                       <Link
                         to={`/admin/orders/${customer.latest_order_id}`}
                         title={customer.latest_order_number ? `Open ${customer.latest_order_number}` : 'Open latest order'}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-violet-200 bg-violet-50 text-violet-700 transition hover:border-violet-300"
+                        className={actionButtonClass('violet')}
                       >
                         <FiShoppingBag className="h-4 w-4" />
                       </Link>
                     ) : null}
-                    <span className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
-                      Guest checkout
-                    </span>
+                    <span className="text-xs font-semibold text-violet-700">Guest checkout</span>
                   </div>
                 )}
               </td>
@@ -449,6 +483,7 @@ export default function Users() {
           ))}
         </tbody>
       </table>
+    </div>
   )
 
   return (
@@ -478,60 +513,19 @@ export default function Users() {
       </div>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {view === 'users' ? (
-          <>
-            <StatCard icon={FiUsers} label="Listed Users" value={currentStats.total} tone="slate" />
-            <StatCard icon={FiUser} label="Active Users" value={currentStats.active} tone="emerald" />
-            <StatCard icon={FiShield} label="Blocked Users" value={currentStats.blocked} tone="rose" />
-          </>
-        ) : (
-          <>
-            <StatCard icon={FiUsers} label="Listed Customers" value={currentStats.total} tone="slate" />
-            <StatCard icon={FiUser} label="Registered" value={currentStats.registered} tone="sky" />
-            <StatCard icon={FiShield} label="Guest Checkouts" value={currentStats.guest} tone="violet" />
-          </>
-        )}
+        {statItems.map((item) => (
+          <AdminStatCard key={item.label} label={item.label} value={item.value} variant={item.variant} icon={item.icon} />
+        ))}
       </div>
 
-      <div className="mb-4">
-        <div className="grid gap-3 xl:grid-cols-[1fr_220px_150px]">
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={view === 'users' ? 'Name, email, or phone' : 'Name, email, phone, or order number'}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-          />
-          {view === 'users' ? (
-            <select
-              value={status}
-              onChange={(event) => { setStatus(event.target.value); setPage(1) }}
-              className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-            >
-              {userStatuses.map((item) => <option key={item || 'all'} value={item}>{item ? item[0].toUpperCase() + item.slice(1) : 'All Statuses'}</option>)}
-            </select>
-          ) : (
-            <select
-              value={customerType}
-              onChange={(event) => { setCustomerType(event.target.value); setPage(1) }}
-              className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-            >
-              {customerTypes.map((item) => (
-                <option key={item || 'all'} value={item}>
-                  {item === 'registered' ? 'Registered Customers' : item === 'guest' ? 'Guest Customers' : 'All Customers'}
-                </option>
-              ))}
-            </select>
-          )}
-          <button
-            type="button"
-            onClick={clearFilters}
-            disabled={!hasActiveFilters}
-            className="inline-flex items-center justify-center rounded-md border border-slate-500 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-gray-600 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Clear Filters
-          </button>
-        </div>
-      </div>
+      <AdminFilterBar
+        search={query}
+        onSearchChange={setQuery}
+        searchPlaceholder={view === 'users' ? 'Name, email, or phone' : 'Name, email, phone, or order number'}
+        filters={filterOptions}
+        onClear={clearFilters}
+        hasActiveFilters={hasActiveFilters}
+      />
 
       {updating ? <AdminLoadingState className="justify-start pb-3" /> : null}
       {loading && rows.length === 0 ? <AdminLoadingState className="py-8" /> : null}

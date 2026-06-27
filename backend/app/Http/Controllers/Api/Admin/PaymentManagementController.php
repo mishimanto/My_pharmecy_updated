@@ -91,18 +91,14 @@ class PaymentManagementController extends Controller
         ]);
 
         if ($payment->order && $data['payment_status'] === 'paid' && $payment->order->payment_requires_proof) {
-            $order = $this->communication->ensureMemo($payment->order, true);
+            $order = $payment->order;
             $this->communication->notify(
                 $order,
                 'payment_update',
                 'Payment verified',
                 "Your payment for {$order->order_number} has been verified.",
-                'Payment verified and memo issued',
-                [
-                    "Your payment for {$order->order_number} has been verified by the admin team.",
-                    "Memo number: {$order->memo_number}",
-                    'A digital memo is included in this email for your record.',
-                ],
+                null,
+                [],
             );
         } elseif ($payment->order) {
             $note = $data['reviewed_note'] ? " Note: {$data['reviewed_note']}" : '';

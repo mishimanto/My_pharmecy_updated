@@ -1,10 +1,11 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { FiArrowRight, FiHeart, FiPlus, FiMinus, FiShoppingCart, FiUpload, FiLogIn } from 'react-icons/fi'
+import { FiAlertTriangle, FiArrowRight, FiHeart, FiPlus, FiMinus, FiShoppingCart, FiUpload, FiLogIn } from 'react-icons/fi'
 import { productApi } from '../../api/productApi'
 import { prescriptionApi } from '../../api/prescriptionApi'
 import OptimizedImage from '../../components/common/OptimizedImage'
+import ProductCard from '../../components/customer/ProductCard'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
@@ -209,6 +210,9 @@ export default function ProductDetails() {
   const activeUnitLabel = activeOption ? getUnitLabel(activeOption.code, isBangla) : ''
   const activeUnitSummary = activeOption ? getUnitSummary(effectiveQuantity, activeOption.code, isBangla) : ''
   const requiresPrescriptionLogin = requiresPrescriptionLoginForProduct(product, customer)
+  const alternatives = product?.alternatives || []
+  const genericRelatedProducts = product?.generic_related_products || []
+  const interactionWarnings = product?.interaction_warnings || []
 
   const detailsRows = [
     { label: t('ক্যাটাগরি', 'Category'), value: categoryName || t('স্বাস্থ্যসেবা', 'Healthcare') },
@@ -335,6 +339,24 @@ export default function ProductDetails() {
               <div className="border border-[#b7d5d2] bg-[#eef8f7] p-5 shadow-[0_22px_60px_-48px_rgba(13,75,89,0.28)] sm:p-6">
                 <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0f766e]">{t('পণ্যের বিবরণ', 'Description')}</div>
                 <p className="mt-3 text-sm leading-7 text-[#4f6f6b]">{description}</p>
+              </div>
+            ) : null}
+
+            {interactionWarnings.length > 0 ? (
+              <div className="border border-amber-200 bg-amber-50 p-5 shadow-[0_22px_60px_-48px_rgba(180,83,9,0.24)] sm:p-6">
+                <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-amber-700">
+                  <FiAlertTriangle className="h-4 w-4" />
+                  {t('ড্রাগ ইন্টারঅ্যাকশন সতর্কতা', 'Drug interaction warning')}
+                </div>
+                <div className="mt-3 space-y-3">
+                  {interactionWarnings.map((warning) => (
+                    <div key={`${warning.interacts_with_generic_name}-${warning.severity}`} className="border border-amber-200 bg-white/70 px-4 py-3 text-sm leading-7 text-amber-900">
+                      <div className="font-semibold">{warning.interacts_with_generic_name}</div>
+                      <p className="mt-1">{warning.warning || t('এই জেনেরিকের সাথে একসাথে ব্যবহার করার আগে ফার্মাসিস্টের পরামর্শ নিন।', 'Ask a pharmacist before using this generic together with this product.')}</p>
+                      <div className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">{warning.severity || 'moderate'}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : null}
           </div>
@@ -664,8 +686,42 @@ export default function ProductDetails() {
             </section>
           </div>
         </section>
+
+        <RelatedProductSection
+          title={t('বিকল্প ওষুধ', 'Medicine alternatives')}
+          subtitle={t('ফার্মেসি টিম ম্যানুয়ালি রিভিউ করা বিকল্প পণ্য।', 'Alternative products reviewed by the pharmacy team.')}
+          products={alternatives}
+        />
+
+        <RelatedProductSection
+          title={t('একই জেনেরিকের পণ্য', 'Same generic products')}
+          subtitle={genericName
+            ? t(`${genericName} জেনেরিকের সাথে মিল আছে।`, `Products matched by the ${genericName} generic.`)
+            : t('জেনেরিক তথ্য পাওয়া গেলে এখানে মিল থাকা পণ্য দেখাবে।', 'Matching products appear here when generic data is available.')}
+          products={genericRelatedProducts}
+        />
       </div>
     </div>
+  )
+}
+
+function RelatedProductSection({ title, subtitle, products }) {
+  if (!products?.length) return null
+
+  return (
+    <section className="mt-10 border border-[#b7d5d2] bg-[#eef8f7] p-5 sm:p-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight text-[#11343c]">{title}</h2>
+          <p className="mt-1 text-sm leading-6 text-[#4f6f6b]">{subtitle}</p>
+        </div>
+      </div>
+      <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {products.slice(0, 8).map((item) => (
+          <ProductCard key={item.id} product={item} />
+        ))}
+      </div>
+    </section>
   )
 }
 

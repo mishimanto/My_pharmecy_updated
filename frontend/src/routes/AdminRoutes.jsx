@@ -51,6 +51,7 @@ const Refunds = lazy(() => import('../pages/admin/Refunds'))
 const Reports = lazy(() => import('../pages/admin/Reports'))
 const ReportDetails = lazy(() => import('../pages/admin/ReportDetails'))
 const ActivityLogs = lazy(() => import('../pages/admin/ActivityLogs'))
+const Security = lazy(() => import('../pages/admin/Security'))
 const AdminNotifications = lazy(() => import('../pages/admin/AdminNotifications'))
 const MarketingTools = lazy(() => import('../pages/admin/MarketingTools'))
 
@@ -117,6 +118,7 @@ export default function AdminRoutes() {
             <Route path="reports" element={<Reports />} />
             <Route path="reports/:type" element={<ReportDetails />} />
             <Route path="activity-logs" element={<ActivityLogs />} />
+            <Route path="security" element={<Security />} />
             <Route path="notifications" element={<AdminNotifications />} />
           </Route>
           <Route

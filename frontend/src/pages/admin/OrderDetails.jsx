@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
-import { FiAlertCircle } from 'react-icons/fi'
+import { FiAlertCircle, FiDownload, FiPrinter } from 'react-icons/fi'
 import { adminApi } from '../../api/adminApi'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import PageHeader from '../../components/common/PageHeader'
@@ -125,6 +125,7 @@ export default function OrderDetails() {
   const requiresPaidVerification = Boolean(order?.payment_requires_proof)
   const canConfirmPayment = !requiresPaidVerification || order?.payment_status === 'paid'
   const canConfirmOrder = canConfirmPrescription && canConfirmPayment
+  const canOpenInvoice = ['confirmed', 'processing', 'delivered', 'returned', 'refunded'].includes(order?.order_status)
 
   const nextStatuses = useMemo(() => {
     const allowed = statusTransitions[order?.order_status] || []
@@ -135,6 +136,7 @@ export default function OrderDetails() {
 
     return allowed.filter((item) => {
       if (requiresPrescription && order?.order_status === 'prescription_review' && item !== 'pending_confirmation') return false
+      if (item === 'cancelled' && order?.delivery) return false
       if (item === 'confirmed' && !canConfirmOrder) return false
       if (item === 'delivered' && !canMarkOrderDelivered(order)) return false
       return true
@@ -154,7 +156,7 @@ export default function OrderDetails() {
     const result = await Swal.fire({
       title: 'Update order status?',
       input: 'textarea',
-      inputLabel: targetStatus === 'cancelled' ? 'Cancellation reason' : 'Admin note (optional)',
+      inputLabel: targetStatus === 'cancelled' ? 'Cancellation reason' : 'N ote (optional)',
       inputPlaceholder: targetStatus === 'cancelled' ? 'Explain why this order is being cancelled' : 'Add a short note if needed',
       showCancelButton: true,
       confirmButtonText: 'Update',
@@ -225,6 +227,20 @@ export default function OrderDetails() {
       toast.success('Delivery created.')
     } catch (error) {
       toast.error(error.response?.data?.message || 'Unable to create delivery.')
+    }
+  }
+
+  const openMemo = async (download = false) => {
+    if (!canOpenInvoice) {
+      toast.error('Confirm this order before opening the invoice.')
+      return
+    }
+
+    try {
+      const response = await adminApi.orderMemo(order.id, download)
+      openPdfBlob(response.data, `${order.memo_number || order.order_number}.pdf`, download)
+    } catch {
+      toast.error('Invoice could not be opened.')
     }
   }
 
@@ -434,7 +450,34 @@ export default function OrderDetails() {
               </div>
             ) : null}
             {order.notes ? <Note label="Customer note" value={order.notes} /> : null}
-            {order.memo_number ? <Note label="Invoice number" value={order.memo_number} /> : null}
+            <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Invoice number</div>
+                  <div className="mt-1 font-semibold text-slate-950">{canOpenInvoice ? (order.memo_number || 'Will generate on open') : 'Available after confirmation'}</div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openMemo(false)}
+                    disabled={!canOpenInvoice}
+                    className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <FiPrinter className="h-4 w-4" />
+                    Print
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openMemo(true)}
+                    disabled={!canOpenInvoice}
+                    className="inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <FiDownload className="h-4 w-4" />
+                    Download
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           {(order.admin_note || order.cancellation_reason) ? (
@@ -655,6 +698,24 @@ function getPaymentMethodLabel(method) {
   }
 
   return labels[normalized] || method || '-'
+}
+
+function openPdfBlob(blob, filename, download = false) {
+  const url = window.URL.createObjectURL(blob)
+
+  if (download) {
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+    return
+  }
+
+  window.open(url, '_blank', 'noopener,noreferrer')
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 60 * 1000)
 }
 
 function getPaymentStatusTextColor(status) {

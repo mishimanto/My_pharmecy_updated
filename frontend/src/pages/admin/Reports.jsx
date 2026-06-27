@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom'
-import { FiArrowRight, FiBarChart2, FiCreditCard, FiDatabase, FiFileText, FiPackage, FiRefreshCw, FiShoppingBag, FiTruck, FiUploadCloud } from 'react-icons/fi'
+import { FiArrowRight, FiBarChart2, FiCreditCard, FiDatabase, FiDollarSign, FiFileText, FiPackage, FiRefreshCw, FiShoppingBag, FiTruck, FiUploadCloud } from 'react-icons/fi'
+import AdminStatCard from '../../components/admin/AdminStatCard'
 
 const reports = [
-  { type: 'sales', title: 'Sales Report', subtitle: 'Daily revenue, monthly revenue, and top-selling products.', icon: FiBarChart2, tone: 'emerald', group: 'Finance', tables: 3 },
+  { type: 'sales', title: 'Sales Report', subtitle: 'Daily revenue, category sales, and top-selling products.', icon: FiBarChart2, tone: 'emerald', group: 'Finance', tables: 4 },
   { type: 'orders', title: 'Order Report', subtitle: 'Order status, payment status, and recent order activity.', icon: FiShoppingBag, tone: 'sky', group: 'Operations', tables: 3 },
-  { type: 'inventory', title: 'Inventory Report', subtitle: 'Low stock, near-expiry batches, and stock value.', icon: FiPackage, tone: 'amber', group: 'Inventory', tables: 3 },
+  { type: 'inventory', title: 'Inventory Report', subtitle: 'Low stock, near-expiry batches, cost, value, and potential profit.', icon: FiPackage, tone: 'amber', group: 'Inventory', tables: 3 },
+  { type: 'profit', title: 'Profit Report', subtitle: 'Sales minus batch purchase cost by product, category, and date.', icon: FiDollarSign, tone: 'emerald', group: 'Finance', tables: 3 },
   { type: 'payments', title: 'Payment Report', subtitle: 'Payment status, methods, and recent transactions.', icon: FiCreditCard, tone: 'emerald', group: 'Finance', tables: 3 },
   { type: 'prescriptions', title: 'Prescription Report', subtitle: 'Prescription statuses and review activity.', icon: FiUploadCloud, tone: 'sky', group: 'Clinical', tables: 3 },
   { type: 'deliveries', title: 'Delivery Report', subtitle: 'Delivery status and rider performance.', icon: FiTruck, tone: 'amber', group: 'Operations', tables: 3 },
@@ -25,10 +27,10 @@ export default function Reports() {
   return (
     <>
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard icon={FiFileText} label="Report Types" value={reports.length} tone="slate" />
-        <SummaryCard icon={FiCreditCard} label="Financial" value={financeCount} tone="emerald" />
-        <SummaryCard icon={FiTruck} label="Operations" value={operationCount} tone="sky" />
-        <SummaryCard icon={FiDatabase} label="Data Tables" value={tableCount} tone="amber" />
+        <AdminStatCard icon={FiFileText} label="Report Types" value={reports.length} variant="slate" />
+        <AdminStatCard icon={FiCreditCard} label="Financial" value={financeCount} variant="emerald" />
+        <AdminStatCard icon={FiTruck} label="Operations" value={operationCount} variant="sky" />
+        <AdminStatCard icon={FiDatabase} label="Data Tables" value={tableCount} variant="amber" />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -64,28 +66,5 @@ export default function Reports() {
         })}
       </div>
     </>
-  )
-}
-
-function SummaryCard({ icon: Icon, label, value, tone = 'slate' }) {
-  const cardTones = {
-    slate: 'border-slate-200 bg-white text-slate-700',
-    emerald: 'border-emerald-200 bg-emerald-50/70 text-emerald-700',
-    sky: 'border-sky-200 bg-sky-50/70 text-sky-700',
-    amber: 'border-amber-200 bg-amber-50/70 text-amber-700',
-  }
-
-  return (
-    <div className={`rounded-lg border px-4 py-4 ${cardTones[tone] || cardTones.slate}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em]">{label}</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-950">{value}</p>
-        </div>
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-sm">
-          <Icon className="h-4 w-4" />
-        </span>
-      </div>
-    </div>
   )
 }

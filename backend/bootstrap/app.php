@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'customer.token' => \App\Http\Middleware\EnsureCustomerToken::class,
             'staff.token' => \App\Http\Middleware\EnsureStaffToken::class,
             'permission' => \App\Http\Middleware\EnsureStaffPermission::class,
+            'sensitive.confirm' => \App\Http\Middleware\EnsureSensitiveActionConfirmed::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
         ]);
     })

@@ -25,7 +25,11 @@ class DashboardController extends Controller
             'pending_prescription_reviews' => DB::table('prescriptions')->where('status', 'pending')->count(),
             'pending_deliveries' => DB::table('deliveries')->where('delivery_status', 'pending')->count(),
             'low_stock_batches' => DB::table('inventory_batches')->whereRaw('(stock_quantity - reserved_quantity) <= 10')->count(),
-            'near_expiry_batches' => DB::table('inventory_batches')->whereDate('expiry_date', '>', now())->whereDate('expiry_date', '<=', now()->addDays(30))->count(),
+            'near_expiry_batches' => DB::table('inventory_batches')
+                ->where('status', 'active')
+                ->whereDate('expiry_date', '>', now())
+                ->whereDate('expiry_date', '<=', now()->addDays(30))
+                ->count(),
             'open_support_tickets' => DB::table('support_tickets')->whereIn('status', ['open', 'in_progress'])->count(),
             'pending_return_requests' => DB::table('return_requests')->where('status', 'requested')->count(),
         ]);
@@ -85,10 +89,10 @@ class DashboardController extends Controller
     {
         $this->forgetLegacyDashboardCache();
 
-        $today = now()->toDateString();
         $batches = DB::table('inventory_batches')
             ->join('products', 'products.id', '=', 'inventory_batches.product_id')
             ->select('inventory_batches.*', 'products.product_name', DB::raw('(stock_quantity - reserved_quantity) as available_stock'))
+            ->where('inventory_batches.status', 'active')
             ->whereDate('expiry_date', '>', now())
             ->whereDate('expiry_date', '<=', now()->addDays(30))
             ->orderBy('expiry_date')

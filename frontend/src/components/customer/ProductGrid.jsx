@@ -173,27 +173,27 @@ export default function ProductGrid() {
       )}
 
       {meta && lastPage > 1 && (
-        <div className="mt-8 border border-slate-200 bg-[linear-gradient(180deg,#ffffff,#f8fbfd)] p-4 shadow-[0_20px_45px_-36px_rgba(15,23,42,0.4)] sm:p-5">
+        <div className="mt-8 border border-slate-200 bg-[linear-gradient(180deg,#ffffff,#f8fbfd)] p-2 shadow-[0_20px_45px_-36px_rgba(15,23,42,0.4)] sm:p-3">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               {/* <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[#0e6574]">
                 {t(`পৃষ্ঠা ${formatCount(currentPage, true)} / ${formatCount(lastPage, true)}`, `Page ${currentPage} / ${lastPage}`)}
               </div> */}
-              {resultSummary ? (
+              {/* {resultSummary ? (
                 <div className="text-md text-slate-600">
                   {t(
                     `${formatCount(resultSummary.from, true)}-${formatCount(resultSummary.to, true)} টি দেখানো হচ্ছে, মোট ${formatCount(resultSummary.total, true)} টি পণ্য`,
                     `Showing ${formatCount(resultSummary.from, false)}-${formatCount(resultSummary.to, false)} of ${formatCount(resultSummary.total, false)} products`,
                   )}
                 </div>
-              ) : null}
+              ) : null} */}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 disabled={!hasPrevious}
-                className="inline-flex min-w-[96px] items-center justify-center border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
+                className="inline-flex min-w-24 items-center justify-center border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
                 onClick={() => setPage((value) => Math.max(1, value - 1))}
               >
                 {t('পূর্ববর্তী', 'Previous')}
@@ -202,7 +202,7 @@ export default function ProductGrid() {
               <div className="flex flex-wrap items-center gap-2">
                 {paginationItems.map((item, index) => (
                   item === 'ellipsis' ? (
-                    <span key={`ellipsis-${index}`} className="inline-flex h-11 min-w-[44px] items-center justify-center border border-transparent px-2 text-sm font-semibold text-slate-400">
+                    <span key={`ellipsis-${index}`} className="inline-flex h-11 min-w-11 items-center justify-center border border-transparent px-2 text-sm font-semibold text-slate-400">
                       ...
                     </span>
                   ) : (
@@ -210,7 +210,7 @@ export default function ProductGrid() {
                       key={item}
                       type="button"
                       onClick={() => setPage(item)}
-                      className={`inline-flex h-11 min-w-[44px] items-center justify-center border px-3 text-sm font-semibold transition ${
+                      className={`inline-flex h-11 min-w-11 items-center justify-center border px-3 text-sm font-semibold transition ${
                         item === currentPage
                           ? 'border-[#13b8b0] bg-[#13b8b0] text-white shadow-[0_16px_32px_-18px_rgba(19,184,176,0.85)]'
                           : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
@@ -225,7 +225,7 @@ export default function ProductGrid() {
               <button
                 type="button"
                 disabled={!hasNext}
-                className="inline-flex min-w-[96px] items-center justify-center border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
+                className="inline-flex min-w-24 items-center justify-center border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
                 onClick={() => setPage((value) => value + 1)}
               >
                 {t('পরবর্তী', 'Next')}

@@ -4,6 +4,7 @@ import { FiArrowLeft, FiBarChart2, FiCalendar, FiCheckCircle, FiClock, FiDownloa
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
+import AdminStatCard from '../../components/admin/AdminStatCard'
 import EmptyState from '../../components/common/EmptyState'
 import { date, money } from '../../utils/formatters'
 import { getDeliveryStatusLabel, getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
@@ -12,13 +13,15 @@ const reportMeta = {
   sales: { title: 'Sales Report', subtitle: 'Revenue, payment count, and top-selling products.' },
   orders: { title: 'Order Report', subtitle: 'Order status, payment status, and recent order activity.' },
   inventory: { title: 'Inventory Report', subtitle: 'Low stock, near expiry, and stock valuation.' },
+  profit: { title: 'Profit Report', subtitle: 'Selling revenue minus batch purchase cost.' },
   payments: { title: 'Payment Report', subtitle: 'Payment status, method split, and transaction activity.' },
   prescriptions: { title: 'Prescription Report', subtitle: 'Prescription status and review performance.' },
   deliveries: { title: 'Delivery Report', subtitle: 'Delivery status and rider performance.' },
   refunds: { title: 'Refund Report', subtitle: 'Refund amount, return status, and refund activity.' },
 }
 
-const moneyColumns = ['amount', 'revenue', 'sales_amount', 'total_amount', 'stock_value', 'refund_amount', 'delivery_charge']
+const moneyColumns = ['amount', 'revenue', 'sales_amount', 'total_amount', 'stock_cost', 'stock_value', 'potential_profit', 'purchase_cost', 'gross_profit', 'refund_amount', 'delivery_charge']
+const percentColumns = ['margin_percent']
 const dateColumns = ['date', 'order_date', 'created_at', 'paid_at', 'reviewed_at', 'expiry_date']
 const summaryTones = ['slate', 'emerald', 'sky', 'amber']
 
@@ -89,6 +92,15 @@ export default function ReportDetails() {
     URL.revokeObjectURL(url)
   }
 
+  const downloadPdf = async () => {
+    try {
+      const response = await adminApi.reportPdf(type, cleanFilters(appliedFilters), true)
+      openBlob(response.data, `${type}-report.pdf`)
+    } catch {
+      toast.error('Unable to export PDF.')
+    }
+  }
+
   return (
     <>
       <div className="mb-4 border-b border-slate-200 pb-4">
@@ -114,10 +126,19 @@ export default function ReportDetails() {
               type="button"
               onClick={downloadCsv}
               disabled={!totalRows}
-              className="inline-flex items-center justify-center gap-2 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
             >
               <FiDownload className="h-4 w-4" />
               Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={downloadPdf}
+              disabled={loading}
+              className="inline-flex items-center justify-center gap-2 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              <FiDownload className="h-4 w-4" />
+              Export PDF
             </button>
           </div>
         </div>
@@ -168,13 +189,14 @@ export default function ReportDetails() {
         <>
           <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {summary.length ? summary.map((item, index) => (
-              <SummaryCard
+              <AdminStatCard
                 key={item.label}
                 label={item.label}
                 value={formatMetric(item.value, item.label)}
-                tone={summaryTones[index % summaryTones.length]}
+                variant={summaryTones[index % summaryTones.length]}
+                icon={FiBarChart2}
               />
-            )) : <SummaryCard label="Rows" value="0" />}
+            )) : <AdminStatCard label="Rows" value="0" variant="slate" icon={FiBarChart2} />}
           </div>
 
           {Object.keys(tables).length ? (
@@ -205,29 +227,6 @@ function InfoPill({ icon: Icon, label, tone }) {
   )
 }
 
-function SummaryCard({ label, value, tone = 'slate' }) {
-  const tones = {
-    slate: 'border-slate-200 bg-white text-slate-700',
-    emerald: 'border-emerald-200 bg-emerald-50/70 text-emerald-700',
-    sky: 'border-sky-200 bg-sky-50/70 text-sky-700',
-    amber: 'border-amber-200 bg-amber-50/70 text-amber-700',
-  }
-
-  return (
-    <div className={`rounded-lg border px-4 py-4 ${tones[tone] || tones.slate}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em]">{label}</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-950">{value}</p>
-        </div>
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-sm">
-          <FiBarChart2 className="h-4 w-4" />
-        </span>
-      </div>
-    </div>
-  )
-}
-
 function ReportSection({ title, rows }) {
   const columns = getColumns(rows)
 
@@ -246,12 +245,12 @@ function ReportSection({ title, rows }) {
       {!rows.length ? (
         <EmptyState compact title="No data found" text="This report section has no data for the selected filters." />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full border border-slate-300 divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-left text-slate-600">
+        <div className="w-full overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+          <table className="w-full min-w-[920px] divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               <tr>
                 {columns.map((column) => (
-                  <th key={column} className="px-4 py-3 font-semibold capitalize">{column.replaceAll('_', ' ')}</th>
+                  <th key={column} className="px-4 py-3 capitalize">{column.replaceAll('_', ' ')}</th>
                 ))}
               </tr>
             </thead>
@@ -283,7 +282,11 @@ function getColumns(rows) {
 
 function formatMetric(value, label) {
   const key = String(label).toLowerCase()
-  if (key.includes('amount') || key.includes('revenue') || key.includes('value') || key.includes('charge')) {
+  if (key.includes('%')) {
+    return `${Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}%`
+  }
+
+  if (key.includes('amount') || key.includes('revenue') || key.includes('value') || key.includes('charge') || key.includes('cost') || key.includes('profit')) {
     return money(value, 'en-US')
   }
 
@@ -293,6 +296,7 @@ function formatMetric(value, label) {
 function formatValue(value, column) {
   if (value === null || value === undefined || value === '') return '-'
   if (moneyColumns.includes(column)) return money(value, 'en-US')
+  if (percentColumns.includes(column)) return `${Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}%`
   if (dateColumns.includes(column)) return date(value, 'en-US')
   if (column === 'payment_method' || column === 'refund_method') return getPaymentMethodLabel(value)
   if (column === 'order_status') return getOrderStatusLabel(value)
@@ -434,4 +438,15 @@ function buildCsv(tables) {
 function csvCell(value) {
   const text = String(value ?? '')
   return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
+}
+
+function openBlob(blob, filename) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

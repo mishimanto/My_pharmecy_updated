@@ -92,9 +92,22 @@ export function StaffAuthProvider({ children }) {
 
   const login = async (payload) => {
     const { data } = await adminAuthApi.login(payload)
+    if (data.data?.requires_2fa) {
+      return data.data
+    }
+
     localStorage.setItem('staff_token', data.data.token)
     setStaff(data.data.staff)
     writeStaffCache(data.data.staff)
+    return data.data
+  }
+
+  const verifyTwoFactor = async (payload) => {
+    const { data } = await adminAuthApi.verifyTwoFactor(payload)
+    localStorage.setItem('staff_token', data.data.token)
+    setStaff(data.data.staff)
+    writeStaffCache(data.data.staff)
+    return data.data
   }
 
   const logout = async () => {
@@ -104,7 +117,7 @@ export function StaffAuthProvider({ children }) {
     clearStaffCache()
   }
 
-  return <StaffAuthContext.Provider value={{ staff, loading, login, logout, refreshProfile, updateProfileState }}>{children}</StaffAuthContext.Provider>
+  return <StaffAuthContext.Provider value={{ staff, loading, login, verifyTwoFactor, logout, refreshProfile, updateProfileState }}>{children}</StaffAuthContext.Provider>
 }
 
 export const useStaffAuth = () => useContext(StaffAuthContext)

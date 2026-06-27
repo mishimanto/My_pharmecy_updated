@@ -38,11 +38,22 @@ export default function AdminHeader({
     enabled: Boolean(staffToken),
     refetchInterval: 30000,
   })
+  const preferencesQuery = useQuery({
+    queryKey: ['admin', 'notifications', 'preferences'],
+    queryFn: () => notificationApi.adminPreferences().then((response) => response.data.data || { disabled_types: [] }),
+    enabled: Boolean(staffToken),
+    staleTime: 60000,
+  })
   const notifications = notificationsQuery.data || []
   const unreadCount = notifications.filter((item) => item.status !== 'read').length
+  const disabledNotificationTypes = preferencesQuery.data?.disabled_types || []
 
   const handleRealtimeNotification = useCallback(
     (notification) => {
+      if (disabledNotificationTypes.includes(notification?.notification_type)) {
+        return
+      }
+
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.notifications(notificationParams) })
 
@@ -50,7 +61,7 @@ export default function AdminHeader({
         toast.success(notification.title)
       }
     },
-    [notificationParams, queryClient],
+    [disabledNotificationTypes, notificationParams, queryClient],
   )
 
   useRealtimeNotifications({

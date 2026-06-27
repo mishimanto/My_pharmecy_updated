@@ -149,21 +149,6 @@ class CheckoutService
                 ],
             ]);
 
-            $this->communication->notify(
-                $order,
-                'order_status_update',
-                'Order received',
-                "Your order {$order->order_number} has been received and is waiting for admin confirmation.",
-                'Order received',
-                [
-                    "We received your order {$order->order_number}.",
-                    ! $paymentRequiresProof
-                        ? 'No advance payment is required for the selected payment method.'
-                        : 'Please submit your payment proof from the payment page so the admin can review it.',
-                    'The order will move forward after admin confirmation.',
-                ],
-            );
-
             $cart->items()->delete();
 
             return $order->load('user', 'address', 'deliveryArea', 'items.product', 'items.batches.batch', 'payment', 'delivery');

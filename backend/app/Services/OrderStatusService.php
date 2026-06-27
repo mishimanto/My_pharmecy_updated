@@ -28,7 +28,10 @@ class OrderStatusService
 
     public function cancelByCustomer(Order $order): Order
     {
+        $order->loadMissing('delivery');
+
         abort_unless(in_array($order->order_status, self::CUSTOMER_CANCELLABLE, true), 422, 'This order can no longer be cancelled.');
+        abort_if($order->delivery, 422, 'This order already has a delivery record and can no longer be cancelled.');
 
         return DB::transaction(function () use ($order) {
             $this->releaseReservedStock($order);
@@ -60,6 +63,7 @@ class OrderStatusService
 
         abort_unless(in_array($status, $this->allowedNextStatuses($order->order_status), true), 422, 'The requested order status transition is not allowed.');
         abort_if($status === 'cancelled' && blank($note), 422, 'A cancellation reason is required.');
+        abort_if($status === 'cancelled' && $order->delivery, 422, 'This order already has a delivery record and can no longer be cancelled.');
         abort_if($status === 'pending_confirmation' && $order->order_status === 'prescription_review' && ! $this->canConfirmPrescriptionOrder($order), 422, $this->prescriptionConfirmationMessage($order));
         abort_if($status === 'confirmed' && ! $this->canConfirmOrder($order), 422, $this->confirmationBlockMessage($order));
         abort_if($status === 'delivered' && ! $this->canMarkOrderDelivered($order), 422, $this->deliveredBlockMessage($order));
@@ -97,10 +101,14 @@ class OrderStatusService
             if ($status === 'confirmed') {
                 $order->confirmed_at = now();
                 $order->confirmed_by_staff_id = $staff->id;
-                $message = "Your order {$order->order_number} has been confirmed by the admin team.";
+                $order = $this->communication->ensureMemo($order);
+                $message = "Your order {$order->order_number} has been confirmed.";
                 $emailLines = [
-                    "Your order {$order->order_number} has been confirmed by the admin team.",
-                    $note ? "Note: {$note}" : 'We will start processing it shortly.',
+                    "Your order {$order->order_number} has been confirmed.",
+                    $order->payment_requires_proof
+                        ? 'Your payment has been verified and your invoice is attached with this email.'
+                        : 'Your invoice has been prepared and will be handed over when you receive the delivery.',
+                    $note ? "Admin note: {$note}" : 'We will prepare your order for delivery shortly.',
                 ];
             }
 
@@ -127,10 +135,11 @@ class OrderStatusService
             $this->communication->notify(
                 $order,
                 'order_status_update',
-                'Order status updated',
+                $status === 'confirmed' ? 'Order confirmed' : 'Order status updated',
                 $message,
-                $status === 'cancelled' ? 'Order cancelled' : 'Order status updated',
+                $status === 'cancelled' ? 'Order cancelled' : ($status === 'confirmed' ? 'Order confirmed' : 'Order status updated'),
                 $emailLines,
+                $status === 'confirmed' && $order->payment_requires_proof && $order->payment_status === 'paid',
             );
 
             return $order->fresh()->load($this->relations());

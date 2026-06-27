@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Product;
 use App\Support\Currency;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class ProductCatalogService
 {
@@ -33,43 +34,8 @@ class ProductCatalogService
     public function customerQuery(Request $request): \Illuminate\Database\Eloquent\Builder
     {
         return Product::query()
-            ->select([
-                'id',
-                'slug',
-                'category_id',
-                'manufacturer_id',
-                'product_name',
-                'generic_name',
-                'brand_name',
-                'strength',
-                'dosage_form',
-                'pieces_per_strip',
-                'strips_per_box',
-                'strip_price',
-                'box_price',
-                'requires_prescription',
-                'description',
-                'description_bn',
-                'is_active',
-            ])
-            ->with([
-                'category:id,category_name',
-                'manufacturer:id,manufacturer_name,logo_url,logo_path',
-                'images:id,product_id,image_url,image_path,image_webp_path,thumbnail_path,is_primary',
-                'batches' => function ($query) {
-                    ($this->validBatchConstraint())($query);
-                    $query->select([
-                        'id',
-                        'product_id',
-                        'batch_number',
-                        'selling_price',
-                        'stock_quantity',
-                        'reserved_quantity',
-                        'status',
-                        'expiry_date',
-                    ]);
-                },
-            ])
+            ->select($this->customerSelectFields())
+            ->with($this->customerRelations())
             ->where('is_active', true)
             ->whereHas('batches', $this->validBatchConstraint())
             ->when($request->search, fn ($query, $search) => $query->where(fn ($inner) => $inner
@@ -79,6 +45,51 @@ class ProductCatalogService
             ->when($request->category_id, fn ($query, $id) => $query->where('category_id', $id))
             ->when($request->manufacturer_id, fn ($query, $id) => $query->where('manufacturer_id', $id))
             ->when($request->filled('requires_prescription'), fn ($query) => $query->where('requires_prescription', $request->boolean('requires_prescription')));
+    }
+
+    public function customerSelectFields(): array
+    {
+        return [
+            'id',
+            'slug',
+            'category_id',
+            'manufacturer_id',
+            'product_name',
+            'generic_name',
+            'brand_name',
+            'strength',
+            'dosage_form',
+            'pieces_per_strip',
+            'strips_per_box',
+            'strip_price',
+            'box_price',
+            'requires_prescription',
+            'description',
+            'description_bn',
+            'is_active',
+        ];
+    }
+
+    public function customerRelations(): array
+    {
+        return [
+            'category:id,category_name',
+            'manufacturer:id,manufacturer_name,logo_url,logo_path',
+            'images:id,product_id,image_url,image_path,image_webp_path,thumbnail_path,is_primary',
+            'batches' => function ($query) {
+                ($this->validBatchConstraint())($query);
+                $query->select([
+                    'id',
+                    'product_id',
+                    'batch_number',
+                    'selling_price',
+                    'stock_quantity',
+                    'reserved_quantity',
+                    'status',
+                    'expiry_date',
+                ]);
+            },
+        ];
     }
 
     public function appendComputedFields(Product $product): Product
@@ -109,6 +120,57 @@ class ProductCatalogService
         $products->getCollection()->transform(fn (Product $product) => $this->appendComputedFields($product));
 
         return $products;
+    }
+
+    public function appendProductCollection(Collection $products): Collection
+    {
+        return $products->map(fn (Product $product) => $this->appendComputedFields($product))->values();
+    }
+
+    public function alternativesFor(Product $product, int $limit = 6): Collection
+    {
+        $ids = $product->alternatives()->pluck('products.id');
+
+        if ($ids->isEmpty()) {
+            return collect();
+        }
+
+        return $this->appendProductCollection(
+            Product::query()
+                ->select($this->customerSelectFields())
+                ->with($this->customerRelations())
+                ->whereKey($ids)
+                ->where('is_active', true)
+                ->whereHas('batches', $this->validBatchConstraint())
+                ->orderBy('product_name')
+                ->limit($limit)
+                ->get()
+        );
+    }
+
+    public function genericRelatedFor(Product $product, int $limit = 8): Collection
+    {
+        $generic = trim((string) $product->generic_name);
+
+        if ($generic === '') {
+            return collect();
+        }
+
+        $alternativeIds = $product->alternatives()->pluck('products.id')->all();
+
+        return $this->appendProductCollection(
+            Product::query()
+                ->select($this->customerSelectFields())
+                ->with($this->customerRelations())
+                ->where('is_active', true)
+                ->where('generic_name', $generic)
+                ->whereKeyNot($product->id)
+                ->when($alternativeIds !== [], fn ($query) => $query->whereNotIn('id', $alternativeIds))
+                ->whereHas('batches', $this->validBatchConstraint())
+                ->orderBy('product_name')
+                ->limit($limit)
+                ->get()
+        );
     }
 
     public function unitConfig(Product $product): array

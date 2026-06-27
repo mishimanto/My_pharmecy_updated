@@ -27,6 +27,7 @@ class Product extends PharmacyModel
             'strips_per_box' => 'integer',
             'strip_price' => 'float',
             'box_price' => 'float',
+            'description_generated_at' => 'datetime',
         ];
     }
 
@@ -58,4 +59,16 @@ class Product extends PharmacyModel
     public function manufacturer() { return $this->belongsTo(Manufacturer::class); }
     public function images() { return $this->hasMany(ProductImage::class); }
     public function batches() { return $this->hasMany(InventoryBatch::class); }
+    public function alternatives()
+    {
+        return $this->belongsToMany(Product::class, 'product_alternatives', 'product_id', 'alternative_product_id')
+            ->withPivot('note')
+            ->withTimestamps();
+    }
+    public function alternativeFor()
+    {
+        return $this->belongsToMany(Product::class, 'product_alternatives', 'alternative_product_id', 'product_id')
+            ->withPivot('note')
+            ->withTimestamps();
+    }
 }

@@ -3,7 +3,9 @@ import { FiEdit, FiPhone, FiPlus, FiTruck, FiTrash2, FiUser } from 'react-icons/
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
+import AdminFilterBar from '../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
+import AdminStatCard from '../../components/admin/AdminStatCard'
 import EmptyState from '../../components/common/EmptyState'
 import { date } from '../../utils/formatters'
 
@@ -73,27 +75,14 @@ function statusBadgeClass(status) {
   return 'border-slate-200 bg-slate-100 text-slate-600'
 }
 
-function StatCard({ icon: Icon, label, value, tone = 'slate' }) {
+function actionButtonClass(tone = 'slate') {
   const tones = {
-    slate: 'border-slate-200 bg-white text-slate-700',
-    emerald: 'border-emerald-200 bg-emerald-50/70 text-emerald-700',
-    amber: 'border-amber-200 bg-amber-50/70 text-amber-700',
-    sky: 'border-sky-200 bg-sky-50/70 text-sky-700',
+    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300',
+    rose: 'border-rose-200 bg-rose-50 text-rose-600 hover:border-rose-300 hover:text-rose-700',
+    slate: 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50',
   }
 
-  return (
-    <div className={`rounded-lg border px-4 py-4 ${tones[tone] || tones.slate}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em]">{label}</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-950">{value}</p>
-        </div>
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-sm">
-          <Icon className="h-4 w-4" />
-        </span>
-      </div>
-    </div>
-  )
+  return `inline-flex h-9 w-9 items-center justify-center rounded-md border transition ${tones[tone] || tones.slate}`
 }
 
 export default function Riders() {
@@ -122,7 +111,37 @@ export default function Riders() {
     vehicleTypes: vehicleOptions.length,
   }), [allRiders, vehicleOptions.length])
 
+  const updateParams = (nextParams) => {
+    setParams(nextParams)
+  }
+
   const hasActiveFilters = Boolean(search || params.status || params.vehicle_type)
+  const statItems = [
+    { label: 'Total Riders', value: stats.total, variant: 'slate', icon: FiUser },
+    { label: 'Active Riders', value: stats.active, variant: 'emerald', icon: FiTruck },
+    { label: 'Suspended', value: stats.suspended, variant: 'amber', icon: FiPhone },
+    { label: 'Vehicle Types', value: stats.vehicleTypes, variant: 'sky', icon: FiPlus },
+  ]
+  const filterOptions = [
+    {
+      key: 'vehicle_type',
+      value: params.vehicle_type,
+      onChange: (value) => updateParams({ ...params, vehicle_type: value, page: 1 }),
+      options: [
+        { value: '', label: 'All Vehicles' },
+        ...vehicleOptions.map((vehicle) => ({ value: vehicle, label: vehicle })),
+      ],
+    },
+    {
+      key: 'status',
+      value: params.status,
+      onChange: (value) => updateParams({ ...params, status: value, page: 1 }),
+      options: statuses.map((status) => ({
+        value: status,
+        label: status ? status[0].toUpperCase() + status.slice(1) : 'All Statuses',
+      })),
+    },
+  ]
 
   const loadRiderOptions = () => {
     adminApi.listFresh('riders', { page: 1, per_page: 100 })
@@ -178,10 +197,6 @@ export default function Riders() {
 
     return () => clearTimeout(timeout)
   }, [search])
-
-  const updateParams = (nextParams) => {
-    setParams(nextParams)
-  }
 
   const resetForm = () => {
     setEditingId(null)
@@ -265,16 +280,15 @@ export default function Riders() {
   return (
     <>
       <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={FiUser} label="Total Riders" value={stats.total} tone="slate" />
-        <StatCard icon={FiTruck} label="Active Riders" value={stats.active} tone="emerald" />
-        <StatCard icon={FiPhone} label="Suspended" value={stats.suspended} tone="amber" />
-        <StatCard icon={FiPlus} label="Vehicle Types" value={stats.vehicleTypes} tone="sky" />
+        {statItems.map((item) => (
+          <AdminStatCard key={item.label} label={item.label} value={item.value} variant={item.variant} icon={item.icon} />
+        ))}
       </div>
 
-      <form onSubmit={submit} className="mb-4 border border-slate-300 bg-white p-4">
+      <form onSubmit={submit} className="mb-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h3 className="text-md font-semibold text-slate-950">
+            <h3 className="text-base font-semibold text-slate-950">
               {editingId ? 'Edit rider' : 'Add rider'}
             </h3>
           </div>
@@ -282,7 +296,7 @@ export default function Riders() {
             <button
               type="button"
               onClick={resetForm}
-              className="inline-flex items-center justify-center border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400"
+              className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-400"
             >
               Cancel Edit
             </button>
@@ -329,7 +343,7 @@ export default function Riders() {
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center justify-center gap-2 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {editingId ? <FiEdit className="h-4 w-4" /> : <FiPlus className="h-4 w-4" />}
             <span>{saving ? 'Saving...' : editingId ? 'Update Rider' : 'Add Rider'}</span>
@@ -337,46 +351,17 @@ export default function Riders() {
         </div>
       </form>
 
-      <div className="mb-4">
-        <div className="grid gap-3 xl:grid-cols-[1fr_220px_220px_150px]">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by rider, phone, or status"
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-          />
-          <select
-            value={params.vehicle_type}
-            onChange={(event) => updateParams({ ...params, vehicle_type: event.target.value, page: 1 })}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-          >
-            <option value="">All Vehicles</option>
-            {vehicleOptions.map((vehicle) => <option key={vehicle} value={vehicle}>{vehicle}</option>)}
-          </select>
-          <select
-            value={params.status}
-            onChange={(event) => updateParams({ ...params, status: event.target.value, page: 1 })}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
-          >
-            {statuses.map((status) => (
-              <option key={status || 'all'} value={status}>
-                {status ? status[0].toUpperCase() + status.slice(1) : 'All Statuses'}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => {
-              setSearch('')
-              updateParams({ search: '', status: '', vehicle_type: '', page: 1 })
-            }}
-            disabled={!hasActiveFilters}
-            className="inline-flex items-center justify-center rounded-md border border-slate-500 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-gray-600 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Clear Filters
-          </button>
-        </div>
-      </div>
+      <AdminFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by rider, phone, or status"
+        filters={filterOptions}
+        onClear={() => {
+          setSearch('')
+          updateParams({ search: '', status: '', vehicle_type: '', page: 1 })
+        }}
+        hasActiveFilters={hasActiveFilters}
+      />
 
       {updating ? <AdminLoadingState className="justify-start pb-3" /> : null}
       {loading && riders.length === 0 ? <AdminLoadingState className="py-8" /> : null}
@@ -385,65 +370,67 @@ export default function Riders() {
       ) : null}
 
       {riders.length > 0 ? (
-        <table className="min-w-full border border-slate-300 divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-slate-600">
-            <tr>
-              <th className="px-4 py-3">Rider</th>
-              <th className="px-4 py-3">Phone</th>
-              <th className="px-4 py-3">Vehicle</th>
-              <th className="px-4 py-3">Vehicle No.</th>
-              <th className="px-4 py-3 text-center">Status</th>
-              <th className="px-4 py-3 text-center">Created</th>
-              <th className="px-4 py-3 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {riders.map((rider) => (
-              <tr key={rider.id} className="transition hover:bg-slate-50/80">
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br from-slate-100 to-slate-200 text-xs font-semibold text-slate-700">
-                      {getInitials(rider.full_name)}
-                    </span>
-                    <div>
-                      <div className="font-medium text-slate-950">{rider.full_name}</div>
-                      <div className="text-xs text-slate-500">Rider #{rider.id}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-slate-600">{rider.phone}</td>
-                <td className="px-4 py-3 text-slate-600">{rider.vehicle_type || '-'}</td>
-                <td className="px-4 py-3 text-slate-600">{rider.vehicle_number || '-'}</td>
-                <td className="px-4 py-3 text-center">
-                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(rider.status)}`}>
-                    {rider.status ? rider.status[0].toUpperCase() + rider.status.slice(1) : '-'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-center text-slate-600">{date(rider.created_at, 'en-US')}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-center gap-3">
-                    <button
-                      type="button"
-                      title="Edit rider"
-                      onClick={() => startEdit(rider)}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:border-emerald-300"
-                    >
-                      <FiEdit className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      title="Delete rider"
-                      onClick={() => removeRider(rider)}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-600 transition hover:border-rose-300 hover:text-rose-700"
-                    >
-                      <FiTrash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </td>
+        <div className="w-full overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+          <table className="w-full min-w-[980px] divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Rider</th>
+                <th className="px-4 py-3">Phone</th>
+                <th className="px-4 py-3">Vehicle</th>
+                <th className="px-4 py-3">Vehicle No.</th>
+                <th className="px-4 py-3 text-center">Status</th>
+                <th className="px-4 py-3 text-center">Created</th>
+                <th className="px-4 py-3 text-center">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {riders.map((rider) => (
+                <tr key={rider.id} className="transition hover:bg-slate-50/80">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 text-xs font-semibold text-emerald-700">
+                        {getInitials(rider.full_name)}
+                      </span>
+                      <div>
+                        <div className="font-medium text-slate-950">{rider.full_name}</div>
+                        <div className="text-xs text-slate-500">Rider #{rider.id}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 font-medium text-slate-700">{rider.phone}</td>
+                  <td className="px-4 py-3 text-slate-600">{rider.vehicle_type || '-'}</td>
+                  <td className="px-4 py-3 text-slate-600">{rider.vehicle_number || '-'}</td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(rider.status)}`}>
+                      {rider.status ? rider.status[0].toUpperCase() + rider.status.slice(1) : '-'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-center text-slate-600">{date(rider.created_at, 'en-US')}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-3">
+                      <button
+                        type="button"
+                        title="Edit rider"
+                        onClick={() => startEdit(rider)}
+                        className={actionButtonClass('emerald')}
+                      >
+                        <FiEdit className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Delete rider"
+                        onClick={() => removeRider(rider)}
+                        className={actionButtonClass('rose')}
+                      >
+                        <FiTrash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
 
       {meta?.last_page > 1 ? (
