@@ -19,7 +19,7 @@ class DatabaseSeeder extends Seeder
         $permissions = [
             'user.view', 'user.manage', 'staff.view', 'staff.manage', 'role.manage',
             'product.view', 'product.create', 'product.edit', 'product.delete',
-            'inventory.view', 'inventory.manage', 'prescription.view', 'prescription.review',
+            'inventory.view', 'inventory.manage', 'stock-adjustment.approve', 'prescription.view', 'prescription.review',
             'order.view', 'order.update', 'payment.view', 'delivery.manage',
             'support.manage', 'return.manage', 'refund.approve', 'report.view', 'activity-log.view',
         ];

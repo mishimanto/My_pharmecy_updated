@@ -74,7 +74,7 @@ export function useProductsQuery(params = {}, options = {}) {
     queryKey: customerQueryKeys.products(params, offerScope),
     queryFn: () => productApi.list(params, { cacheScope: offerScope }).then((response) => response.data.data),
     initialData: () => productApi.getCachedList(params, { cacheScope: offerScope }) || undefined,
-    staleTime: FIVE_MINUTES,
+    staleTime: 0,
     gcTime: THIRTY_MINUTES,
     ...options,
   })

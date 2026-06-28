@@ -21,6 +21,8 @@ const initialForm = {
   strips_per_box: 10,
   strip_price: '',
   box_price: '',
+  strip_discount: '',
+  box_discount: '',
   requires_prescription: false,
   description: '',
   description_bn: '',
@@ -51,6 +53,8 @@ function formFromProduct(product) {
     manufacturer_id: product?.manufacturer_id || '',
     strip_price: product?.strip_price ?? '',
     box_price: product?.box_price ?? '',
+    strip_discount: product?.strip_discount ?? '',
+    box_discount: product?.box_discount ?? '',
     requires_prescription: Boolean(product?.requires_prescription),
     is_active: product?.is_active ?? true,
   }
@@ -296,8 +300,10 @@ export default function ProductForm({ mode = 'create' }) {
           })),
         pieces_per_strip: Number(form.pieces_per_strip || 1),
         strips_per_box: Number(form.strips_per_box || 1),
-        strip_price: form.strip_price === '' ? null : Number(form.strip_price),
-        box_price: form.box_price === '' ? null : Number(form.box_price),
+        strip_price: null,
+        box_price: null,
+        strip_discount: form.strip_discount === '' ? null : Number(form.strip_discount),
+        box_discount: form.box_discount === '' ? null : Number(form.box_discount),
         requires_prescription: Boolean(form.requires_prescription),
         is_active: Boolean(form.is_active),
       }
@@ -375,7 +381,7 @@ export default function ProductForm({ mode = 'create' }) {
       <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
         <div className="space-y-4">
           <section className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="mb-4 text-sm font-semibold text-slate-900">Basic information</div>
+            <div className="mb-4 text-md font-semibold text-slate-900">Basic information</div>
             <div className="grid gap-4 md:grid-cols-2">
               <label className="block md:col-span-2">
                 <span className="mb-1 block text-sm font-medium text-slate-700">Product name</span>
@@ -416,7 +422,7 @@ export default function ProductForm({ mode = 'create' }) {
 
           <section className="rounded-lg border border-slate-200 bg-white p-4">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm font-semibold text-slate-900">Initial inventory batch</div>
+              <div className="text-md font-semibold text-slate-900">Initial inventory batch</div>
               <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
                 <input type="checkbox" checked={batchForm.enabled} onChange={(event) => setBatchField('enabled', event.target.checked)} className="h-4 w-4 accent-emerald-600" />
                 <span>Add stock now</span>
@@ -465,7 +471,9 @@ export default function ProductForm({ mode = 'create' }) {
           </section>
 
           <section className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="mb-4 text-sm font-semibold text-slate-900">Packaging and pricing</div>
+            <div className="mb-4 flex flex-col gap-1">
+              <div className="text-md font-semibold text-slate-900">Packaging and unit rules</div>
+            </div>
             <div className="grid gap-4 md:grid-cols-2">
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700">Pieces per strip</span>
@@ -476,20 +484,21 @@ export default function ProductForm({ mode = 'create' }) {
                 <input type="number" min="1" value={form.strips_per_box} onChange={(event) => setField('strips_per_box', event.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
               </label>
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">Strip price</span>
-                <input type="number" min="0" step="0.01" value={form.strip_price} onChange={(event) => setField('strip_price', event.target.value)} placeholder="Optional" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
+                <span className="mb-1 block text-sm font-medium text-slate-700">Strip discount</span>
+                <input type="number" min="0" step="0.01" value={form.strip_discount} onChange={(event) => setField('strip_discount', event.target.value)} placeholder="Optional" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
+                <span className="mt-1 block text-xs text-slate-500">Final strip price = piece selling price x pieces per strip - discount.</span>
               </label>
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">Box price</span>
-                <input type="number" min="0" step="0.01" value={form.box_price} onChange={(event) => setField('box_price', event.target.value)} placeholder="Optional" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
+                <span className="mb-1 block text-sm font-medium text-slate-700">Box discount</span>
+                <input type="number" min="0" step="0.01" value={form.box_discount} onChange={(event) => setField('box_discount', event.target.value)} placeholder="Optional" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
+                <span className="mt-1 block text-xs text-slate-500">Final box price = piece selling price x pieces per box - discount.</span>
               </label>
             </div>
           </section>
 
           <section className="rounded-lg border border-slate-200 bg-white p-4">
             <div className="mb-4 flex flex-col gap-1">
-              <div className="text-sm font-semibold text-slate-900">Product quality</div>
-              <p className="text-sm text-slate-500">Configure alternatives and generic-based safety warnings for customer product pages and carts.</p>
+              <div className="text-md font-semibold text-slate-900">Product quality</div>
             </div>
 
             <div className="grid gap-5">
@@ -515,7 +524,6 @@ export default function ProductForm({ mode = 'create' }) {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="text-sm font-medium text-slate-700">Drug interaction warnings</div>
-                    <p className="mt-1 text-xs text-slate-500">These rules are matched by generic name and shown in cart when both medicines are selected.</p>
                   </div>
                   <button
                     type="button"
@@ -594,7 +602,7 @@ export default function ProductForm({ mode = 'create' }) {
           </section>
 
           <section className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="mb-4 text-sm font-semibold text-slate-900">Description</div>
+            <div className="mb-4 text-md font-semibold text-slate-900">Description</div>
             <div className="grid gap-4">
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700">Description</span>
@@ -611,9 +619,6 @@ export default function ProductForm({ mode = 'create' }) {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <div className="text-sm font-semibold text-amber-900">Local description draft</div>
-                    <p className="mt-1 text-sm leading-6 text-amber-800">
-                      Generate a local draft from product fields. It stays hidden from customers until an admin publishes it.
-                    </p>
                     {form.description_draft_status ? (
                       <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">Status: {String(form.description_draft_status).replace(/_/g, ' ')}</p>
                     ) : null}
@@ -675,7 +680,7 @@ export default function ProductForm({ mode = 'create' }) {
 
         <aside className="space-y-4">
           <section className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="text-sm font-semibold text-slate-900">Product preview</div>
+            <div className="text-md font-semibold text-slate-900">Product preview</div>
             <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4">
               {preview ? (
                 <img src={preview} alt="Product preview" loading="lazy" decoding="async" onError={handleImageFallback} className="h-44 w-full rounded-md border border-slate-200 bg-white object-cover" />

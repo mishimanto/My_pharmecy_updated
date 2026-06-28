@@ -183,6 +183,8 @@ class ProductController extends Controller
             'strips_per_box' => ['required', 'integer', 'min:1'],
             'strip_price' => ['nullable', 'numeric', 'min:0'],
             'box_price' => ['nullable', 'numeric', 'min:0'],
+            'strip_discount' => ['nullable', 'numeric', 'min:0'],
+            'box_discount' => ['nullable', 'numeric', 'min:0'],
             'requires_prescription' => ['required', 'boolean'],
             'description' => ['nullable', 'string'],
             'description_bn' => ['nullable', 'string'],

@@ -1,6 +1,6 @@
 import api from './axios'
 
-const PRODUCT_CACHE_KEY = 'storefront_product_cache_v5'
+const PRODUCT_CACHE_KEY = 'storefront_product_cache_v6'
 const PRODUCT_CACHE_TTL = 1000 * 60 * 30
 const productCache = new Map()
 const listCache = new Map()
@@ -44,11 +44,13 @@ function clearCacheStorage() {
   window.sessionStorage.removeItem('storefront_product_cache_v2')
   window.sessionStorage.removeItem('storefront_product_cache_v3')
   window.sessionStorage.removeItem('storefront_product_cache_v4')
+  window.sessionStorage.removeItem('storefront_product_cache_v5')
   window.localStorage.removeItem(PRODUCT_CACHE_KEY)
   window.localStorage.removeItem('storefront_product_cache_v1')
   window.localStorage.removeItem('storefront_product_cache_v2')
   window.localStorage.removeItem('storefront_product_cache_v3')
   window.localStorage.removeItem('storefront_product_cache_v4')
+  window.localStorage.removeItem('storefront_product_cache_v5')
 }
 
 function writeCache() {

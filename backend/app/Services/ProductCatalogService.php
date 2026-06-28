@@ -63,6 +63,8 @@ class ProductCatalogService
             'strips_per_box',
             'strip_price',
             'box_price',
+            'strip_discount',
+            'box_discount',
             'requires_prescription',
             'description',
             'description_bn',
@@ -197,13 +199,13 @@ class ProductCatalogService
 
         if ($config['pieces_per_strip'] > 1) {
             $stripCompare = Currency::whole($piecePrice * $config['pieces_per_strip']);
-            $stripPrice = Currency::whole($product->strip_price ?? $stripCompare);
+            $stripPrice = $this->unitPriceFromRule($product->strip_price, $product->strip_discount, $stripCompare);
             $options[] = $this->buildOption('strip', $config['pieces_per_strip'], $stripPrice, $stripCompare, $availableStock, true);
         }
 
         if ($config['pieces_per_box'] > 1) {
             $boxCompare = Currency::whole($piecePrice * $config['pieces_per_box']);
-            $boxPrice = Currency::whole($product->box_price ?? $boxCompare);
+            $boxPrice = $this->unitPriceFromRule($product->box_price, $product->box_discount, $boxCompare);
             $options[] = $this->buildOption('box', $config['pieces_per_box'], $boxPrice, $boxCompare, $availableStock);
         }
 
@@ -258,6 +260,15 @@ class ProductCatalogService
             'badge' => $mostPopular ? 'Most Popular' : null,
             'conversion_label' => $this->conversionLabel($code, $piecesPerUnit),
         ];
+    }
+
+    private function unitPriceFromRule(null|int|float|string $fixedPrice, null|int|float|string $discount, float $comparePrice): float
+    {
+        if ($fixedPrice !== null && $fixedPrice !== '') {
+            return Currency::whole($fixedPrice);
+        }
+
+        return Currency::whole(max(0, $comparePrice - Currency::whole($discount)));
     }
 
     private function applyOfferToOption(Product $product, array $option): array

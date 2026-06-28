@@ -88,6 +88,28 @@ class ProductQualityFeatureTest extends TestCase
         );
     }
 
+    public function test_product_purchase_options_use_batch_piece_price_and_unit_discounts(): void
+    {
+        $product = $this->createProduct('Napa 500mg Tablet', 'Paracetamol');
+        $product->update([
+            'pieces_per_strip' => 10,
+            'strips_per_box' => 10,
+            'strip_discount' => 10,
+            'box_discount' => 120,
+            'strip_price' => null,
+            'box_price' => null,
+        ]);
+
+        $response = $this->getJson("/api/products/{$product->slug}");
+
+        $response->assertOk();
+        $options = collect($response->json('data.purchase_options'));
+
+        $this->assertSame(14.0, (float) $options->firstWhere('code', 'piece')['unit_price']);
+        $this->assertSame(130.0, (float) $options->firstWhere('code', 'strip')['unit_price']);
+        $this->assertSame(1280.0, (float) $options->firstWhere('code', 'box')['unit_price']);
+    }
+
     private function createProduct(string $name, string $generic): Product
     {
         $category = Category::firstOrCreate([

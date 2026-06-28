@@ -31,6 +31,7 @@ const Inventory = lazy(() => import('../pages/admin/inventory/Index'))
 const InventoryBatches = lazy(() => import('../pages/admin/inventory/batches/Index'))
 const InventoryBatchCreate = lazy(() => import('../pages/admin/inventory/batches/Create'))
 const InventoryBatchEdit = lazy(() => import('../pages/admin/inventory/batches/Edit'))
+const StockAdjustments = lazy(() => import('../pages/admin/inventory/StockAdjustments'))
 const InventoryTransactions = lazy(() => import('../pages/admin/inventory/transactions/Index'))
 const LowStock = lazy(() => import('../pages/admin/inventory/LowStock'))
 const NearExpiry = lazy(() => import('../pages/admin/inventory/NearExpiry'))
@@ -98,6 +99,7 @@ export default function AdminRoutes() {
             <Route path="inventory/batches" element={<InventoryBatches />} />
             <Route path="inventory/batches/create" element={<InventoryBatchCreate />} />
             <Route path="inventory/batches/:id/edit" element={<InventoryBatchEdit />} />
+            <Route path="inventory/stock-adjustments" element={<StockAdjustments />} />
             <Route path="inventory/transactions" element={<InventoryTransactions />} />
             <Route path="inventory/low-stock" element={<LowStock />} />
             <Route path="inventory/near-expiry" element={<NearExpiry />} />

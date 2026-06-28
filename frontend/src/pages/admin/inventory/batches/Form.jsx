@@ -17,6 +17,7 @@ const initialForm = {
   purchase_price: '',
   selling_price: '',
   stock_quantity: '',
+  reserved_quantity: 0,
   status: 'active',
 }
 
@@ -32,6 +33,7 @@ function formFromBatch(batch) {
     purchase_price: batch?.purchase_price ?? '',
     selling_price: batch?.selling_price ?? '',
     stock_quantity: batch?.stock_quantity ?? '',
+    reserved_quantity: batch?.reserved_quantity ?? 0,
     status: batch?.status || 'active',
   }
 }
@@ -115,6 +117,7 @@ export default function BatchForm({ mode = 'create' }) {
         purchase_price: Number(form.purchase_price || 0),
         selling_price: Number(form.selling_price || 0),
         stock_quantity: Number(form.stock_quantity || 0),
+        reserved_quantity: Number(form.reserved_quantity || 0),
         status: form.status || 'active',
       }
 

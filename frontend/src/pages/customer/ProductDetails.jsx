@@ -261,9 +261,7 @@ export default function ProductDetails() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="h-140 animate-pulse border border-[#b7d5d2] bg-[#edf8f7]" />
-      </div>
+      <ProductDetailsSkeleton />
     )
   }
 
@@ -694,7 +692,7 @@ export default function ProductDetails() {
         />
 
         <RelatedProductSection
-          title={t('একই জেনেরিকের পণ্য', 'Same generic products')}
+          title={t('একই ধরনের পণ্য', 'Similer products')}
           subtitle={genericName
             ? t(`${genericName} জেনেরিকের সাথে মিল আছে।`, `Products matched by the ${genericName} generic.`)
             : t('জেনেরিক তথ্য পাওয়া গেলে এখানে মিল থাকা পণ্য দেখাবে।', 'Matching products appear here when generic data is available.')}
@@ -705,7 +703,7 @@ export default function ProductDetails() {
   )
 }
 
-function RelatedProductSection({ title, subtitle, products }) {
+function RelatedProductSection({ title, products }) {
   if (!products?.length) return null
 
   return (
@@ -713,15 +711,122 @@ function RelatedProductSection({ title, subtitle, products }) {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold tracking-tight text-[#11343c]">{title}</h2>
-          <p className="mt-1 text-sm leading-6 text-[#4f6f6b]">{subtitle}</p>
         </div>
       </div>
-      <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         {products.slice(0, 8).map((item) => (
-          <ProductCard key={item.id} product={item} />
+          <ProductCard key={item.id} product={item} compact />
         ))}
       </div>
     </section>
+  )
+}
+
+function ProductDetailsSkeleton() {
+  return (
+    <div className="mx-auto max-w-7xl">
+      <div className="animate-pulse">
+        <div className="border border-[#b7d5d2] bg-[#e8f5f3] px-5 py-4">
+          <div className="flex gap-3">
+            <div className="h-4 w-16 bg-[#b7d5d2]/70" />
+            <div className="h-4 w-4 bg-[#b7d5d2]/50" />
+            <div className="h-4 w-24 bg-[#b7d5d2]/70" />
+          </div>
+        </div>
+
+        <section className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          <div className="space-y-4">
+            <div className="border border-[#b7d5d2] bg-[#e8f5f3] p-5 shadow-[0_24px_64px_-48px_rgba(13,75,89,0.34)]">
+              <div className="flex h-90 items-center justify-center bg-white sm:h-125">
+                <div className="h-32 w-32 bg-[#d4e7e4]" />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-3">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="h-20 border border-[#b7d5d2] bg-[#edf8f7]" />
+              ))}
+            </div>
+            <div className="grid gap-px border border-[#b7d5d2] bg-[#b7d5d2] sm:grid-cols-2">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="bg-white/80 p-4">
+                  <div className="h-3 w-20 bg-[#b7d5d2]/70" />
+                  <div className="mt-3 h-4 w-32 bg-[#b7d5d2]/60" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="border border-[#b7d5d2] bg-[#eef8f7] shadow-[0_24px_64px_-48px_rgba(13,75,89,0.34)]">
+            <div className="border-b border-[#b7d5d2] p-5">
+              <div className="flex gap-3">
+                <div className="h-6 w-24 bg-white/80" />
+                <div className="h-6 w-32 bg-amber-100" />
+              </div>
+              <div className="mt-5 h-9 w-4/5 bg-[#b7d5d2]/70" />
+              <div className="mt-3 h-5 w-2/5 bg-[#b7d5d2]/50" />
+              <div className="mt-6 grid gap-px border border-[#b7d5d2] bg-[#b7d5d2] sm:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="bg-white/80 p-4">
+                    <div className="h-3 w-16 bg-[#b7d5d2]/70" />
+                    <div className="mt-3 h-6 w-24 bg-[#b7d5d2]/60" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4 p-5">
+              <div className="border border-[#b7d5d2] bg-white/75 p-4">
+                <div className="h-4 w-36 bg-[#b7d5d2]/70" />
+                <div className="mt-4 space-y-3">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <div key={index} className="h-16 border border-[#d4e7e4] bg-[#f4fbfa]" />
+                  ))}
+                </div>
+              </div>
+              <div className="border border-[#b7d5d2] bg-white/75 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="h-4 w-24 bg-[#b7d5d2]/70" />
+                  <div className="flex gap-3">
+                    <div className="h-11 w-11 bg-white" />
+                    <div className="h-11 w-16 bg-white" />
+                    <div className="h-11 w-11 bg-white" />
+                  </div>
+                </div>
+                <div className="mt-5 grid gap-px border border-[#b7d5d2] bg-[#b7d5d2] sm:grid-cols-3">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <div key={index} className="h-24 bg-white/80" />
+                  ))}
+                </div>
+                <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                  <div className="h-12 bg-[#0d4b59]/50" />
+                  <div className="h-12 border border-[#b7d5d2] bg-white/80" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="mt-10 border border-[#b7d5d2] bg-[#f4fbfa]">
+          <div className="border-b border-[#b7d5d2] p-5">
+            <div className="h-5 w-48 bg-[#b7d5d2]/70" />
+            <div className="mt-2 h-4 w-80 max-w-full bg-[#b7d5d2]/50" />
+          </div>
+          <div className="grid gap-px bg-[#b7d5d2] sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="min-h-[288px] bg-white p-3.5">
+                <div className="h-32 bg-[#eef8f7]" />
+                <div className="mt-4 h-3 w-24 bg-[#b7d5d2]/70" />
+                <div className="mt-3 h-5 w-full bg-[#b7d5d2]/60" />
+                <div className="mt-2 h-4 w-2/3 bg-[#b7d5d2]/50" />
+                <div className="mt-8 border-t border-[#d4e7e4] pt-3">
+                  <div className="h-6 w-24 bg-[#b7d5d2]/60" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 

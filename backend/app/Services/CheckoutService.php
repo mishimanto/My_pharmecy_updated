@@ -47,12 +47,25 @@ class CheckoutService
                 $pieceQuantity = max(1, (int) ($cartItem->piece_quantity ?: ($cartItem->quantity * max(1, $cartItem->pieces_per_unit))));
                 $subtotal = Currency::whole($cartItem->quantity * $cartItem->unit_price);
 
+                $remainingSubtotal = $subtotal;
+                $remainingPieces = $pieceQuantity;
                 $allocations = $this->inventory->selectBatchesByFEFO($cartItem->product_id, $pieceQuantity)
-                    ->map(fn ($allocation) => [
-                        'batch' => $allocation['batch'],
-                        'quantity' => $allocation['quantity'],
-                        'unit_price' => Currency::whole($allocation['batch']->selling_price),
-                    ]);
+                    ->map(function ($allocation) use (&$remainingSubtotal, &$remainingPieces, $subtotal, $pieceQuantity) {
+                        $quantity = (int) $allocation['quantity'];
+                        $allocationSubtotal = $quantity >= $remainingPieces
+                            ? $remainingSubtotal
+                            : Currency::whole($subtotal * ($quantity / max(1, $pieceQuantity)));
+
+                        $remainingSubtotal = Currency::whole($remainingSubtotal - $allocationSubtotal);
+                        $remainingPieces -= $quantity;
+
+                        return [
+                            'batch' => $allocation['batch'],
+                            'quantity' => $quantity,
+                            'unit_price' => $quantity > 0 ? Currency::whole($allocationSubtotal / $quantity) : 0,
+                            'subtotal' => $allocationSubtotal,
+                        ];
+                    });
 
                 $orderItems->push([
                     'product' => $cartItem->product,
@@ -118,7 +131,7 @@ class CheckoutService
                         'batch_id' => $allocation['batch']->id,
                         'quantity' => $allocation['quantity'],
                         'unit_price' => $allocation['unit_price'],
-                        'subtotal' => Currency::whole($allocation['quantity'] * $allocation['unit_price']),
+                        'subtotal' => $allocation['subtotal'],
                     ]);
 
                     $this->inventory->reserveStock($allocation['batch']->id, $allocation['quantity'], 'order_item', $orderItem->id);

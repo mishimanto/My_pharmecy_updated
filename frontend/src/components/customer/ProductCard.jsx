@@ -9,7 +9,7 @@ import { getCategoryName } from '../../utils/categoryNames'
 import { getManufacturerImage, getProductThumbnail, handleImageFallback } from '../../utils/imageUrl'
 import { getProductPath, getProductRouteKey } from '../../utils/productRouting'
 
-export default function ProductCard({ product, onAdd }) {
+export default function ProductCard({ product, onAdd, compact = false }) {
   const { isWishlisted, toggleWishlist } = useStorefront()
   const { isBangla } = useLanguage()
   const manufacturerImage = getManufacturerImage(product?.manufacturer)
@@ -19,6 +19,18 @@ export default function ProductCard({ product, onAdd }) {
   const productRouteKey = getProductRouteKey(product)
   const hasOffer = Number(product?.discount_amount || 0) > 0 && Number(product?.base_display_price || 0) > Number(product?.display_price || 0)
   const offerLabel = (isBangla ? product?.active_offer?.label_bn || product?.active_offer?.title_bn : null) || product?.active_offer?.label || product?.active_offer?.title
+  const imageLinkClass = compact
+    ? 'flex h-36 w-full items-center justify-center overflow-hidden sm:h-40'
+    : 'flex h-44 w-full items-center justify-center overflow-hidden sm:h-48'
+  const bodyClass = compact
+    ? 'flex flex-1 flex-col bg-[linear-gradient(180deg,#dbeafe_0%,#ccfbf1_100%)] p-3'
+    : 'flex flex-1 flex-col bg-[linear-gradient(180deg,#dbeafe_0%,#ccfbf1_100%)] p-4'
+  const actionButtonClass = compact ? 'h-8 w-8' : 'h-9 w-9'
+  const brandLogoClass = compact ? 'h-8 w-8' : 'h-10 w-10'
+  const titleClass = compact
+    ? 'line-clamp-2 text-sm font-semibold leading-5 text-[#102a43] transition group-hover:text-[#1d4ed8]'
+    : 'line-clamp-2 text-base font-semibold leading-6 text-[#102a43] transition group-hover:text-[#1d4ed8]'
+  const priceClass = compact ? 'text-base font-semibold text-[#1d4ed8]' : 'text-lg font-semibold text-[#1d4ed8]'
 
   const prefetch = () => {
     productApi.primeProduct(product)
@@ -33,7 +45,7 @@ export default function ProductCard({ product, onAdd }) {
           state={{ product }}
           onMouseEnter={prefetch}
           onFocus={prefetch}
-          className="flex h-44 w-full items-center justify-center overflow-hidden sm:h-48"
+          className={imageLinkClass}
         >
           <OptimizedImage
             src={productImage}
@@ -55,7 +67,7 @@ export default function ProductCard({ product, onAdd }) {
         <div className="absolute right-3 top-3 flex gap-2 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
           <button
             type="button"
-            className={`inline-flex h-9 w-9 items-center justify-center border shadow-sm backdrop-blur transition ${
+            className={`inline-flex ${actionButtonClass} items-center justify-center border shadow-sm backdrop-blur transition ${
               saved
                 ? 'border-rose-200 bg-rose-50/95 text-rose-600'
                 : 'border-sky-200/80 bg-white/95 text-[#1e3a5f] hover:border-[#38bdf8] hover:bg-[#2563eb] hover:text-white'
@@ -70,7 +82,7 @@ export default function ProductCard({ product, onAdd }) {
           {onAdd ? (
             <button
               type="button"
-              className="inline-flex h-9 w-9 items-center justify-center border border-sky-200/80 bg-white/95 text-[#1e3a5f] shadow-sm backdrop-blur transition hover:border-[#38bdf8] hover:bg-[#2563eb] hover:text-white"
+              className={`inline-flex ${actionButtonClass} items-center justify-center border border-sky-200/80 bg-white/95 text-[#1e3a5f] shadow-sm backdrop-blur transition hover:border-[#38bdf8] hover:bg-[#2563eb] hover:text-white`}
               onClick={() => onAdd(product)}
               aria-label={isBangla ? `${product.product_name} দ্রুত কার্টে যোগ করুন` : `Quick add ${product.product_name} to cart`}
             >
@@ -80,7 +92,7 @@ export default function ProductCard({ product, onAdd }) {
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col bg-[linear-gradient(180deg,#dbeafe_0%,#ccfbf1_100%)] p-4">
+      <div className={bodyClass}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap gap-2 text-[11px]">
@@ -95,7 +107,7 @@ export default function ProductCard({ product, onAdd }) {
             </div>
 
             <Link to={productPath} state={{ product }} className="mt-3 block" onMouseEnter={prefetch} onFocus={prefetch}>
-              <h3 className="line-clamp-2 text-base font-semibold leading-6 text-[#102a43] transition group-hover:text-[#1d4ed8]">{product.product_name}</h3>
+              <h3 className={titleClass}>{product.product_name}</h3>
             </Link>
           </div>
 
@@ -104,7 +116,7 @@ export default function ProductCard({ product, onAdd }) {
               <OptimizedImage
                 src={manufacturerImage}
                 alt={product.manufacturer?.manufacturer_name || (isBangla ? 'ব্র্যান্ড লোগো' : 'Brand logo')}
-                className="h-10 w-10 border border-[#2563eb]/15 bg-white/55 object-contain"
+                className={`${brandLogoClass} border border-[#2563eb]/15 bg-white/55 object-contain`}
                 onError={handleImageFallback}
               />
             </Link>
@@ -120,7 +132,7 @@ export default function ProductCard({ product, onAdd }) {
                   {money(product.base_display_price, isBangla ? 'bn-BD' : 'en-US')}
                 </div>
               ) : null}
-              <div className="text-lg font-semibold text-[#1d4ed8]">{money(product.display_price, isBangla ? 'bn-BD' : 'en-US')}</div>
+              <div className={priceClass}>{money(product.display_price, isBangla ? 'bn-BD' : 'en-US')}</div>
             </div>
           </div>
         </div>

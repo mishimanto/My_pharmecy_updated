@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\Admin\ReportController;
 use App\Http\Controllers\Api\Admin\SecurityController;
 use App\Http\Controllers\Api\Admin\SiteSettingsController as AdminSiteSettingsController;
 use App\Http\Controllers\Api\Admin\StaffController;
+use App\Http\Controllers\Api\Admin\StockAdjustmentRequestController;
 use App\Http\Controllers\Api\Admin\SupplierController;
 use App\Http\Controllers\Api\Admin\SupportManagementController;
 use App\Http\Controllers\Api\Admin\UserManagementController;
@@ -237,6 +238,11 @@ Route::prefix('admin')->group(function () {
         Route::get('/inventory/transactions', [InventoryTransactionController::class, 'index'])->middleware('permission:inventory.view');
         Route::get('/inventory/low-stock', [InventoryTransactionController::class, 'lowStock'])->middleware('permission:inventory.view');
         Route::get('/inventory/near-expiry', [InventoryTransactionController::class, 'nearExpiry'])->middleware('permission:inventory.view');
+        Route::get('/stock-adjustments', [StockAdjustmentRequestController::class, 'index'])->middleware('permission:inventory.view');
+        Route::post('/stock-adjustments', [StockAdjustmentRequestController::class, 'store'])->middleware('permission:inventory.manage');
+        Route::post('/stock-adjustments/direct', [StockAdjustmentRequestController::class, 'direct'])->middleware('permission:inventory.manage');
+        Route::patch('/stock-adjustments/{id}/approve', [StockAdjustmentRequestController::class, 'approve'])->middleware('permission:inventory.manage');
+        Route::patch('/stock-adjustments/{id}/reject', [StockAdjustmentRequestController::class, 'reject'])->middleware('permission:inventory.manage');
 
         Route::get('/prescriptions', [PrescriptionReviewController::class, 'index'])->middleware('permission:prescription.view');
         Route::get('/prescriptions/{id}', [PrescriptionReviewController::class, 'show'])->middleware('permission:prescription.view');

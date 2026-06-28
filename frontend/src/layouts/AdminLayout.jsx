@@ -26,6 +26,7 @@ import {
   FiTruck,
   FiUser,
   FiUsers,
+  FiSliders,
 } from 'react-icons/fi'
 import { useStaffAuth } from '../context/StaffAuthContext'
 import { hasPermission } from '../utils/permissions'
@@ -73,6 +74,7 @@ const navigationGroups = [
         icon: FiPackage,
         children: [
           { to: '/admin/inventory/batches', label: 'Batches', permission: 'inventory.view', icon: FiLayers },
+          { to: '/admin/inventory/stock-adjustments', label: 'Stock Adjustments', permission: 'inventory.view', icon: FiSliders },
           { to: '/admin/inventory/transactions', label: 'Stock Transactions', permission: 'inventory.view', icon: FiList },
           { to: '/admin/inventory/low-stock', label: 'Low Stock', permission: 'inventory.view', icon: FiAlertCircle },
           { to: '/admin/inventory/near-expiry', label: 'Near Expiry', permission: 'inventory.view', icon: FiActivity },

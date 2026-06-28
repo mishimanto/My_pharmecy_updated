@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\InventoryBatch;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -11,6 +12,21 @@ class InventoryBatchRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->filled('reserved_quantity')) {
+            return;
+        }
+
+        $batch = $this->isMethod('put') || $this->isMethod('patch')
+            ? InventoryBatch::find($this->route('id'))
+            : null;
+
+        $this->merge([
+            'reserved_quantity' => $batch?->reserved_quantity ?? 0,
+        ]);
     }
 
     /**

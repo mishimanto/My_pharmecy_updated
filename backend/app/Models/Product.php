@@ -27,13 +27,15 @@ class Product extends PharmacyModel
             'strips_per_box' => 'integer',
             'strip_price' => 'float',
             'box_price' => 'float',
+            'strip_discount' => 'float',
+            'box_discount' => 'float',
             'description_generated_at' => 'datetime',
         ];
     }
 
     protected function roundedCurrencyAttributes(): array
     {
-        return ['strip_price', 'box_price'];
+        return ['strip_price', 'box_price', 'strip_discount', 'box_discount'];
     }
 
     private static function uniqueSlug(string $name, ?int $ignoreId = null): string

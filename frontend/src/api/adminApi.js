@@ -1,4 +1,5 @@
 import api from './axios'
+import { productApi } from './productApi'
 import {
   clearAdminResourceCache,
   getCachedResponse,
@@ -20,11 +21,18 @@ function cachedGet(url, params, options = {}) {
   })
 }
 
-function clearAfter(request) {
+function clearAfter(request, options = {}) {
   return request.then((response) => {
     clearAdminResourceCache()
+    if (options.storefrontCatalog) {
+      productApi.clearCache()
+    }
     return response
   })
+}
+
+function touchesStorefrontCatalog(resource) {
+  return ['products', 'categories', 'manufacturers', 'offers'].includes(resource)
 }
 
 export const adminApi = {
@@ -47,8 +55,8 @@ export const adminApi = {
   list: (resource, params) => cachedGet(`/admin/${resource}`, params),
   listFresh: (resource, params) => cachedGet(`/admin/${resource}`, params, { fresh: true }),
   show: (resource, id) => cachedGet(`/admin/${resource}/${id}`),
-  create: (resource, payload) => clearAfter(api.post(`/admin/${resource}`, payload)),
-  update: (resource, id, payload) => clearAfter(api.put(`/admin/${resource}/${id}`, payload)),
+  create: (resource, payload) => clearAfter(api.post(`/admin/${resource}`, payload), { storefrontCatalog: touchesStorefrontCatalog(resource) }),
+  update: (resource, id, payload) => clearAfter(api.put(`/admin/${resource}/${id}`, payload), { storefrontCatalog: touchesStorefrontCatalog(resource) }),
   createHeroSlide: (payload) => clearAfter(api.post('/admin/hero-slides', payload, { headers: { 'Content-Type': 'multipart/form-data' } })),
   updateHeroSlide: (id, payload) => {
     if (payload instanceof FormData && !payload.has('_method')) {
@@ -65,13 +73,13 @@ export const adminApi = {
 
     return clearAfter(api.post(`/admin/banner-images/${id}`, payload, { headers: { 'Content-Type': 'multipart/form-data' } }))
   },
-  createOffer: (payload) => clearAfter(api.post('/admin/offers', payload, { headers: { 'Content-Type': 'multipart/form-data' } })),
+  createOffer: (payload) => clearAfter(api.post('/admin/offers', payload, { headers: { 'Content-Type': 'multipart/form-data' } }), { storefrontCatalog: true }),
   updateOffer: (id, payload) => {
     if (payload instanceof FormData && !payload.has('_method')) {
       payload.append('_method', 'PUT')
     }
 
-    return clearAfter(api.post(`/admin/offers/${id}`, payload, { headers: { 'Content-Type': 'multipart/form-data' } }))
+    return clearAfter(api.post(`/admin/offers/${id}`, payload, { headers: { 'Content-Type': 'multipart/form-data' } }), { storefrontCatalog: true })
   },
   createMarketingPopup: (payload) => clearAfter(api.post('/admin/marketing-popups', payload, { headers: { 'Content-Type': 'multipart/form-data' } })),
   updateMarketingPopup: (id, payload) => {
@@ -81,15 +89,15 @@ export const adminApi = {
 
     return clearAfter(api.post(`/admin/marketing-popups/${id}`, payload, { headers: { 'Content-Type': 'multipart/form-data' } }))
   },
-  createManufacturer: (payload) => clearAfter(api.post('/admin/manufacturers', payload)),
-  updateManufacturer: (id, payload) => clearAfter(api.post(`/admin/manufacturers/${id}`, payload)),
-  patch: (resource, id, action, payload) => clearAfter(api.patch(`/admin/${resource}/${id}/${action}`, payload)),
-  remove: (resource, id) => clearAfter(api.delete(`/admin/${resource}/${id}`)),
-  uploadProductImages: (id, payload) => clearAfter(api.put(`/admin/products/${id}/images`, payload)),
+  createManufacturer: (payload) => clearAfter(api.post('/admin/manufacturers', payload), { storefrontCatalog: true }),
+  updateManufacturer: (id, payload) => clearAfter(api.post(`/admin/manufacturers/${id}`, payload), { storefrontCatalog: true }),
+  patch: (resource, id, action, payload) => clearAfter(api.patch(`/admin/${resource}/${id}/${action}`, payload), { storefrontCatalog: touchesStorefrontCatalog(resource) }),
+  remove: (resource, id) => clearAfter(api.delete(`/admin/${resource}/${id}`), { storefrontCatalog: touchesStorefrontCatalog(resource) }),
+  uploadProductImages: (id, payload) => clearAfter(api.put(`/admin/products/${id}/images`, payload), { storefrontCatalog: true }),
   uploadProductImageChunk: (id, params) => api.get(`/admin/products/${id}/images/chunk`, { params }),
-  deleteProductImage: (id) => clearAfter(api.delete(`/admin/product-images/${id}`)),
-  generateProductDescriptionDraft: (id) => clearAfter(api.post(`/admin/products/${id}/description-draft`)),
-  publishProductDescriptionDraft: (id, payload) => clearAfter(api.post(`/admin/products/${id}/description-draft/publish`, payload)),
+  deleteProductImage: (id) => clearAfter(api.delete(`/admin/product-images/${id}`), { storefrontCatalog: true }),
+  generateProductDescriptionDraft: (id) => clearAfter(api.post(`/admin/products/${id}/description-draft`), { storefrontCatalog: true }),
+  publishProductDescriptionDraft: (id, payload) => clearAfter(api.post(`/admin/products/${id}/description-draft/publish`, payload), { storefrontCatalog: true }),
   discardProductDescriptionDraft: (id) => clearAfter(api.delete(`/admin/products/${id}/description-draft`)),
   reviewPrescription: (id, payload) => clearAfter(api.post(`/admin/prescriptions/${id}/review`, payload)),
   reviewOrderPrescriptionMatch: (id, payload) => clearAfter(api.patch(`/admin/orders/${id}/prescription-match`, payload)),

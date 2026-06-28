@@ -61,6 +61,11 @@ class InventoryBatchController extends Controller
         $old = $batch->toArray();
         $data = $this->validated($request);
         $stockDiff = (int) $data['stock_quantity'] - (int) $batch->stock_quantity;
+
+        if ($stockDiff !== 0 && ! $this->canDirectlyAdjustStock($request)) {
+            return $this->fail('Submit a stock adjustment request for stock quantity changes.');
+        }
+
         $batch->update($data);
 
         if ($stockDiff !== 0) {
@@ -109,5 +114,12 @@ class InventoryBatchController extends Controller
         $batch->available_stock = max(0, $batch->stock_quantity - $batch->reserved_quantity);
 
         return $batch;
+    }
+
+    private function canDirectlyAdjustStock(Request $request): bool
+    {
+        $staff = $request->user();
+
+        return (bool) ($staff?->hasRole('Super Admin') || $staff?->can('stock-adjustment.approve'));
     }
 }
