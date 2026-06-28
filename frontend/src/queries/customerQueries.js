@@ -74,7 +74,7 @@ export function useProductsQuery(params = {}, options = {}) {
     queryKey: customerQueryKeys.products(params, offerScope),
     queryFn: () => productApi.list(params, { cacheScope: offerScope }).then((response) => response.data.data),
     initialData: () => productApi.getCachedList(params, { cacheScope: offerScope }) || undefined,
-    staleTime: 0,
+    staleTime: FIVE_MINUTES,
     gcTime: THIRTY_MINUTES,
     ...options,
   })
@@ -153,9 +153,8 @@ export function useOffersQuery(options = {}) {
     queryKey: customerQueryKeys.offers,
     queryFn: () => offerApi.list().then((response) => response.data.data || []),
     initialData: () => readCachedOffers() || undefined,
-    staleTime: 1000 * 30,
-    gcTime: FIVE_MINUTES,
-    refetchOnMount: 'always',
+    staleTime: FIVE_MINUTES,
+    gcTime: THIRTY_MINUTES,
     ...options,
   })
 }

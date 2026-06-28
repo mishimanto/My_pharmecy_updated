@@ -3,8 +3,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { customerQueryKeys, useSiteSettingsQuery } from '../queries/customerQueries'
 
 const SITE_SETTINGS_CACHE_KEY = 'site_settings_payload_v1'
-const SITE_SETTINGS_CACHE_TTL = 5 * 60 * 1000
+const SITE_SETTINGS_CACHE_TTL = 7 * 24 * 60 * 60 * 1000
 const SITE_SETTINGS_UPDATED_EVENT = 'site-settings-updated'
+const DEFAULT_FAVICON = '/favicon.svg'
 
 const defaultSettings = {
   site_name: 'My Pharmecy',
@@ -53,6 +54,40 @@ function writeCache(payload) {
   }
 }
 
+function preloadImage(src, timeout = 1200) {
+  if (typeof window === 'undefined' || !src) return Promise.resolve()
+
+  return new Promise((resolve) => {
+    const image = new Image()
+    const timer = window.setTimeout(resolve, timeout)
+
+    image.onload = image.onerror = () => {
+      window.clearTimeout(timer)
+      resolve()
+    }
+
+    image.decoding = 'async'
+    image.src = src
+  })
+}
+
+function upsertImagePreload(id, href) {
+  if (typeof document === 'undefined' || !href) return
+
+  let link = document.getElementById(id)
+  if (!link) {
+    link = document.createElement('link')
+    link.id = id
+    link.rel = 'preload'
+    link.as = 'image'
+    document.head.appendChild(link)
+  }
+
+  if (link.href !== href) {
+    link.href = href
+  }
+}
+
 function mergeSettings(payload) {
   return { ...defaultSettings, ...(payload || {}) }
 }
@@ -61,6 +96,7 @@ export function SiteSettingsProvider({ children }) {
   const [cached] = useState(() => readCache())
   const queryClient = useQueryClient()
   const [forcedLoading, setForcedLoading] = useState(false)
+  const [brandAssetsReady, setBrandAssetsReady] = useState(false)
   const settingsQuery = useSiteSettingsQuery({
     initialData: cached || undefined,
   })
@@ -94,8 +130,27 @@ export function SiteSettingsProvider({ children }) {
   useEffect(() => {
     if (!settingsQuery.data) return
 
-    writeCache(mergeSettings(settingsQuery.data))
+    let active = true
+    const merged = mergeSettings(settingsQuery.data)
+    writeCache(merged)
+
+    Promise.all([
+      preloadImage(merged.logo_url),
+      preloadImage(merged.favicon_url || DEFAULT_FAVICON),
+    ]).finally(() => {
+      if (active) setBrandAssetsReady(true)
+    })
+
+    return () => {
+      active = false
+    }
   }, [settingsQuery.data])
+
+  useEffect(() => {
+    if (settingsQuery.isError) {
+      setBrandAssetsReady(true)
+    }
+  }, [settingsQuery.isError])
 
   useEffect(() => {
     const handleStorage = (event) => {
@@ -139,15 +194,22 @@ export function SiteSettingsProvider({ children }) {
       document.head.appendChild(favicon)
     }
 
-    favicon.href = settings?.favicon_url || '/favicon.ico'
-  }, [settings?.favicon_url])
+    const faviconUrl = settings?.favicon_url || DEFAULT_FAVICON
+    favicon.href = faviconUrl
+
+    upsertImagePreload('site-logo-preload', settings?.logo_url)
+    upsertImagePreload('site-favicon-preload', faviconUrl)
+    preloadImage(settings?.logo_url)
+    preloadImage(faviconUrl)
+  }, [settings?.favicon_url, settings?.logo_url])
 
   const value = useMemo(() => ({
     settings,
     loading,
+    brandAssetsReady,
     refreshSettings,
     updateSettingsState,
-  }), [loading, refreshSettings, settings, updateSettingsState])
+  }), [brandAssetsReady, loading, refreshSettings, settings, updateSettingsState])
 
   return <SiteSettingsContext.Provider value={value}>{children}</SiteSettingsContext.Provider>
 }
@@ -157,7 +219,13 @@ export function useSiteSettings() {
   const context = useContext(SiteSettingsContext)
 
   if (!context) {
-    throw new Error('useSiteSettings must be used within a SiteSettingsProvider')
+    return {
+      settings: defaultSettings,
+      loading: false,
+      brandAssetsReady: true,
+      refreshSettings: async () => defaultSettings,
+      updateSettingsState: (payload) => mergeSettings(payload),
+    }
   }
 
   return context

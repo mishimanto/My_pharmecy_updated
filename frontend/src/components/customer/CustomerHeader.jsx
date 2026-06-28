@@ -34,7 +34,7 @@ import CustomerLogo from './CustomerLogo'
 
 export default function CustomerHeader() {
   const { customer, loading: authLoading, logout } = useCustomerAuth()
-  const { cartCount, wishlistCount, refreshCart } = useStorefront()
+  const { cartCount, wishlistCount } = useStorefront()
   const { language, setLanguage, isBangla } = useLanguage()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -96,18 +96,6 @@ export default function CustomerHeader() {
     enabled: Boolean(customer?.id && customerToken),
     onNotification: handleRealtimeNotification,
   })
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      productApi.prefetchList({ page: 1 }, { cacheScope: offerScope })
-      productApi.prefetchList({ per_page: 6 }, { cacheScope: offerScope })
-      productApi.prefetchCategories()
-      productApi.prefetchManufacturers()
-      refreshCart().catch(() => {})
-    }, 0)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [offerScope, refreshCart])
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowTick((current) => current + 1), 1000)
@@ -295,7 +283,7 @@ export default function CustomerHeader() {
     ['/', t('হোম', 'Home')],
     ['/products', t('পণ্য', 'Products')],
     ['/offers', t('অফার', 'Offers')],
-    ['/upload-prescription', t('প্রেসক্রিপশন আপলোড', 'Upload Prescription')],
+    ['/prescriptions', t('প্রেসক্রিপশন আপলোড', 'Upload Prescription')],
     ['/orders', t('অর্ডার', 'Orders')],
     ['/account', t('অ্যাকাউন্ট', 'Account')],
     ['/support', t('সহায়তা', 'Support')],
@@ -502,7 +490,7 @@ export default function CustomerHeader() {
                   </button>
 
                   {isNotificationMenuOpen ? (
-                    <div className="absolute right-0 top-full mt-3 w-[22rem] overflow-hidden border border-slate-200 bg-[#f4fffd] shadow-[0_30px_60px_-36px_rgba(15,23,42,0.38)]">
+                    <div className="absolute right-0 top-full mt-3 w-88 overflow-hidden border border-slate-200 bg-[#f4fffd] shadow-[0_30px_60px_-36px_rgba(15,23,42,0.38)]">
                       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
                         <div className="text-sm font-semibold text-slate-950">{t('নোটিফিকেশন', 'Notifications')}</div>
                         <Link to="/notifications" onClick={closeMenus} className="text-xs font-semibold text-[#0e6574] hover:underline">
@@ -565,7 +553,7 @@ export default function CustomerHeader() {
                       <AccountMenuLink to="/notifications" label={t('নোটিফিকেশন', 'Notifications')} icon={FiBell} onClick={closeMenus} />
                       <AccountMenuLink to="/account" label={t('অ্যাকাউন্ট', 'Account')} icon={FiUser} onClick={closeMenus} />
                       <AccountMenuLink to="/orders" label={t('আমার অর্ডার', 'My orders')} icon={FiPackage} onClick={closeMenus} />                      
-                      <AccountMenuLink to="/upload-prescription" label={t('প্রেসক্রিপশন আপলোড', 'Upload prescription')} icon={FiFileText} onClick={closeMenus} />
+                      <AccountMenuLink to="/prescriptions" label={t('প্রেসক্রিপশন', 'Prescriptions')} icon={FiFileText} onClick={closeMenus} />
                       <AccountMenuLink to="/support" label={t('যোগাযোগ করুন', 'Support')} icon={FiMessageSquare} onClick={closeMenus} />
                       <button
                         type="button"

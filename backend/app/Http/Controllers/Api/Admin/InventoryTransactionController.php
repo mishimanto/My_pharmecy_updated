@@ -34,7 +34,7 @@ class InventoryTransactionController extends Controller
             ->join('products', 'products.id', '=', 'inventory_batches.product_id')
             ->join('suppliers', 'suppliers.id', '=', 'inventory_batches.supplier_id')
             ->where('inventory_batches.status', 'active')
-            ->whereDate('inventory_batches.expiry_date', '>', now())
+            ->where('inventory_batches.expiry_date', '>', now()->toDateString())
             ->whereRaw('(inventory_batches.stock_quantity - inventory_batches.reserved_quantity) <= ?', [$threshold])
             ->when($request->search, fn ($query, $search) => $query->where(fn ($inner) => $inner
                 ->where('inventory_batches.batch_number', 'like', "%{$search}%")
@@ -62,8 +62,8 @@ class InventoryTransactionController extends Controller
             ->join('products', 'inventory_batches.product_id', '=', 'products.id')
             ->join('suppliers', 'inventory_batches.supplier_id', '=', 'suppliers.id')
             ->where('inventory_batches.status', 'active')
-            ->whereDate('inventory_batches.expiry_date', '>', now())
-            ->whereDate('inventory_batches.expiry_date', '<=', now()->addDays($days))
+            ->where('inventory_batches.expiry_date', '>', now()->toDateString())
+            ->where('inventory_batches.expiry_date', '<=', now()->addDays($days)->toDateString())
             ->when($request->search, fn ($query, $search) => $query->where(fn ($inner) => $inner
                 ->where('inventory_batches.batch_number', 'like', "%{$search}%")
                 ->orWhere('products.product_name', 'like', "%{$search}%")

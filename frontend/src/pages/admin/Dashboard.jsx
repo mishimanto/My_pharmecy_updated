@@ -36,6 +36,7 @@ const labels = {
 }
 const DASHBOARD_CACHE_KEY = 'admin_dashboard_payload_v3'
 const DASHBOARD_CACHE_TTL = 2 * 60 * 1000
+const DASHBOARD_REPORT_DAYS = 30
 const statVariants = {
   total_users: 'emerald',
   total_orders: 'sky',
@@ -83,7 +84,37 @@ function setCachedDashboard(payload) {
   }
 }
 
+function mergeCachedDashboard(payload) {
+  setCachedDashboard({ ...(getCachedDashboard() || {}), ...payload })
+}
+
+function localDateString(value) {
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+function dashboardReportParams() {
+  const dateTo = new Date()
+  const dateFrom = new Date()
+  dateFrom.setDate(dateTo.getDate() - DASHBOARD_REPORT_DAYS + 1)
+
+  return {
+    date_from: localDateString(dateFrom),
+    date_to: localDateString(dateTo),
+  }
+}
+
 function listFrom(payload) {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  if (payload && typeof payload === 'object') return Object.values(payload)
+  return []
+}
+
+function rowsFrom(payload) {
   if (Array.isArray(payload)) return payload
   if (Array.isArray(payload?.data)) return payload.data
   if (payload && typeof payload === 'object') return Object.values(payload)
@@ -100,6 +131,7 @@ export default function Dashboard() {
   const [salesReport, setSalesReport] = useState(cachedDashboard?.salesReport || { tables: {} })
   const [inventoryReport, setInventoryReport] = useState(cachedDashboard?.inventoryReport || { tables: {} })
   const [loading, setLoading] = useState(!cachedDashboard)
+  const [reportsLoading, setReportsLoading] = useState(!cachedDashboard?.salesReport || !cachedDashboard?.inventoryReport)
   const dailySalesTrend = useMemo(() => buildDailySalesTrend(salesReport?.tables?.daily_sales || []), [salesReport])
   const inventoryShare = useMemo(() => buildInventoryShare(inventoryReport?.tables?.stock_value || []), [inventoryReport])
   const topSellingProducts = useMemo(() => buildTopSellingProducts(salesReport?.tables?.top_selling_medicines || []), [salesReport])
@@ -136,17 +168,13 @@ export default function Dashboard() {
       adminApi.dashboardSummary(),
       adminApi.listFresh('orders', { per_page: 10 }),
       adminApi.listFresh('prescriptions', { status: 'pending', per_page: 10 }),
-      adminApi.report('sales', {}, { fresh: true }),
-      adminApi.report('inventory', {}, { fresh: true }),
       adminApi.dashboardLowStock(),
       adminApi.dashboardNearExpiry(),
-    ]).then(([summaryRes, orderRes, prescriptionRes, salesReportRes, inventoryReportRes, lowStockRes, nearExpiryRes]) => {
+    ]).then(([summaryRes, orderRes, prescriptionRes, lowStockRes, nearExpiryRes]) => {
       const payload = {
         summary: summaryRes.data.data || {},
         orders: listFrom(orderRes.data.data?.data || orderRes.data.data),
         prescriptions: listFrom(prescriptionRes.data.data?.data || prescriptionRes.data.data),
-        salesReport: salesReportRes.data.data || { tables: {} },
-        inventoryReport: inventoryReportRes.data.data || { tables: {} },
         lowStock: listFrom(lowStockRes.data.data),
         nearExpiry: listFrom(nearExpiryRes.data.data),
       }
@@ -154,13 +182,47 @@ export default function Dashboard() {
       setSummary(payload.summary)
       setOrders(payload.orders)
       setPrescriptions(payload.prescriptions)
-      setSalesReport(payload.salesReport)
-      setInventoryReport(payload.inventoryReport)
       setLowStock(payload.lowStock)
       setNearExpiry(payload.nearExpiry)
-      setCachedDashboard(payload)
+      mergeCachedDashboard(payload)
     }).catch(() => toast.error('Unable to load dashboard data.')).finally(() => setLoading(false))
   }, [cachedDashboard])
+
+  useEffect(() => {
+    if (loading) {
+      return undefined
+    }
+
+    if (cachedDashboard?.salesReport && cachedDashboard?.inventoryReport) {
+      return undefined
+    }
+
+    let active = true
+
+    Promise.all([
+      adminApi.report('sales', dashboardReportParams(), { fresh: true }),
+      adminApi.report('inventory', dashboardReportParams(), { fresh: true }),
+    ]).then(([salesReportRes, inventoryReportRes]) => {
+      if (!active) return
+
+      const payload = {
+        salesReport: salesReportRes.data.data || { tables: {} },
+        inventoryReport: inventoryReportRes.data.data || { tables: {} },
+      }
+
+      setSalesReport(payload.salesReport)
+      setInventoryReport(payload.inventoryReport)
+      mergeCachedDashboard(payload)
+    }).catch(() => {
+      if (active) toast.error('Unable to load dashboard chart data.')
+    }).finally(() => {
+      if (active) setReportsLoading(false)
+    })
+
+    return () => {
+      active = false
+    }
+  }, [cachedDashboard, loading])
 
   if (loading) {
     return (
@@ -178,15 +240,15 @@ export default function Dashboard() {
         ))}
       </div>
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-        <ChartPanel title="Daily product sales">
+        <ChartPanel title="Daily product sales" subtitle={reportsLoading ? 'Loading latest chart data...' : `Last ${DASHBOARD_REPORT_DAYS} days`}>
           <AdminChart type="line" data={dailySalesTrend} options={lineOptions} />
         </ChartPanel>
-        <ChartPanel title="Inventory value share">
+        <ChartPanel title="Inventory value share" subtitle={reportsLoading ? 'Loading latest chart data...' : 'Current stock value'}>
           <AdminChart type="pie" data={inventoryShare} options={pieOptions} />
         </ChartPanel>
       </div>
       <div className="mt-6">
-        <ChartPanel title="Top-selling products">
+        <ChartPanel title="Top-selling products" subtitle={reportsLoading ? 'Loading latest chart data...' : `Last ${DASHBOARD_REPORT_DAYS} days`}>
           <AdminChart type="bar" data={topSellingProducts} options={barOptions} className="h-96" />
         </ChartPanel>
       </div>
@@ -237,7 +299,7 @@ function Row({ title, meta, value }) {
 }
 
 function buildDailySalesTrend(rows) {
-  const entries = [...rows].reverse().slice(-14)
+  const entries = rowsFrom(rows).reverse().slice(-14)
 
   return {
     labels: entries.length ? entries.map((item) => date(item.date, 'en-US')) : ['No sales'],
@@ -259,7 +321,7 @@ function buildDailySalesTrend(rows) {
 }
 
 function buildInventoryShare(rows) {
-  const products = rows.slice(0, 6)
+  const products = rowsFrom(rows).slice(0, 6)
   const hasData = products.some((item) => Number(item.stock_value || 0) > 0)
 
   return {
@@ -276,7 +338,7 @@ function buildInventoryShare(rows) {
 }
 
 function buildTopSellingProducts(rows) {
-  const products = rows.slice(0, 10)
+  const products = rowsFrom(rows).slice(0, 10)
 
   return {
     labels: products.length ? products.map((item) => item.product_name) : ['No product sales'],

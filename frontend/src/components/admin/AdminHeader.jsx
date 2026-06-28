@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -30,13 +30,15 @@ export default function AdminHeader({
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const notificationsRef = useRef(null)
+  const settingsRef = useRef(null)
   const staffToken = typeof window !== 'undefined' ? window.localStorage.getItem('staff_token') : null
   const notificationParams = useMemo(() => ({ per_page: 8 }), [])
   const notificationsQuery = useQuery({
     queryKey: adminQueryKeys.notifications(notificationParams),
     queryFn: () => notificationApi.adminList(notificationParams).then((response) => response.data.data?.data || []),
     enabled: Boolean(staffToken),
-    refetchInterval: 30000,
+    refetchInterval: 120000,
   })
   const preferencesQuery = useQuery({
     queryKey: ['admin', 'notifications', 'preferences'],
@@ -73,6 +75,24 @@ export default function AdminHeader({
     onNotification: handleRealtimeNotification,
   })
 
+  useEffect(() => {
+    if (!notificationsOpen && !settingsOpen) return undefined
+
+    const handlePointerDown = (event) => {
+      if (notificationsOpen && !notificationsRef.current?.contains(event.target)) {
+        setNotificationsOpen(false)
+      }
+
+      if (settingsOpen && !settingsRef.current?.contains(event.target)) {
+        setSettingsOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [notificationsOpen, setSettingsOpen, settingsOpen])
+
   const openNotification = async (notification) => {
     if (notification.status !== 'read') {
       await notificationApi.adminRead(notification.id).catch(() => {})
@@ -108,7 +128,7 @@ export default function AdminHeader({
             </span>                  
           </div>
 
-          <div className="relative">
+          <div ref={notificationsRef} className="relative">
             <button
               type="button"
               onClick={() => {
@@ -127,7 +147,7 @@ export default function AdminHeader({
             </button>
 
             {notificationsOpen ? (
-              <div className="absolute right-0 mt-3 w-[23rem] overflow-hidden rounded-md border border-slate-200 bg-white shadow-[0_24px_70px_-28px_rgba(15,23,42,0.35)]">
+              <div className="absolute right-0 mt-3 w-92 overflow-hidden rounded-md border border-slate-200 bg-white shadow-[0_24px_70px_-28px_rgba(15,23,42,0.35)]">
                 {/* <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
                   <div>
                     <p className="text-sm font-semibold text-slate-950">Notifications</p>
@@ -186,7 +206,7 @@ export default function AdminHeader({
             ) : null}
           </div>
 
-          <div className="relative">
+          <div ref={settingsRef} className="relative">
             <button
               type="button"
               className="flex items-center gap-3 px-3 py-1.5 shadow-sm transition hover:border-slate-300"

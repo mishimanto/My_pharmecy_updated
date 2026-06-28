@@ -22,7 +22,7 @@ class ProductCatalogService
         return function ($query) {
             $query
                 ->where('status', 'active')
-                ->whereDate('expiry_date', '>', now())
+                ->where('expiry_date', '>', now()->toDateString())
                 ->whereRaw('(stock_quantity - reserved_quantity) > 0');
 
             if (method_exists($query, 'orderBy')) {
@@ -98,7 +98,7 @@ class ProductCatalogService
     {
         $validBatches = $product->relationLoaded('batches')
             ? $product->batches
-            : $product->batches()->where('status', 'active')->whereDate('expiry_date', '>', now())->whereRaw('(stock_quantity - reserved_quantity) > 0')->orderBy('expiry_date')->get();
+            : $product->batches()->where('status', 'active')->where('expiry_date', '>', now()->toDateString())->whereRaw('(stock_quantity - reserved_quantity) > 0')->orderBy('expiry_date')->get();
 
         $fefoBatch = $validBatches->first();
         $baseDisplayPrice = Currency::whole($fefoBatch?->selling_price ?? 0);

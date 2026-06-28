@@ -19,7 +19,14 @@ export default function AuthLayout({ title, children, variant = 'customer' }) {
             <div className="flex items-center justify-between gap-4">
               <Link to="/" className="inline-flex items-center gap-4">
                 {settings?.logo_url ? (
-                  <img src={settings.logo_url} alt={settings.site_name || 'Site logo'} className="h-12 w-48 object-contain" />
+                  <img
+                    src={settings.logo_url}
+                    alt={settings.site_name || 'Site logo'}
+                    className="h-12 w-48 object-contain"
+                    loading="eager"
+                    decoding="async"
+                    fetchPriority="high"
+                  />
                 ) : (
                   <span className="flex h-12 w-12 items-center justify-center border border-white/15 bg-white/10 text-sm font-bold uppercase tracking-[0.18em] text-white">
                     Rx

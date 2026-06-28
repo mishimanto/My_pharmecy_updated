@@ -12,6 +12,28 @@ import { getDeliveryStatusLabel, getOrderStatusLabel, getPaymentStatusLabel } fr
 
 const ORDERS_CACHE_KEY = 'orders_list'
 
+function statusTextClass(status, fallback = 'text-slate-950') {
+  const value = String(status || '').toLowerCase()
+
+  if (['delivered', 'paid', 'completed', 'refunded'].includes(value)) return 'text-emerald-700'
+  if (['cancelled', 'failed', 'returned', 'rejected', 'unpaid'].includes(value)) return 'text-rose-700'
+  if (['pending_confirmation', 'prescription_review', 'awaiting_proof', 'pending'].includes(value)) return 'text-amber-700'
+  if (['confirmed', 'processing', 'under_review', 'assigned', 'picked_up', 'out_for_delivery'].includes(value)) return 'text-sky-700'
+
+  return fallback
+}
+
+function orderStatusBadgeClass(status) {
+  const value = String(status || '').toLowerCase()
+
+  if (['delivered', 'refunded'].includes(value)) return 'border-emerald-200 bg-emerald-50 text-emerald-700'
+  if (['cancelled', 'returned'].includes(value)) return 'border-rose-200 bg-rose-50 text-rose-700'
+  if (['pending_confirmation', 'prescription_review'].includes(value)) return 'border-amber-200 bg-amber-50 text-amber-700'
+  if (['confirmed', 'processing', 'out_for_delivery'].includes(value)) return 'border-sky-200 bg-sky-50 text-sky-700'
+
+  return 'border-slate-200 bg-slate-50 text-slate-600'
+}
+
 export default function MyOrders() {
   const { isBangla } = useLanguage()
   const t = (bn, en) => (isBangla ? bn : en)
@@ -116,7 +138,7 @@ export default function MyOrders() {
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-lg font-semibold text-slate-950">{order.order_number}</p>
-                  <span className="border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
+                  <span className={`border px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${orderStatusBadgeClass(order.order_status)}`}>
                     {getOrderStatusLabel(order.order_status, isBangla)}
                   </span>
                 </div>
@@ -126,12 +148,12 @@ export default function MyOrders() {
               </div>
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('পেমেন্ট', 'Payment')}</div>
-                <div className="mt-2 text-sm font-semibold text-slate-950">{getPaymentStatusLabel(order.payment_status, isBangla)}</div>
+                <div className={`mt-2 text-sm font-semibold ${statusTextClass(order.payment_status)}`}>{getPaymentStatusLabel(order.payment_status, isBangla)}</div>
                 <div className="mt-1 text-xs text-slate-500">{paymentMethodLabel(order.payment_method)}</div>
               </div>
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('ডেলিভারি', 'Delivery')}</div>
-                <div className="mt-2 text-sm font-semibold text-slate-950">{getDeliveryStatusLabel(order.delivery?.delivery_status, isBangla)}</div>
+                <div className={`mt-2 text-sm font-semibold ${statusTextClass(order.delivery?.delivery_status)}`}>{getDeliveryStatusLabel(order.delivery?.delivery_status, isBangla)}</div>
                 <div className="mt-1 text-xs text-slate-500">{order.shipping_address || t('বিস্তারিততে ঠিকানা আছে', 'Address available in details')}</div>
               </div>
               <div>

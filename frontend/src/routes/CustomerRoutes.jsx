@@ -1,56 +1,44 @@
 import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import NotFoundPage from '../components/common/NotFoundPage'
-import CustomerLoader from '../components/customer/CustomerLoader'
 import CustomerLayout from '../layouts/CustomerLayout'
 import ProtectedCustomerRoute from './ProtectedCustomerRoute'
 
-const ROUTE_LOADER_MIN_DURATION = 2000
-
-function lazyWithMinimumDelay(importer, delay = ROUTE_LOADER_MIN_DURATION) {
-  return lazy(() =>
-    Promise.all([
-      importer(),
-      new Promise((resolve) => window.setTimeout(resolve, delay)),
-    ]).then(([module]) => module),
-  )
+function lazyWithLoader(importer) {
+  return lazy(importer)
 }
 
-const Home = lazyWithMinimumDelay(() => import('../pages/customer/Home'))
-const Products = lazyWithMinimumDelay(() => import('../pages/customer/Products'))
-const ProductDetails = lazyWithMinimumDelay(() => import('../pages/customer/ProductDetails'))
-const Offers = lazyWithMinimumDelay(() => import('../pages/customer/Offers'))
-const Cart = lazyWithMinimumDelay(() => import('../pages/customer/Cart'))
-const Checkout = lazyWithMinimumDelay(() => import('../pages/customer/Checkout'))
-const TrackOrder = lazyWithMinimumDelay(() => import('../pages/customer/TrackOrder'))
-const Wishlist = lazyWithMinimumDelay(() => import('../pages/customer/Wishlist'))
-const Account = lazyWithMinimumDelay(() => import('../pages/customer/Account'))
-const Addresses = lazyWithMinimumDelay(() => import('../pages/customer/Addresses'))
-const MyOrders = lazyWithMinimumDelay(() => import('../pages/customer/MyOrders'))
-const OrderDetails = lazyWithMinimumDelay(() => import('../pages/customer/OrderDetails'))
-const OrderPayment = lazyWithMinimumDelay(() => import('../pages/customer/OrderPayment'))
-const Tracking = lazyWithMinimumDelay(() => import('../pages/customer/Tracking'))
-const Prescriptions = lazyWithMinimumDelay(() => import('../pages/customer/Prescriptions'))
-const PrescriptionDetails = lazyWithMinimumDelay(() => import('../pages/customer/PrescriptionDetails'))
-const Rewards = lazyWithMinimumDelay(() => import('../pages/customer/Rewards'))
-const UploadPrescription = lazyWithMinimumDelay(() => import('../pages/customer/UploadPrescription'))
-const Support = lazyWithMinimumDelay(() => import('../pages/customer/Support'))
-const SupportDetails = lazyWithMinimumDelay(() => import('../pages/customer/SupportDetails'))
-const Returns = lazyWithMinimumDelay(() => import('../pages/customer/Returns'))
-const ReturnDetails = lazyWithMinimumDelay(() => import('../pages/customer/ReturnDetails'))
-const Notifications = lazyWithMinimumDelay(() => import('../pages/customer/Notifications'))
-const Faq = lazyWithMinimumDelay(() => import('../pages/customer/Faq'))
-const PrivacyPolicy = lazyWithMinimumDelay(() => import('../pages/customer/PrivacyPolicy'))
-const TermsConditions = lazyWithMinimumDelay(() => import('../pages/customer/TermsConditions'))
-const RefundPolicy = lazyWithMinimumDelay(() => import('../pages/customer/RefundPolicy'))
-
-function CustomerRouteFallback() {
-  return <CustomerLoader />
-}
+const Home = lazyWithLoader(() => import('../pages/customer/Home'))
+const Products = lazyWithLoader(() => import('../pages/customer/Products'))
+const ProductDetails = lazyWithLoader(() => import('../pages/customer/ProductDetails'))
+const Offers = lazyWithLoader(() => import('../pages/customer/Offers'))
+const Cart = lazyWithLoader(() => import('../pages/customer/Cart'))
+const Checkout = lazyWithLoader(() => import('../pages/customer/Checkout'))
+const TrackOrder = lazyWithLoader(() => import('../pages/customer/TrackOrder'))
+const Wishlist = lazyWithLoader(() => import('../pages/customer/Wishlist'))
+const Account = lazyWithLoader(() => import('../pages/customer/Account'))
+const Addresses = lazyWithLoader(() => import('../pages/customer/Addresses'))
+const MyOrders = lazyWithLoader(() => import('../pages/customer/MyOrders'))
+const OrderDetails = lazyWithLoader(() => import('../pages/customer/OrderDetails'))
+const OrderPayment = lazyWithLoader(() => import('../pages/customer/OrderPayment'))
+const Tracking = lazyWithLoader(() => import('../pages/customer/Tracking'))
+const Prescriptions = lazyWithLoader(() => import('../pages/customer/Prescriptions'))
+const PrescriptionDetails = lazyWithLoader(() => import('../pages/customer/PrescriptionDetails'))
+const Rewards = lazyWithLoader(() => import('../pages/customer/Rewards'))
+const UploadPrescription = lazyWithLoader(() => import('../pages/customer/UploadPrescription'))
+const Support = lazyWithLoader(() => import('../pages/customer/Support'))
+const SupportDetails = lazyWithLoader(() => import('../pages/customer/SupportDetails'))
+const Returns = lazyWithLoader(() => import('../pages/customer/Returns'))
+const ReturnDetails = lazyWithLoader(() => import('../pages/customer/ReturnDetails'))
+const Notifications = lazyWithLoader(() => import('../pages/customer/Notifications'))
+const Faq = lazyWithLoader(() => import('../pages/customer/Faq'))
+const PrivacyPolicy = lazyWithLoader(() => import('../pages/customer/PrivacyPolicy'))
+const TermsConditions = lazyWithLoader(() => import('../pages/customer/TermsConditions'))
+const RefundPolicy = lazyWithLoader(() => import('../pages/customer/RefundPolicy'))
 
 export default function CustomerRoutes() {
   return (
-    <Suspense fallback={<CustomerRouteFallback />}>
+    <Suspense fallback={null}>
       <Routes>
         <Route element={<CustomerLayout />}>
           <Route index element={<Home />} />

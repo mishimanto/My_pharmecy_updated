@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { useSiteSettings } from '../../context/SiteSettingsContext'
 
 export default function CustomerLogo({ variant = 'header' }) {
@@ -12,25 +13,51 @@ export default function CustomerLogo({ variant = 'header' }) {
 
     return (
       <div className={wrapperClass}>
-        <img src={logoUrl} alt={alt} className="h-full w-auto max-w-full object-contain" />
+        <img
+          src={logoUrl}
+          alt={alt}
+          className="h-full w-auto max-w-full object-contain"
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
+        />
       </div>
     )
   }
 
   if (variant === 'footer') {
     return (
-      <span className="flex h-12 w-12 items-center justify-center bg-white text-sm font-bold uppercase tracking-[0.18em] text-[#0f766e] shadow-[0_18px_35px_-20px_rgba(15,23,42,0.55)]">
-        Rx
+      <span className="flex h-12 w-12 items-center justify-center bg-white shadow-[0_18px_35px_-20px_rgba(15,23,42,0.55)]">
+        <LogoMark className="h-9 w-9" />
       </span>
     )
   }
 
   return (
     <div className="flex items-center">
-      <svg viewBox="0 0 74 44" className="h-9 w-15 shrink-0 sm:h-11 sm:w-18.5" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M35.5 40.5C29.6 35.9 15.5 25.4 8.7 17.2C4.5 12.2 4.6 4.9 10.4 2.1C16.3 -0.6 23.3 1.2 27.3 6.5L31.4 11.9L35.8 6.7C40.1 1.5 47.3 -0.1 53.1 2.8C58.6 5.5 60.2 12.4 56.5 17.3C49.9 25.8 41.3 33 35.5 40.5Z" stroke="#ef4444" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M22 22H28L30.6 16L34.1 28L37.3 18.5L40.1 22H47" stroke="#26b0af" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      <LogoMark className="h-11 w-11 shrink-0 sm:h-12 sm:w-12" />
     </div>
+  )
+}
+
+function LogoMark({ className = '' }) {
+  const gradientId = `customer-logo-gradient-${useId().replace(/:/g, '')}`
+
+  return (
+    <svg viewBox="0 0 64 64" className={className} fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="6" y="6" width="52" height="52" rx="16" fill={`url(#${gradientId})`} />
+      <path d="M32 16C24.4 16 18.25 22.15 18.25 29.75C18.25 40.05 32 48 32 48C32 48 45.75 40.05 45.75 29.75C45.75 22.15 39.6 16 32 16Z" fill="white" fillOpacity="0.95" />
+      <path d="M32 20.2C26.72 20.2 22.45 24.48 22.45 29.75C22.45 36.03 29.54 41.63 32 43.4C34.46 41.63 41.55 36.03 41.55 29.75C41.55 24.48 37.28 20.2 32 20.2Z" fill="#ecfeff" />
+      <path d="M31.95 25.2V35.05" stroke="#0f766e" strokeWidth="4.2" strokeLinecap="round" />
+      <path d="M27.05 30.12H36.9" stroke="#0f766e" strokeWidth="4.2" strokeLinecap="round" />
+      <path d="M20.5 47.5C24.35 51.1 29.2 53 32 53C34.8 53 39.65 51.1 43.5 47.5" stroke="#99f6e4" strokeWidth="3.2" strokeLinecap="round" />
+      <defs>
+        <linearGradient id={gradientId} x1="10" y1="8" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#0f766e" />
+          <stop offset="0.55" stopColor="#14b8a6" />
+          <stop offset="1" stopColor="#ef4444" />
+        </linearGradient>
+      </defs>
+    </svg>
   )
 }

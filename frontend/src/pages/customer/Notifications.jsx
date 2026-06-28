@@ -114,12 +114,12 @@ export default function Notifications() {
       <section className="border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0e6574]">
+            <div className="text-md font-semibold uppercase tracking-[0.18em] text-[#0e6574]">
               {t('নোটিফিকেশন', 'Notifications')}
             </div>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+            {/* <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
               {t('অর্ডার, প্রেসক্রিপশন ও সাপোর্ট আপডেট', 'Order, prescription, and support updates')}
-            </h1>
+            </h1> */}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -199,12 +199,12 @@ function SummaryCard({ label, value, icon: Icon, tone = 'slate' }) {
 
   return (
     <div className={`border px-4 py-3 ${tones[tone] || tones.slate}`}>
-      <div className="flex items-center gap-3">
-        <Icon className="h-5 w-5" />
+      <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.14em] opacity-75">{label}</div>
           <div className="mt-1 text-xl font-semibold">{value}</div>
         </div>
+        <Icon className="h-5 w-5 shrink-0" />
       </div>
     </div>
   )

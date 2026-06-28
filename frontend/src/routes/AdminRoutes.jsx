@@ -4,60 +4,70 @@ import AdminLayout from '../layouts/AdminLayout'
 import ProtectedAdminRoute from './ProtectedAdminRoute'
 import AdminLoader from '../components/admin/AdminLoader'
 import NotFoundPage from '../components/common/NotFoundPage'
+import { SiteSettingsProvider } from '../context/SiteSettingsContext'
 
-const AdminProfile = lazy(() => import('../pages/admin/AdminProfile'))
-const AdminChangePassword = lazy(() => import('../pages/admin/AdminChangePassword'))
-const SiteSettings = lazy(() => import('../pages/admin/SiteSettings'))
-const Dashboard = lazy(() => import('../pages/admin/Dashboard'))
-const Users = lazy(() => import('../pages/admin/Users'))
-const UserDetails = lazy(() => import('../pages/admin/UserDetails'))
-const Staff = lazy(() => import('../pages/admin/Staff'))
-const StaffForm = lazy(() => import('../pages/admin/StaffForm'))
-const Roles = lazy(() => import('../pages/admin/Roles'))
-const RoleForm = lazy(() => import('../pages/admin/RoleForm'))
-const Categories = lazy(() => import('../pages/admin/categories/Index'))
-const CategoryCreate = lazy(() => import('../pages/admin/categories/Create'))
-const CategoryEdit = lazy(() => import('../pages/admin/categories/Edit'))
-const Manufacturers = lazy(() => import('../pages/admin/manufacturers/Index'))
-const ManufacturerCreate = lazy(() => import('../pages/admin/manufacturers/Create'))
-const ManufacturerEdit = lazy(() => import('../pages/admin/manufacturers/Edit'))
-const Products = lazy(() => import('../pages/admin/products/Index'))
-const ProductCreate = lazy(() => import('../pages/admin/products/Create'))
-const ProductEdit = lazy(() => import('../pages/admin/products/Edit'))
-const Suppliers = lazy(() => import('../pages/admin/suppliers/Index'))
-const SupplierCreate = lazy(() => import('../pages/admin/suppliers/Create'))
-const SupplierEdit = lazy(() => import('../pages/admin/suppliers/Edit'))
-const Inventory = lazy(() => import('../pages/admin/inventory/Index'))
-const InventoryBatches = lazy(() => import('../pages/admin/inventory/batches/Index'))
-const InventoryBatchCreate = lazy(() => import('../pages/admin/inventory/batches/Create'))
-const InventoryBatchEdit = lazy(() => import('../pages/admin/inventory/batches/Edit'))
-const StockAdjustments = lazy(() => import('../pages/admin/inventory/StockAdjustments'))
-const InventoryTransactions = lazy(() => import('../pages/admin/inventory/transactions/Index'))
-const LowStock = lazy(() => import('../pages/admin/inventory/LowStock'))
-const NearExpiry = lazy(() => import('../pages/admin/inventory/NearExpiry'))
-const Prescriptions = lazy(() => import('../pages/admin/Prescriptions'))
-const PrescriptionDetails = lazy(() => import('../pages/admin/PrescriptionDetails'))
-const Orders = lazy(() => import('../pages/admin/Orders'))
-const OrderDetails = lazy(() => import('../pages/admin/OrderDetails'))
-const Payments = lazy(() => import('../pages/admin/Payments'))
-const PaymentMethods = lazy(() => import('../pages/admin/PaymentMethods'))
-const DeliveryAreas = lazy(() => import('../pages/admin/DeliveryAreas'))
-const Riders = lazy(() => import('../pages/admin/Riders'))
-const Deliveries = lazy(() => import('../pages/admin/Deliveries'))
-const DeliveryDetails = lazy(() => import('../pages/admin/DeliveryDetails'))
-const SupportTickets = lazy(() => import('../pages/admin/SupportTickets'))
-const SupportTicketDetails = lazy(() => import('../pages/admin/SupportTicketDetails'))
-const Returns = lazy(() => import('../pages/admin/Returns'))
-const Refunds = lazy(() => import('../pages/admin/Refunds'))
-const Reports = lazy(() => import('../pages/admin/Reports'))
-const ReportDetails = lazy(() => import('../pages/admin/ReportDetails'))
-const ActivityLogs = lazy(() => import('../pages/admin/ActivityLogs'))
-const Security = lazy(() => import('../pages/admin/Security'))
-const AdminNotifications = lazy(() => import('../pages/admin/AdminNotifications'))
-const MarketingTools = lazy(() => import('../pages/admin/MarketingTools'))
+const ROUTE_LOADER_DELAY = 2000
+
+function lazyWithLoader(importer) {
+  return lazy(() => Promise.all([
+    importer(),
+    new Promise((resolve) => globalThis.setTimeout(resolve, ROUTE_LOADER_DELAY)),
+  ]).then(([module]) => module))
+}
+
+const AdminProfile = lazyWithLoader(() => import('../pages/admin/AdminProfile'))
+const AdminChangePassword = lazyWithLoader(() => import('../pages/admin/AdminChangePassword'))
+const SiteSettings = lazyWithLoader(() => import('../pages/admin/SiteSettings'))
+const Dashboard = lazyWithLoader(() => import('../pages/admin/Dashboard'))
+const Users = lazyWithLoader(() => import('../pages/admin/Users'))
+const UserDetails = lazyWithLoader(() => import('../pages/admin/UserDetails'))
+const Staff = lazyWithLoader(() => import('../pages/admin/Staff'))
+const StaffForm = lazyWithLoader(() => import('../pages/admin/StaffForm'))
+const Roles = lazyWithLoader(() => import('../pages/admin/Roles'))
+const RoleForm = lazyWithLoader(() => import('../pages/admin/RoleForm'))
+const Categories = lazyWithLoader(() => import('../pages/admin/categories/Index'))
+const CategoryCreate = lazyWithLoader(() => import('../pages/admin/categories/Create'))
+const CategoryEdit = lazyWithLoader(() => import('../pages/admin/categories/Edit'))
+const Manufacturers = lazyWithLoader(() => import('../pages/admin/manufacturers/Index'))
+const ManufacturerCreate = lazyWithLoader(() => import('../pages/admin/manufacturers/Create'))
+const ManufacturerEdit = lazyWithLoader(() => import('../pages/admin/manufacturers/Edit'))
+const Products = lazyWithLoader(() => import('../pages/admin/products/Index'))
+const ProductCreate = lazyWithLoader(() => import('../pages/admin/products/Create'))
+const ProductEdit = lazyWithLoader(() => import('../pages/admin/products/Edit'))
+const Suppliers = lazyWithLoader(() => import('../pages/admin/suppliers/Index'))
+const SupplierCreate = lazyWithLoader(() => import('../pages/admin/suppliers/Create'))
+const SupplierEdit = lazyWithLoader(() => import('../pages/admin/suppliers/Edit'))
+const Inventory = lazyWithLoader(() => import('../pages/admin/inventory/Index'))
+const InventoryBatches = lazyWithLoader(() => import('../pages/admin/inventory/batches/Index'))
+const InventoryBatchCreate = lazyWithLoader(() => import('../pages/admin/inventory/batches/Create'))
+const InventoryBatchEdit = lazyWithLoader(() => import('../pages/admin/inventory/batches/Edit'))
+const StockAdjustments = lazyWithLoader(() => import('../pages/admin/inventory/StockAdjustments'))
+const InventoryTransactions = lazyWithLoader(() => import('../pages/admin/inventory/transactions/Index'))
+const LowStock = lazyWithLoader(() => import('../pages/admin/inventory/LowStock'))
+const NearExpiry = lazyWithLoader(() => import('../pages/admin/inventory/NearExpiry'))
+const Prescriptions = lazyWithLoader(() => import('../pages/admin/Prescriptions'))
+const PrescriptionDetails = lazyWithLoader(() => import('../pages/admin/PrescriptionDetails'))
+const Orders = lazyWithLoader(() => import('../pages/admin/Orders'))
+const OrderDetails = lazyWithLoader(() => import('../pages/admin/OrderDetails'))
+const Payments = lazyWithLoader(() => import('../pages/admin/Payments'))
+const PaymentMethods = lazyWithLoader(() => import('../pages/admin/PaymentMethods'))
+const DeliveryAreas = lazyWithLoader(() => import('../pages/admin/DeliveryAreas'))
+const Riders = lazyWithLoader(() => import('../pages/admin/Riders'))
+const Deliveries = lazyWithLoader(() => import('../pages/admin/Deliveries'))
+const DeliveryDetails = lazyWithLoader(() => import('../pages/admin/DeliveryDetails'))
+const SupportTickets = lazyWithLoader(() => import('../pages/admin/SupportTickets'))
+const SupportTicketDetails = lazyWithLoader(() => import('../pages/admin/SupportTicketDetails'))
+const Returns = lazyWithLoader(() => import('../pages/admin/Returns'))
+const Refunds = lazyWithLoader(() => import('../pages/admin/Refunds'))
+const Reports = lazyWithLoader(() => import('../pages/admin/Reports'))
+const ReportDetails = lazyWithLoader(() => import('../pages/admin/ReportDetails'))
+const ActivityLogs = lazyWithLoader(() => import('../pages/admin/ActivityLogs'))
+const Security = lazyWithLoader(() => import('../pages/admin/Security'))
+const AdminNotifications = lazyWithLoader(() => import('../pages/admin/AdminNotifications'))
+const MarketingTools = lazyWithLoader(() => import('../pages/admin/MarketingTools'))
 
 function AdminRouteFallback() {
-  return <AdminLoader />
+  return <AdminLoader transition />
 }
 
 export default function AdminRoutes() {
@@ -68,7 +78,7 @@ export default function AdminRoutes() {
           <Route element={<AdminLayout />}>
             <Route path="profile" element={<AdminProfile />} />
             <Route path="profile/password" element={<AdminChangePassword />} />
-            <Route path="site-settings" element={<SiteSettings />} />
+            <Route path="site-settings" element={<SiteSettingsProvider><SiteSettings /></SiteSettingsProvider>} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="users" element={<Users />} />
             <Route path="users/:id" element={<UserDetails />} />

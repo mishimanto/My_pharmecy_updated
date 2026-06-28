@@ -1,19 +1,21 @@
 import DotLottieLoader from '../common/DotLottieLoader'
 
-const CUSTOMER_LOADER_SRC = 'https://lottie.host/38a0b118-f9f6-4071-9eac-9cbe251c71a5/Sxf1bcXcOU.lottie'
+const CUSTOMER_LOADER_SRC = 'https://lottie.host/6086c159-3c7d-4686-a90e-6e7cf3644912/ZyIjM9Nvmj.lottie'
 
-export default function CustomerLoader({ size = 120, inline = false }) {
+export default function CustomerLoader({ size = 120, inline = false, transition = false, leaving = false }) {
+  const animationClass = leaving ? 'route-loader-leaving' : transition ? 'route-loader-transition' : 'animate-in'
+
   if (inline) {
     return (
-      <div className="flex items-center justify-center p-4">
+      <div className={`flex items-center justify-center p-4 ${animationClass}`}>
         <DotLottieLoader size={size} src={CUSTOMER_LOADER_SRC} />
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center">
-      <DotLottieLoader size={size} src={CUSTOMER_LOADER_SRC} />
+    <div className={`fixed inset-0 z-80 flex items-center justify-center backdrop-blur-[6px] ${animationClass}`}>
+      <DotLottieLoader className="drop-shadow-[0_18px_34px_rgba(15,23,42,0.18)]" size={size} src={CUSTOMER_LOADER_SRC} />
     </div>
   )
 }

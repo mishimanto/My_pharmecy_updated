@@ -2,6 +2,7 @@
 import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { cartApi } from '../api/cartApi'
 import { useCustomerAuth } from './CustomerAuthContext'
+import { useSiteSettings } from './SiteSettingsContext'
 
 const StorefrontContext = createContext(null)
 
@@ -75,6 +76,7 @@ function scopedStorageKey(key, scope) {
 
 export function StorefrontProvider({ children }) {
   const { customer, guestToken, loading: authLoading, ensureGuestToken } = useCustomerAuth()
+  const { loading: settingsLoading, brandAssetsReady } = useSiteSettings()
   const scope = useMemo(() => storageScope(customer, guestToken), [customer, guestToken])
   const cartCacheKey = useMemo(() => scopedStorageKey(CART_CACHE_KEY, scope), [scope])
   const wishlistCacheKey = useMemo(() => scopedStorageKey(WISHLIST_CACHE_KEY, scope), [scope])
@@ -84,6 +86,7 @@ export function StorefrontProvider({ children }) {
   const [wishlist, setWishlist] = useState(() => readStorage(wishlistCacheKey, []))
   const cartRef = useRef(cart)
   const cartPromiseRef = useRef(null)
+  const refreshedScopeRef = useRef(null)
 
   useEffect(() => {
     const cachedCart = readStorage(cartCacheKey, null)
@@ -115,7 +118,7 @@ export function StorefrontProvider({ children }) {
   }, [])
 
   const refreshCart = useCallback(async ({ force = false } = {}) => {
-    if (authLoading) {
+    if (authLoading || settingsLoading || !brandAssetsReady) {
       return cartRef.current
     }
 
@@ -148,13 +151,18 @@ export function StorefrontProvider({ children }) {
 
     cartPromiseRef.current = request
     return request
-  }, [authLoading, cartReady, customer, ensureGuestToken, updateCartState])
+  }, [authLoading, brandAssetsReady, cartReady, customer, ensureGuestToken, settingsLoading, updateCartState])
 
   useEffect(() => {
-    if (authLoading) return
+    if (authLoading || settingsLoading || !brandAssetsReady) return
 
-    refreshCart({ force: true }).catch(() => {})
-  }, [authLoading, customer, refreshCart])
+    if (refreshedScopeRef.current === scope) return
+    refreshedScopeRef.current = scope
+
+    refreshCart().catch(() => {
+      refreshedScopeRef.current = null
+    })
+  }, [authLoading, brandAssetsReady, refreshCart, scope, settingsLoading])
 
   const addToCart = useCallback(async (payload) => {
     await ensureGuestToken()

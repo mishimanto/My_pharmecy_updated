@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { FiChevronDown } from 'react-icons/fi'
-import { useSiteSettings } from '../../context/SiteSettingsContext'
 
 function matchesPath(pathname, item) {
   if (!item?.to) {
@@ -29,7 +28,6 @@ function itemKey(item) {
 
 export default function AdminSidebar({ sidebarOpen, visibleGroups }) {
   const location = useLocation()
-  const { settings } = useSiteSettings()
   const [openItems, setOpenItems] = useState({})
 
   const activeParentKeys = useMemo(() => {

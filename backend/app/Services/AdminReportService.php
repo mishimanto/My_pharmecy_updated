@@ -140,7 +140,7 @@ class AdminReportService
 
         return $this->report([
             'Total Orders' => (clone $orders)->count(),
-            'Today Orders' => DB::table('orders')->whereDate('order_date', now())->count(),
+            'Today Orders' => DB::table('orders')->whereBetween('order_date', [now()->startOfDay(), now()->endOfDay()])->count(),
             'Order Amount' => (clone $orders)->sum('total_amount'),
             'Pending Orders' => (clone $orders)->whereIn('order_status', ['pending', 'pending_confirmation'])->count(),
         ], [
@@ -180,8 +180,8 @@ class AdminReportService
             'Low Stock Batches' => (clone $batches)->whereRaw('(stock_quantity - reserved_quantity) <= 10')->count(),
             'Near Expiry Batches' => DB::table('inventory_batches')
                 ->where('status', 'active')
-                ->whereDate('expiry_date', '>', now())
-                ->whereDate('expiry_date', '<=', now()->addDays(30))
+                ->where('expiry_date', '>', now()->toDateString())
+                ->where('expiry_date', '<=', now()->addDays(30)->toDateString())
                 ->count(),
         ], [
             'low_stock' => DB::table('inventory_batches')
@@ -195,8 +195,8 @@ class AdminReportService
                 ->join('products', 'products.id', '=', 'inventory_batches.product_id')
                 ->select('inventory_batches.id', 'inventory_batches.batch_number', 'products.product_name', 'inventory_batches.expiry_date', 'inventory_batches.stock_quantity', 'inventory_batches.reserved_quantity', DB::raw('(stock_quantity - reserved_quantity) as available_stock'))
                 ->where('inventory_batches.status', 'active')
-                ->whereDate('expiry_date', '>', now())
-                ->whereDate('expiry_date', '<=', now()->addDays(30))
+                ->where('expiry_date', '>', now()->toDateString())
+                ->where('expiry_date', '<=', now()->addDays(30)->toDateString())
                 ->orderBy('expiry_date')
                 ->limit(50)
                 ->get(),
@@ -435,11 +435,11 @@ class AdminReportService
     private function dateRange($query, array $filters, string $column)
     {
         if (! empty($filters['date_from'])) {
-            $query->whereDate($column, '>=', Carbon::parse($filters['date_from'])->startOfDay());
+            $query->where($column, '>=', Carbon::parse($filters['date_from'])->startOfDay());
         }
 
         if (! empty($filters['date_to'])) {
-            $query->whereDate($column, '<=', Carbon::parse($filters['date_to'])->endOfDay());
+            $query->where($column, '<=', Carbon::parse($filters['date_to'])->endOfDay());
         }
 
         return $query;

@@ -122,8 +122,8 @@ class NotificationManagementController extends Controller
                 fn ($query) => $query->where('status', '!=', 'archived')
             )
             ->when($request->filled('notification_type'), fn ($query) => $query->where('notification_type', $request->string('notification_type')->toString()))
-            ->when($request->filled('date_from'), fn ($query) => $query->whereDate('created_at', '>=', $request->date('date_from')))
-            ->when($request->filled('date_to'), fn ($query) => $query->whereDate('created_at', '<=', $request->date('date_to')))
+            ->when($request->filled('date_from'), fn ($query) => $query->where('created_at', '>=', $request->date('date_from')->startOfDay()))
+            ->when($request->filled('date_to'), fn ($query) => $query->where('created_at', '<=', $request->date('date_to')->endOfDay()))
             ->when($request->boolean('apply_preferences', true), function ($query) use ($request) {
                 $disabledTypes = DB::table('staff_notification_preferences')
                     ->where('staff_id', $request->user()->id)

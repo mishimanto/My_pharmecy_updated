@@ -54,16 +54,7 @@ const navigationGroups = [
       { to: '/admin/products', label: 'Products', permission: 'product.view', icon: FiBox },
     ],
   },
-  {
-    title: 'Marketing',
-    items: [
-      { to: '/admin/coupons', label: 'Coupons', permission: null, icon: FiPercent },
-      { to: '/admin/offers', label: 'Offers', permission: null, icon: FiGift },
-      { to: '/admin/popups', label: 'Popups', permission: null, icon: FiGift },
-      { to: '/admin/hero-images', label: 'Hero Images', permission: null, icon: FiImage },
-      { to: '/admin/banner-images', label: 'Banner Images', permission: null, icon: FiImage },
-    ],
-  },
+  
   {
     title: 'Inventory',
     items: [
@@ -91,6 +82,16 @@ const navigationGroups = [
       { to: '/admin/support', label: 'Support', permission: 'support.manage', icon: FiHeadphones },
       { to: '/admin/returns', label: 'Returns', permission: 'return.manage', icon: FiPackage },
       { to: '/admin/refunds', label: 'Refunds', permission: 'refund.approve', icon: FiCreditCard },
+    ],
+  },
+  {
+    title: 'Marketing',
+    items: [
+      { to: '/admin/coupons', label: 'Coupons', permission: null, icon: FiPercent },
+      { to: '/admin/offers', label: 'Offers', permission: null, icon: FiGift },
+      { to: '/admin/popups', label: 'Popups', permission: null, icon: FiGift },
+      { to: '/admin/hero-images', label: 'Hero Images', permission: null, icon: FiImage },
+      { to: '/admin/banner-images', label: 'Banner Images', permission: null, icon: FiImage },
     ],
   },
   {

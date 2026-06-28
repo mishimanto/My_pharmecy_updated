@@ -16,19 +16,21 @@ class DashboardController extends Controller
         $this->forgetLegacyDashboardCache();
 
         $today = now()->toDateString();
+        $todayStart = now()->startOfDay();
+        $todayEnd = now()->endOfDay();
 
         $summary = Cache::remember("admin.dashboard.v2.summary.{$today}", 60, fn () => [
             'total_users' => DB::table('users')->count(),
             'total_orders' => DB::table('orders')->count(),
-            'today_orders' => DB::table('orders')->whereDate('order_date', $today)->count(),
+            'today_orders' => DB::table('orders')->whereBetween('order_date', [$todayStart, $todayEnd])->count(),
             'total_revenue' => (float) DB::table('payments')->where('payment_status', 'paid')->sum('amount'),
             'pending_prescription_reviews' => DB::table('prescriptions')->where('status', 'pending')->count(),
             'pending_deliveries' => DB::table('deliveries')->where('delivery_status', 'pending')->count(),
             'low_stock_batches' => DB::table('inventory_batches')->whereRaw('(stock_quantity - reserved_quantity) <= 10')->count(),
             'near_expiry_batches' => DB::table('inventory_batches')
                 ->where('status', 'active')
-                ->whereDate('expiry_date', '>', now())
-                ->whereDate('expiry_date', '<=', now()->addDays(30))
+                ->where('expiry_date', '>', $today)
+                ->where('expiry_date', '<=', now()->addDays(30)->toDateString())
                 ->count(),
             'open_support_tickets' => DB::table('support_tickets')->whereIn('status', ['open', 'in_progress'])->count(),
             'pending_return_requests' => DB::table('return_requests')->where('status', 'requested')->count(),
@@ -89,12 +91,14 @@ class DashboardController extends Controller
     {
         $this->forgetLegacyDashboardCache();
 
+        $today = now()->toDateString();
+
         $batches = DB::table('inventory_batches')
             ->join('products', 'products.id', '=', 'inventory_batches.product_id')
             ->select('inventory_batches.*', 'products.product_name', DB::raw('(stock_quantity - reserved_quantity) as available_stock'))
             ->where('inventory_batches.status', 'active')
-            ->whereDate('expiry_date', '>', now())
-            ->whereDate('expiry_date', '<=', now()->addDays(30))
+            ->where('expiry_date', '>', $today)
+            ->where('expiry_date', '<=', now()->addDays(30)->toDateString())
             ->orderBy('expiry_date')
             ->limit(20)
             ->get()

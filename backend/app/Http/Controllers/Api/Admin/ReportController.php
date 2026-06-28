@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\AdminReportService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class ReportController extends Controller
 {
@@ -66,7 +67,9 @@ class ReportController extends Controller
 
     private function jsonReport(AdminReportService $reports, string $type, Request $request)
     {
-        $report = $reports->generate($type, $this->filters($request));
+        $filters = $this->filters($request);
+        $cacheKey = 'admin.report.'.md5($type.'|'.json_encode($filters));
+        $report = Cache::remember($cacheKey, now()->addMinutes(5), fn () => $reports->generate($type, $filters));
 
         return $this->ok(
             collect($report)->except('message')->all(),

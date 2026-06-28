@@ -21,7 +21,7 @@ class InventoryService
             ->with('product', 'supplier')
             ->where('product_id', $productId)
             ->where('status', 'active')
-            ->whereDate('expiry_date', '>', now())
+            ->where('expiry_date', '>', now()->toDateString())
             ->whereRaw('(stock_quantity - reserved_quantity) > 0')
             ->orderBy('expiry_date');
     }
@@ -133,4 +133,3 @@ class InventoryService
         return max(0, $batch->stock_quantity - $batch->reserved_quantity);
     }
 }
-
