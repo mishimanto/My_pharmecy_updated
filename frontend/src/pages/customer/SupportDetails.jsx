@@ -1,32 +1,33 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { FiArrowLeft, FiClock, FiFileText, FiHeadphones, FiMessageSquare, FiPaperclip, FiSend, FiUpload } from 'react-icons/fi'
-import { BiSupport } from "react-icons/bi";
+import { FiArrowLeft, FiClock, FiFileText, FiMessageSquare, FiPaperclip, FiSend, FiUpload } from 'react-icons/fi'
+import { BiSupport } from 'react-icons/bi'
 import { supportApi } from '../../api/supportApi'
 import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
+import { customerQueryKeys, useSupportTicketQuery } from '../../queries/customerQueries'
 import { date } from '../../utils/formatters'
 
 export default function SupportDetails() {
   const { reference } = useParams()
+  const queryClient = useQueryClient()
   const { isBangla } = useLanguage()
   const t = (bn, en) => (isBangla ? bn : en)
   const locale = isBangla ? 'bn-BD' : 'en-US'
-  const [ticket, setTicket] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState('')
   const [attachment, setAttachment] = useState(null)
+  const ticketQuery = useSupportTicketQuery(reference, { placeholderData: (previous) => previous })
+  const ticket = ticketQuery.data || null
+  const loading = ticketQuery.isLoading
 
-  const load = () => {
-    supportApi.show(reference)
-      .then((res) => setTicket(res.data.data))
-      .catch(() => toast.error(t('সাপোর্ট থ্রেড লোড করা যায়নি।', 'Support thread could not be loaded.')))
-      .finally(() => setLoading(false))
-  }
-
-  useEffect(load, [reference])
+  useEffect(() => {
+    if (ticketQuery.isError) {
+      toast.error(t('সাপোর্ট থ্রেড লোড করা যায়নি।', 'Support thread could not be loaded.'))
+    }
+  }, [ticketQuery.isError, t])
 
   const timeline = useMemo(() => {
     if (!ticket) return []
@@ -72,7 +73,8 @@ export default function SupportDetails() {
       toast.success(t('রিপ্লাই পাঠানো হয়েছে।', 'Reply sent successfully.'))
       setMessage('')
       setAttachment(null)
-      load()
+      await queryClient.invalidateQueries({ queryKey: customerQueryKeys.supportTicket(reference) })
+      await queryClient.invalidateQueries({ queryKey: customerQueryKeys.supportTickets })
     } catch (error) {
       toast.error(error.response?.data?.message || t('রিপ্লাই পাঠানো যায়নি।', 'Reply could not be sent.'))
     } finally {
@@ -90,8 +92,9 @@ export default function SupportDetails() {
     <>
       <PageHeader
         title={t('সাপোর্ট থ্রেড', 'Support thread')}
+        className="flex-row items-center justify-between gap-3"
         action={(
-          <Link to="/support" className="inline-flex items-center gap-2 border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">
+          <Link to="/support" className="inline-flex shrink-0 items-center gap-2 border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 sm:px-4 sm:py-2.5">
             <FiArrowLeft className="h-4 w-4" />
             {t('সব টিকিট', 'All tickets')}
           </Link>
@@ -126,14 +129,13 @@ export default function SupportDetails() {
             </div>
             <div className="space-y-5 p-5 sm:p-6">
               {timeline.map((item) => (
-                <article key={item.id} className="grid gap-3 sm:grid-cols-[44px_1fr]">
+                <article key={item.id} className="grid grid-cols-[44px_1fr] gap-3">
                   <div className={`flex h-11 w-11 items-center justify-center rounded-full border text-sm font-semibold ${item.tone === 'staff' ? 'border-emerald-200 bg-emerald-100 shadow-sm shadow-emerald-100' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
                     {item.tone === 'staff' ? <BiSupport className="h-5 w-5" /> : 'Me'}
                   </div>
                   <div className={`border rounded-lg p-4 ${item.tone === 'staff' ? 'border-emerald-100 bg-emerald-50/50' : 'border-slate-200 bg-white'}`}>
                     <div className="flex flex-col gap-1 border-b border-slate-200/80 pb-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        {/* <h2 className="text-sm font-semibold text-slate-950">{item.author}</h2> */}
                         <p className="text-xs text-slate-500">{item.role}</p>
                       </div>
                       <time className="text-xs font-medium text-slate-500">{date(item.created_at, locale)}</time>
@@ -187,7 +189,7 @@ export default function SupportDetails() {
           </form>
 
           <div className="border border-slate-200 bg-slate-300 p-5 text-sm leading-7 text-slate-600">
-            {t('নোট: সাপোর্ট টিম আপনার আপডেট দেখলে এই থ্রেডেই উত্তর দেবে। প্রয়োজন হলে ছবি বা ডকুমেন্ট যুক্ত করুন।', 'Note: The support team will reply in this thread after reviewing your update. Attach images or documents when useful.')}
+            {t('নোট: সাপোর্ট টিম আপনার আপডেট দেখলে এই থ্রেডেই উত্তর দেবে। প্রয়োজন হলে ছবি বা ডকুমেন্ট যুক্ত করুন।', 'Note: The support team will reply in this thread after reviewing your update. Attach images or documents when useful.')}
           </div>
         </aside>
       </div>

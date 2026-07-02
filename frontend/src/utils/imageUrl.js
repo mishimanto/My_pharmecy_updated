@@ -51,3 +51,7 @@ export function getProductThumbnail(product, fallback = MEDICINE_PLACEHOLDER_SRC
 export function getManufacturerImage(manufacturer, fallback = MEDICINE_PLACEHOLDER_SRC) {
   return resolveImageUrl(manufacturer?.logo_url, fallback)
 }
+
+export function getCategoryImage(category, fallback = MEDICINE_PLACEHOLDER_SRC) {
+  return resolveImageUrl(category?.image_url, fallback)
+}

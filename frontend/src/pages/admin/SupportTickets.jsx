@@ -2,49 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FiCheckCircle, FiClock, FiEye, FiHeadphones, FiMessageSquare } from 'react-icons/fi'
 import toast from 'react-hot-toast'
-import { adminApi } from '../../api/adminApi'
 import AdminFilterBar from '../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import AdminStatCard from '../../components/admin/AdminStatCard'
 import EmptyState from '../../components/common/EmptyState'
+import { useAdminFreshListQuery } from '../../queries/adminQueries'
 import { date } from '../../utils/formatters'
 
 const statuses = ['', 'open', 'in_progress', 'resolved', 'closed']
-const SUPPORT_CACHE_KEY = 'admin_support_tickets_payload_v1'
-const SUPPORT_CACHE_TTL = 2 * 60 * 1000
-
-function cacheKey(params) {
-  return JSON.stringify({
-    search: params.search || '',
-    status: params.status || '',
-    page: params.page || 1,
-  })
-}
-
-function readCache(params) {
-  if (typeof window === 'undefined') return null
-
-  try {
-    const cache = JSON.parse(window.sessionStorage.getItem(SUPPORT_CACHE_KEY) || '{}')
-    const cached = cache[cacheKey(params)]
-    if (!cached || Date.now() - cached.cachedAt > SUPPORT_CACHE_TTL) return null
-    return cached.payload
-  } catch {
-    return null
-  }
-}
-
-function writeCache(params, payload) {
-  if (typeof window === 'undefined') return
-
-  try {
-    const cache = JSON.parse(window.sessionStorage.getItem(SUPPORT_CACHE_KEY) || '{}')
-    cache[cacheKey(params)] = { payload, cachedAt: Date.now() }
-    window.sessionStorage.setItem(SUPPORT_CACHE_KEY, JSON.stringify(cache))
-  } catch {
-    // Ignore storage issues.
-  }
-}
 
 function statusBadgeClass(status) {
   if (status === 'open') return 'border-amber-200 bg-amber-50 text-amber-700'
@@ -70,14 +35,20 @@ function actionButtonClass(tone = 'slate') {
 
 export default function SupportTickets() {
   const initialParams = { search: '', status: '', page: 1 }
-  const initialCache = readCache(initialParams)
   const [params, setParams] = useState(initialParams)
-  const [tickets, setTickets] = useState(initialCache?.tickets || [])
-  const [allTickets, setAllTickets] = useState([])
-  const [meta, setMeta] = useState(initialCache?.meta || null)
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(!initialCache)
-  const [updating, setUpdating] = useState(false)
+  const ticketsQuery = useAdminFreshListQuery('support-tickets', params, {
+    placeholderData: (previous) => previous,
+    staleTime: 1000 * 30,
+  })
+  const statsQuery = useAdminFreshListQuery('support-tickets', { page: 1, per_page: 100 }, {
+    staleTime: 1000 * 30,
+  })
+  const tickets = ticketsQuery.data?.data || []
+  const allTickets = statsQuery.data?.data || []
+  const meta = ticketsQuery.data || null
+  const loading = ticketsQuery.isLoading && !ticketsQuery.data
+  const updating = ticketsQuery.isFetching && Boolean(ticketsQuery.data)
 
   const stats = useMemo(() => ({
     total: allTickets.length,
@@ -109,52 +80,11 @@ export default function SupportTickets() {
     },
   ]
 
-  const loadStats = () => {
-    adminApi.listFresh('support-tickets', { page: 1, per_page: 100 })
-      .then((res) => setAllTickets(res.data.data?.data || []))
-      .catch(() => {})
-  }
-
   useEffect(() => {
-    loadStats()
-  }, [])
-
-  useEffect(() => {
-    let active = true
-    const cached = readCache(params)
-
-    if (cached) {
-      setTickets(cached.tickets || [])
-      setMeta(cached.meta || null)
-      setLoading(false)
-      setUpdating(false)
-      return () => { active = false }
+    if (ticketsQuery.isError) {
+      toast.error('Unable to load support tickets.')
     }
-
-    const hasRows = tickets.length > 0
-    setLoading(!hasRows)
-    setUpdating(hasRows)
-
-    adminApi.listFresh('support-tickets', params)
-      .then((res) => {
-        if (!active) return
-        const payload = {
-          tickets: res.data.data?.data || [],
-          meta: res.data.data,
-        }
-        setTickets(payload.tickets)
-        setMeta(payload.meta)
-        writeCache(params, payload)
-      })
-      .catch(() => active && toast.error('Unable to load support tickets.'))
-      .finally(() => {
-        if (!active) return
-        setLoading(false)
-        setUpdating(false)
-      })
-
-    return () => { active = false }
-  }, [params])
+  }, [ticketsQuery.isError])
 
   useEffect(() => {
     const timeout = setTimeout(() => {

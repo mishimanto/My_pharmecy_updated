@@ -1,16 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { FiArrowRight, FiClock, FiPackage, FiTruck } from 'react-icons/fi'
-import { orderApi } from '../../api/orderApi'
+import { FiArrowRight, FiCheckCircle, FiClock, FiPackage, FiTruck } from 'react-icons/fi'
 import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
-import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
+import { useOrdersQuery } from '../../queries/customerQueries'
 import { date, money } from '../../utils/formatters'
 import { getOrderPath } from '../../utils/orderRouting'
 import { getDeliveryStatusLabel, getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
-
-const ORDERS_CACHE_KEY = 'orders_list'
 
 function statusTextClass(status, fallback = 'text-slate-950') {
   const value = String(status || '').toLowerCase()
@@ -38,20 +35,16 @@ export default function MyOrders() {
   const { isBangla } = useLanguage()
   const t = (bn, en) => (isBangla ? bn : en)
   const locale = isBangla ? 'bn-BD' : 'en-US'
-  const [orders, setOrders] = useState(() => readCustomerCache(ORDERS_CACHE_KEY, []))
-  const [loading, setLoading] = useState(() => readCustomerCache(ORDERS_CACHE_KEY, null) === null)
   const [filter, setFilter] = useState('all')
+  const ordersQuery = useOrdersQuery({ placeholderData: (previous) => previous })
+  const orders = useMemo(() => (Array.isArray(ordersQuery.data) ? ordersQuery.data : []), [ordersQuery.data])
+  const loading = ordersQuery.isLoading
 
   useEffect(() => {
-    orderApi.list()
-      .then((res) => {
-        const nextOrders = res.data.data?.data || []
-        setOrders(nextOrders)
-        writeCustomerCache(ORDERS_CACHE_KEY, nextOrders)
-      })
-      .catch(() => toast.error(t('অর্ডার হিস্টোরি লোড করা যায়নি।', 'Order history could not be loaded.')))
-      .finally(() => setLoading(false))
-  }, [isBangla])
+    if (ordersQuery.isError) {
+      toast.error(t('অর্ডার হিস্টোরি লোড করা যায়নি।', 'Order history could not be loaded.'))
+    }
+  }, [ordersQuery.isError, t])
 
   const filters = useMemo(() => ([
     ['all', t('সব অর্ডার', 'All orders')],
@@ -97,18 +90,19 @@ export default function MyOrders() {
     <>
       <PageHeader
         title={t('আমার অর্ডার', 'My orders')}
+        className="flex-row items-center justify-between"
         action={(
-          <Link to="/track-order" className="border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700">
+          <Link to="/track-order" className="shrink-0 border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 sm:px-4">
             {t('অর্ডার ট্র্যাক', 'Track order')}
           </Link>
         )}
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-4">
         <SummaryCard label={t('মোট অর্ডার', 'Total orders')} value={formatNumber(summary.total)} icon={FiPackage} tone="slate" />
-        <SummaryCard label={t('চলমান অর্ডার', 'Active orders')} value={formatNumber(summary.active)} icon={FiClock} tone="sky" />
+        <SummaryCard label={t('চলমান অর্ডার', 'Active orders')} value={formatNumber(summary.active)} icon={FiCheckCircle} tone="sky" />
         <SummaryCard label={t('ডেলিভারড', 'Delivered')} value={formatNumber(summary.delivered)} icon={FiTruck} tone="emerald" />
-        <SummaryCard label={t('ডেলিভারি অপেক্ষায়', 'Pending delivery')} value={formatNumber(summary.pendingDelivery)} icon={FiArrowRight} tone="amber" />
+        <SummaryCard label={t('ডেলিভারি অপেক্ষায়', 'Pending delivery')} value={formatNumber(summary.pendingDelivery)} icon={FiClock} tone="amber" />
       </div>
 
       <div className="mt-6 flex flex-wrap gap-2">
@@ -176,22 +170,22 @@ function SummaryCard({ label, value, icon: Icon, tone = 'slate' }) {
   const tones = {
     slate: {
       panel: 'border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)]',
-      icon: 'border-slate-200 bg-slate-50 text-slate-700',
+      icon: 'text-slate-700',
       label: 'text-slate-500',
     },
     sky: {
       panel: 'border-sky-200 bg-[linear-gradient(180deg,#f8fdff_0%,#eef8ff_100%)]',
-      icon: 'border-sky-200 bg-white text-sky-700',
+      icon: 'text-sky-700',
       label: 'text-sky-700',
     },
     emerald: {
       panel: 'border-emerald-200 bg-[linear-gradient(180deg,#f8fffb_0%,#edfdf5_100%)]',
-      icon: 'border-emerald-200 bg-white text-emerald-700',
+      icon: ' text-emerald-700',
       label: 'text-emerald-700',
     },
     amber: {
       panel: 'border-amber-200 bg-[linear-gradient(180deg,#fffdf7_0%,#fff7e8_100%)]',
-      icon: 'border-amber-200 bg-white text-amber-700',
+      icon: 'text-amber-700',
       label: 'text-amber-700',
     },
   }
@@ -199,12 +193,16 @@ function SummaryCard({ label, value, icon: Icon, tone = 'slate' }) {
   const styles = tones[tone] || tones.slate
 
   return (
-    <div className={`border p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)] ${styles.panel}`}>
-      <div className={`inline-flex h-10 w-10 items-center justify-center border ${styles.icon}`}>
-        <Icon className="h-5 w-5" />
+    <div className={`border p-3 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)] sm:p-5 ${styles.panel}`}>
+      <div className="flex items-center justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <div className={`text-xs font-medium leading-5 sm:text-sm ${styles.label}`}>{label}</div>
+          <div className="mt-1.5 text-xl font-semibold text-slate-950 sm:mt-2 sm:text-3xl">{value}</div>
+        </div>
+        <div className={`inline-flex h-8 w-8 shrink-0 items-center justify-center sm:h-10 sm:w-10 ${styles.icon}`}>
+          <Icon className="h-4.5 w-4.5 sm:h-6 sm:w-6" />
+        </div>
       </div>
-      <div className={`mt-4 text-sm font-medium ${styles.label}`}>{label}</div>
-      <div className="mt-2 text-3xl font-semibold text-slate-950">{value}</div>
     </div>
   )
 }

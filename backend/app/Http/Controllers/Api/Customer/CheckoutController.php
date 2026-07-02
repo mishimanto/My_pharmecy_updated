@@ -46,6 +46,8 @@ class CheckoutController extends Controller
                 $subtotal,
                 Currency::whole($deliveryArea?->delivery_charge ?? 0),
                 $data['coupon_code'] ?? null,
+                false,
+                $user?->id,
             );
         } catch (ValidationException $exception) {
             $couponError = $exception->errors()['coupon_code'][0] ?? 'Coupon could not be applied.';
@@ -53,6 +55,9 @@ class CheckoutController extends Controller
             $summary = $coupons->buildSummary(
                 $subtotal,
                 Currency::whole($deliveryArea?->delivery_charge ?? 0),
+                null,
+                false,
+                $user?->id,
             );
         }
 

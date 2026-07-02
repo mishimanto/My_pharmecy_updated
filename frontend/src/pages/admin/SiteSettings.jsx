@@ -24,6 +24,7 @@ function formFromSettings(settings) {
     map_embed_url: settings?.map_embed_url || '',
     footer_note: settings?.footer_note || '',
     footer_note_bn: settings?.footer_note_bn || '',
+    rewards_enabled: settings?.rewards_enabled ?? true,
     logo_url: settings?.logo_path ? '' : settings?.logo_url || '',
     favicon_url: settings?.favicon_path ? '' : settings?.favicon_url || '',
   }
@@ -161,6 +162,7 @@ export default function SiteSettings() {
       map_embed_url: form.map_embed_url.trim() || null,
       footer_note: form.footer_note.trim() || null,
       footer_note_bn: form.footer_note_bn.trim() || null,
+      rewards_enabled: Boolean(form.rewards_enabled),
       logo_url: form.logo_url.trim() || null,
       favicon_url: form.favicon_url.trim() || null,
     }
@@ -243,15 +245,24 @@ export default function SiteSettings() {
                   label="Footer note"
                   value={form.footer_note}
                   onChange={(value) => setField('footer_note', value)}
-                  placeholder="Prescription-aware online pharmacy experience"
+                  placeholder="All rights reserved"
                 />
                 <Field
                   label="Footer note (Bangla)"
                   value={form.footer_note_bn}
                   onChange={(value) => setField('footer_note_bn', value)}
-                  placeholder="প্রেসক্রিপশন-সচেতন অনলাইন ফার্মেসি অভিজ্ঞতা"
+                  placeholder="সর্বস্বত্ব সংরক্ষিত"
                 />
               </div>
+            </SettingsBlock>
+
+            <SettingsBlock title="Customer features">
+              <ToggleField
+                label="Rewards center"
+                // description="Let customers access the rewards page and rewards shortcut from their account."
+                checked={Boolean(form.rewards_enabled)}
+                onChange={(checked) => setField('rewards_enabled', checked)}
+              />
             </SettingsBlock>
           </div>
 
@@ -375,6 +386,25 @@ function SettingsBlock({ title, children }) {
       <h3 className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-slate-500">{title}</h3>
       {children}
     </div>
+  )
+}
+
+function ToggleField({ label, checked, onChange }) {
+  return (
+    <label className="flex items-center justify-between gap-4 border border-slate-200 bg-slate-50 px-4 py-3">
+      <div>
+        <div className="text-md font-semibold text-slate-900">{label}</div>
+      </div>
+      <span className={`relative inline-flex h-6 w-11 shrink-0 items-center transition ${checked ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+        <input
+          type="checkbox"
+          className="peer sr-only"
+          checked={checked}
+          onChange={(event) => onChange(event.target.checked)}
+        />
+        <span className={`absolute left-0.5 h-5 w-5 bg-white shadow-sm transition ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
+      </span>
+    </label>
   )
 }
 

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import AuthLayout from '../../layouts/AuthLayout'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
+import AuthPasswordField from '../../components/common/AuthPasswordField'
 
 export default function Register() {
   const [form, setForm] = useState({ full_name: '', phone: '', email: '', password: '' })
@@ -38,16 +39,27 @@ export default function Register() {
     >
       <form className="space-y-4" onSubmit={submit}>
         {fields.map(([field, label, type]) => (
-          <div key={field}>
-            <label className="text-sm font-medium text-slate-700">{label}</label>
-            <input
-              className="mt-1 w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
-              type={type}
+          type === 'password' ? (
+            <AuthPasswordField
+              key={field}
+              label={label}
               placeholder={label}
               value={form[field]}
+              autoComplete="new-password"
               onChange={(event) => setForm({ ...form, [field]: event.target.value })}
             />
-          </div>
+          ) : (
+            <div key={field}>
+              <label className="text-sm font-medium text-slate-700">{label}</label>
+              <input
+                className="mt-1 w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                type={type}
+                placeholder={label}
+                value={form[field]}
+                onChange={(event) => setForm({ ...form, [field]: event.target.value })}
+              />
+            </div>
+          )
         ))}
 
         <button disabled={loading} className="w-full bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60">

@@ -12,9 +12,22 @@ class CategoryBrowseController extends Controller
 {
     use ApiResponse;
 
-    public function index()
+    public function index(Request $request, ProductCatalogService $catalog)
     {
-        return $this->ok(Category::where('status', 'active')->with('children')->orderBy('category_name')->get(), 'ক্যাটাগরি তালিকা পাওয়া গেছে।');
+        $query = Category::query()
+            ->where('status', 'active')
+            ->with('children')
+            ->orderBy('category_name');
+
+        if ($request->boolean('has_sellable_products')) {
+            $query->whereHas('products', function ($productQuery) use ($catalog) {
+                $productQuery
+                    ->where('is_active', true)
+                    ->whereHas('batches', $catalog->validBatchConstraint());
+            });
+        }
+
+        return $this->ok($query->get(), 'Category list loaded successfully.');
     }
 
     public function products(Request $request, int $id, ProductCatalogService $catalog)
@@ -23,7 +36,6 @@ class CategoryBrowseController extends Controller
             ->where('category_id', $id)
             ->paginate($request->integer('per_page', 12));
 
-        return $this->ok($catalog->appendCollection($products), 'ক্যাটাগরির প্রোডাক্ট পাওয়া গেছে।');
+        return $this->ok($catalog->appendCollection($products), 'Category products loaded successfully.');
     }
 }
-

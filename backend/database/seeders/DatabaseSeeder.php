@@ -21,7 +21,7 @@ class DatabaseSeeder extends Seeder
             'product.view', 'product.create', 'product.edit', 'product.delete',
             'inventory.view', 'inventory.manage', 'stock-adjustment.approve', 'prescription.view', 'prescription.review',
             'order.view', 'order.update', 'payment.view', 'delivery.manage',
-            'support.manage', 'return.manage', 'refund.approve', 'report.view', 'activity-log.view',
+            'support.manage', 'return.manage', 'refund.approve', 'report.view', 'activity-log.view', 'ai.manage',
         ];
 
         foreach ($permissions as $permission) {

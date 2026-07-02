@@ -171,14 +171,17 @@ class ProductController extends Controller
 
     private function validated(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'category_id' => ['required', 'exists:categories,id'],
             'manufacturer_id' => ['required', 'exists:manufacturers,id'],
+            'product_type' => ['nullable', 'in:medicine,healthcare,device,personal_care,beauty,baby_care'],
             'product_name' => ['required', 'string', 'max:255'],
             'generic_name' => ['nullable', 'string', 'max:255'],
             'brand_name' => ['nullable', 'string', 'max:255'],
             'strength' => ['nullable', 'string', 'max:100'],
             'dosage_form' => ['nullable', 'string', 'max:100'],
+            'package_unit' => ['nullable', 'in:piece,pack,packet,bottle,kit,device,tube,jar,box,unit'],
+            'package_size' => ['nullable', 'string', 'max:120'],
             'pieces_per_strip' => ['required', 'integer', 'min:1'],
             'strips_per_box' => ['required', 'integer', 'min:1'],
             'strip_price' => ['nullable', 'numeric', 'min:0'],
@@ -188,6 +191,28 @@ class ProductController extends Controller
             'requires_prescription' => ['required', 'boolean'],
             'description' => ['nullable', 'string'],
             'description_bn' => ['nullable', 'string'],
+            'indications' => ['nullable', 'string'],
+            'indications_bn' => ['nullable', 'string'],
+            'pharmacology' => ['nullable', 'string'],
+            'pharmacology_bn' => ['nullable', 'string'],
+            'dosage_administration' => ['nullable', 'string'],
+            'dosage_administration_bn' => ['nullable', 'string'],
+            'interaction_details' => ['nullable', 'string'],
+            'interaction_details_bn' => ['nullable', 'string'],
+            'contraindications' => ['nullable', 'string'],
+            'contraindications_bn' => ['nullable', 'string'],
+            'side_effects' => ['nullable', 'string'],
+            'side_effects_bn' => ['nullable', 'string'],
+            'pregnancy_lactation' => ['nullable', 'string'],
+            'pregnancy_lactation_bn' => ['nullable', 'string'],
+            'precautions_warnings' => ['nullable', 'string'],
+            'precautions_warnings_bn' => ['nullable', 'string'],
+            'therapeutic_class' => ['nullable', 'string', 'max:255'],
+            'therapeutic_class_bn' => ['nullable', 'string', 'max:255'],
+            'storage_conditions' => ['nullable', 'string'],
+            'storage_conditions_bn' => ['nullable', 'string'],
+            'leaflet_url' => ['nullable', 'url', 'max:2048'],
+            'specifications' => ['nullable', 'string'],
             'is_active' => ['required', 'boolean'],
             'initial_batch' => ['nullable', 'array'],
             'initial_batch.enabled' => ['nullable', 'boolean'],
@@ -206,6 +231,52 @@ class ProductController extends Controller
             'drug_interactions.*.warning' => ['nullable', 'string'],
             'drug_interactions.*.is_active' => ['nullable', 'boolean'],
         ]);
+
+        $data['product_type'] = $data['product_type'] ?? 'medicine';
+        $data['package_unit'] = $data['product_type'] === 'medicine'
+            ? 'piece'
+            : (($data['package_unit'] ?? null) ?: 'pack');
+
+        if ($data['product_type'] !== 'medicine') {
+            $data['requires_prescription'] = false;
+            $data['generic_name'] = null;
+            $data['strength'] = null;
+            $data['dosage_form'] = null;
+            $data['indications'] = null;
+            $data['indications_bn'] = null;
+            $data['pharmacology'] = null;
+            $data['pharmacology_bn'] = null;
+            $data['dosage_administration'] = null;
+            $data['dosage_administration_bn'] = null;
+            $data['interaction_details'] = null;
+            $data['interaction_details_bn'] = null;
+            $data['contraindications'] = null;
+            $data['contraindications_bn'] = null;
+            $data['side_effects'] = null;
+            $data['side_effects_bn'] = null;
+            $data['pregnancy_lactation'] = null;
+            $data['pregnancy_lactation_bn'] = null;
+            $data['precautions_warnings'] = null;
+            $data['precautions_warnings_bn'] = null;
+            $data['therapeutic_class'] = null;
+            $data['therapeutic_class_bn'] = null;
+            $data['storage_conditions'] = null;
+            $data['storage_conditions_bn'] = null;
+            $data['leaflet_url'] = null;
+            $data['pieces_per_strip'] = 1;
+            $data['strips_per_box'] = 1;
+            $data['strip_price'] = null;
+            $data['box_price'] = null;
+            $data['strip_discount'] = null;
+            $data['box_discount'] = null;
+            $data['alternative_product_ids'] = [];
+            $data['drug_interactions'] = [];
+        } else {
+            $data['package_size'] = null;
+            $data['specifications'] = null;
+        }
+
+        return $data;
     }
 
     private function initialBatchData(array &$data): ?array

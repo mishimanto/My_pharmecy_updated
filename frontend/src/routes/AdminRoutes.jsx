@@ -63,6 +63,7 @@ const Reports = lazyWithLoader(() => import('../pages/admin/Reports'))
 const ReportDetails = lazyWithLoader(() => import('../pages/admin/ReportDetails'))
 const ActivityLogs = lazyWithLoader(() => import('../pages/admin/ActivityLogs'))
 const Security = lazyWithLoader(() => import('../pages/admin/Security'))
+const AiCenter = lazyWithLoader(() => import('../pages/admin/AiCenter'))
 const AdminNotifications = lazyWithLoader(() => import('../pages/admin/AdminNotifications'))
 const MarketingTools = lazyWithLoader(() => import('../pages/admin/MarketingTools'))
 
@@ -131,6 +132,7 @@ export default function AdminRoutes() {
             <Route path="reports/:type" element={<ReportDetails />} />
             <Route path="activity-logs" element={<ActivityLogs />} />
             <Route path="security" element={<Security />} />
+            <Route path="ai" element={<AiCenter />} />
             <Route path="notifications" element={<AdminNotifications />} />
           </Route>
           <Route

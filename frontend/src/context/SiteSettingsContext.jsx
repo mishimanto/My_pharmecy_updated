@@ -2,8 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { useQueryClient } from '@tanstack/react-query'
 import { customerQueryKeys, useSiteSettingsQuery } from '../queries/customerQueries'
 
-const SITE_SETTINGS_CACHE_KEY = 'site_settings_payload_v1'
-const SITE_SETTINGS_CACHE_TTL = 7 * 24 * 60 * 60 * 1000
+const SITE_SETTINGS_CACHE_KEY = 'site_settings_payload_v2'
+const SITE_SETTINGS_CACHE_TTL = 1000 * 60 * 10
 const SITE_SETTINGS_UPDATED_EVENT = 'site-settings-updated'
 const DEFAULT_FAVICON = '/favicon.svg'
 
@@ -20,7 +20,8 @@ const defaultSettings = {
   instagram_url: '',
   youtube_url: '',
   map_embed_url: 'https://www.google.com/maps?q=Dhaka%2C%20Bangladesh&z=12&output=embed',
-  footer_note: 'Prescription-aware online pharmacy experience',
+  footer_note: 'All rights reserved',
+  rewards_enabled: true,
   logo_url: '',
   logo_path: '',
   favicon_url: '',
@@ -35,7 +36,10 @@ function readCache() {
   try {
     const cached = JSON.parse(window.localStorage.getItem(SITE_SETTINGS_CACHE_KEY) || 'null')
     if (!cached || Date.now() - cached.cachedAt > SITE_SETTINGS_CACHE_TTL) return null
-    return cached.payload
+    return {
+      payload: cached.payload,
+      cachedAt: Number(cached.cachedAt || 0),
+    }
   } catch {
     return null
   }
@@ -93,12 +97,15 @@ function mergeSettings(payload) {
 }
 
 export function SiteSettingsProvider({ children }) {
-  const [cached] = useState(() => readCache())
+  const [cachedRecord] = useState(() => readCache())
+  const cached = cachedRecord?.payload || null
   const queryClient = useQueryClient()
   const [forcedLoading, setForcedLoading] = useState(false)
   const [brandAssetsReady, setBrandAssetsReady] = useState(false)
   const settingsQuery = useSiteSettingsQuery({
     initialData: cached || undefined,
+    initialDataUpdatedAt: cachedRecord?.cachedAt || 0,
+    staleTime: SITE_SETTINGS_CACHE_TTL,
   })
   const settings = useMemo(() => mergeSettings(settingsQuery.data || cached), [cached, settingsQuery.data])
   const loading = forcedLoading || (settingsQuery.isLoading && !settingsQuery.data)

@@ -83,7 +83,7 @@ class CheckoutService
             $prescription = $this->resolvePrescription($cart->user_id, $guestToken, $requiresPrescription, $prescriptionId);
             $subtotal = Currency::whole($orderItems->sum('subtotal'));
             $delivery = Currency::whole($deliveryArea->delivery_charge);
-            $pricing = $this->coupons->buildSummary($subtotal, $delivery, $couponCode, true);
+            $pricing = $this->coupons->buildSummary($subtotal, $delivery, $couponCode, true, $cart->user_id);
             $paymentRequiresProof = PaymentMethod::query()
                 ->where('code', $paymentMethod)
                 ->value('requires_proof') ?? ($paymentMethod !== 'COD');

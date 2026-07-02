@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Offer;
 use App\Services\AdminActivityService;
+use App\Services\PublicImageOptimizerService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class OfferController extends Controller
 {
@@ -24,9 +24,9 @@ class OfferController extends Controller
         return $this->ok($query->get(), 'Offers loaded successfully.');
     }
 
-    public function store(Request $request, AdminActivityService $activity)
+    public function store(Request $request, AdminActivityService $activity, PublicImageOptimizerService $images)
     {
-        $data = $this->applyImage($request, $this->validated($request));
+        $data = $this->applyImage($request, $this->validated($request), $images);
         $this->clearDisplaySelections($data);
         $offer = Offer::create($data);
         $activity->log($request, 'create', 'offers', $offer->id, null, $offer->toArray());
@@ -34,11 +34,11 @@ class OfferController extends Controller
         return $this->ok($offer->fresh(), 'Offer created successfully.', 201);
     }
 
-    public function update(Request $request, int $id, AdminActivityService $activity)
+    public function update(Request $request, int $id, AdminActivityService $activity, PublicImageOptimizerService $images)
     {
         $offer = Offer::findOrFail($id);
         $old = $offer->toArray();
-        $data = $this->applyImage($request, $this->validated($request), $offer);
+        $data = $this->applyImage($request, $this->validated($request), $images, $offer);
         $this->clearDisplaySelections($data, $offer->id);
         $offer->update($data);
         $activity->log($request, 'update', 'offers', $offer->id, $old, $offer->fresh()->toArray());
@@ -50,7 +50,7 @@ class OfferController extends Controller
     {
         $offer = Offer::findOrFail($id);
         $old = $offer->toArray();
-        $this->deleteImage($offer->image_path);
+        app(PublicImageOptimizerService::class)->delete($offer->image_path);
         $offer->delete();
         $activity->log($request, 'delete', 'offers', $id, $old);
 
@@ -90,16 +90,15 @@ class OfferController extends Controller
         ]);
     }
 
-    private function applyImage(Request $request, array $data, ?Offer $offer = null): array
+    private function applyImage(Request $request, array $data, PublicImageOptimizerService $images, ?Offer $offer = null): array
     {
         unset($data['image']);
 
         if ($request->hasFile('image')) {
-            $this->deleteImage($offer?->image_path);
-            $data['image_path'] = $request->file('image')->store('offers', 'public');
+            $data['image_path'] = $images->store($request->file('image'), 'offers', $offer?->image_path, 1200, 900, 82);
             $data['image_url'] = null;
         } elseif ($request->filled('image_url') && $request->string('image_url')->toString() !== $offer?->image_url) {
-            $this->deleteImage($offer?->image_path);
+            $images->delete($offer?->image_path);
             $data['image_path'] = null;
         }
 
@@ -139,10 +138,5 @@ class OfferController extends Controller
                 ->update(['show_in_nav' => false]);
         }
 
-    }
-
-    private function deleteImage(?string $path): void
-    {
-        if ($path) Storage::disk('public')->delete($path);
     }
 }

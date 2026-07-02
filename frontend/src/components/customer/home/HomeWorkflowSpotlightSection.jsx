@@ -4,15 +4,14 @@ import { Link } from 'react-router-dom'
 import { money } from '../../../utils/formatters'
 import { handleImageFallback } from '../../../utils/imageUrl'
 import { getProductPath } from '../../../utils/productRouting'
-import HomeSectionHeader from './HomeSectionHeader'
-import { getProductImage, resolveImage } from './homeUtils'
+import { getProductImage } from './homeUtils'
 
 export default function HomeWorkflowSpotlightSection({
   isBangla,
   spotlightProducts = [],
   workflowSteps,
-  manufacturerHighlights,
 }) {
+  const banglaFontClass = isBangla ? 'font-bangla' : ''
   const validSpotlightProducts = useMemo(
     () => (Array.isArray(spotlightProducts) ? spotlightProducts : []),
     [spotlightProducts],
@@ -33,7 +32,7 @@ export default function HomeWorkflowSpotlightSection({
       transitionTimerRef.current = window.setTimeout(() => {
         setCurrentSpotlightIndex((prev) => (prev + 1) % validSpotlightProducts.length)
         setIsVisible(true)
-      }, 350)
+      }, 320)
     }, 7000)
 
     return () => {
@@ -44,43 +43,45 @@ export default function HomeWorkflowSpotlightSection({
 
   useEffect(() => {
     if (currentSpotlightIndex >= validSpotlightProducts.length) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentSpotlightIndex(0)
     }
   }, [currentSpotlightIndex, validSpotlightProducts.length])
 
   const spotlightImage = getProductImage(spotlightProduct)
-
   const locale = isBangla ? 'bn-BD' : 'en-US'
 
   return (
-    <section className="grid gap-6 pb-16 xl:grid-cols-[1.08fr_0.92fr]">
-      <div className="overflow-hidden border border-[#b7e5df]/75 bg-[#f7fffd] shadow-[0_22px_60px_-44px_rgba(8,63,73,0.45)]">
-        <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="relative min-h-75 lg:min-h-95">
+    <section className={`pb-10 ${banglaFontClass}`}>
+      <div className="mt-7 grid gap-6 lg:grid-cols-[0.96fr_1.04fr] lg:items-stretch">
+        <div className="h-full overflow-hidden border border-[#d8ece9] bg-white shadow-[0_30px_70px_-42px_rgba(8,63,73,0.18)]">
+          <div className="relative h-full min-h-72 sm:min-h-88 lg:min-h-96">
             <img
               src={spotlightImage}
-              alt={spotlightProduct?.product_name || (isBangla ? 'নির্বাচিত পণ্য' : 'Featured product')}
+              alt={spotlightProduct?.product_name || (isBangla ? '\u09a8\u09bf\u09b0\u09cd\u09ac\u09be\u099a\u09bf\u09a4 \u09aa\u09a3\u09cd\u09af' : 'Featured product')}
               className="absolute inset-0 h-full w-full object-cover"
               onError={handleImageFallback}
             />
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.05),rgba(15,23,42,0.75))]" />
-            <div className="relative flex min-h-75 flex-col justify-end p-6 text-white lg:min-h-95">
-              <div className={`transition-opacity duration-500 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-                <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                  {spotlightProduct?.product_name || (isBangla ? 'জনপ্রিয় পণ্য' : 'Popular product display')}
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.08),rgba(15,23,42,0.8))]" />
+            <div className="relative flex h-full min-h-[18rem] flex-col justify-end p-5 text-white sm:min-h-[22rem] sm:p-6 lg:min-h-96 lg:p-7">
+              <div className={`transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+                <div className="inline-flex items-center border border-white/12 bg-white/8 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-[#d6fffb]">
+                  {isBangla ? '\u09ab\u09bf\u099a\u09be\u09b0\u09cd\u09a1 \u09aa\u09a3\u09cd\u09af' : 'Featured product'}
+                </div>
+                <h3 className="mt-3 max-w-md text-2xl font-bold tracking-tight sm:text-3xl">
+                  {spotlightProduct?.product_name || (isBangla ? '\u099c\u09a8\u09aa\u09cd\u09b0\u09bf\u09df \u09aa\u09a3\u09cd\u09af' : 'Popular product')}
                 </h3>
+
                 {spotlightProduct ? (
-                  <div className="mt-4 flex flex-wrap items-center gap-3">
-                    <span className="rounded-full bg-white/15 px-3 py-1 text-sm font-semibold backdrop-blur-sm">
+                  <div className="mt-5 flex flex-wrap items-center gap-3">
+                    <span className="border border-white/12 bg-white/10 px-3 py-2 text-sm font-semibold backdrop-blur-sm">
                       {money(spotlightProduct.display_price, locale)}
                     </span>
                     <Link
                       to={getProductPath(spotlightProduct)}
                       state={{ product: spotlightProduct }}
-                      className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-slate-100"
+                      className="inline-flex items-center gap-2 bg-white px-4 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-slate-100"
                     >
-                      {isBangla ? 'পণ্য দেখুন' : 'View product'}
+                      {isBangla ? '\u09aa\u09a3\u09cd\u09af \u09a6\u09c7\u0996\u09c1\u09a8' : 'View product'}
                       <FiArrowRight className="h-4 w-4" />
                     </Link>
                   </div>
@@ -88,25 +89,45 @@ export default function HomeWorkflowSpotlightSection({
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="bg-[#f7fffd] p-6 sm:p-8">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#0e6574]">{isBangla ? '৩ ধাপে আপনার অর্ডার' : 'Three steps to your order'}</p>
-            {/* <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">{isBangla ? '৩ ধাপে আপনার অর্ডার' : 'Three steps to your order'}</h2> */}
-            <div className="mt-6 space-y-4">
+        <div className="grid gap-6">
+          <div className="border border-[#d8ece9] bg-white p-4 shadow-lg sm:p-5 lg:p-6">
+            <div className="mb-6 text-center sm:mb-8">
+              <h2 className="text-lg font-bold text-[#07343d] sm:text-xl">
+                {isBangla ? '\u0995\u09c0\u09ad\u09be\u09ac\u09c7 \u0985\u09b0\u09cd\u09a1\u09be\u09b0 \u0995\u09b0\u09ac\u09c7\u09a8' : 'How to order'}
+              </h2>
+            </div>
+
+            <div className="space-y-3 sm:space-y-4">
               {workflowSteps.map((item) => {
                 const Icon = item.icon
 
                 return (
-                  <div key={item.step} className="flex gap-4 border border-[#d7ebe7] bg-[#e8f7f4]/80 p-4">
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-[11px] font-bold text-[#13b8b0]">{item.step}</span>
-                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f7fffd] text-[#0e6574] shadow-sm">
+                  <div
+                    key={item.step}
+                    className="group border border-[#e2f1ee] bg-[#fbfefd] p-4 transition-all duration-300 hover:border-[#13b8b0] hover:shadow-md sm:p-5"
+                  >
+                    <div className="flex items-start justify-between gap-3 sm:gap-4">
+                      <div className="flex gap-3 sm:gap-4">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#13b8b0] text-sm font-semibold text-white sm:h-10 sm:w-10">
+                          {item.step}
+                        </div>
+
+                        <div>
+                          <h3 className="text-base font-semibold text-[#07343d] sm:text-lg">
+                            {item.title}
+                          </h3>
+
+                          <p className="mt-1.5 text-sm leading-6 text-[#5f7d84] sm:mt-2 sm:leading-7">
+                            {item.body}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center bg-[#eef9f7] text-[#13b8b0] transition-colors duration-300 group-hover:bg-[#13b8b0] group-hover:text-white sm:h-11 sm:w-11">
                         <Icon className="h-5 w-5" />
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-[#07343d]">{item.title}</h3>
-                      <p className="mt-1 text-sm leading-7 text-[#51727a]">{item.body}</p>
+                      </div>
                     </div>
                   </div>
                 )
@@ -114,51 +135,6 @@ export default function HomeWorkflowSpotlightSection({
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="space-y-6">
-        <div className="border border-[#b7e5df]/75 bg-[#f7fffd] p-6 shadow-[0_22px_60px_-44px_rgba(8,63,73,0.45)] sm:p-8">
-          <HomeSectionHeader title={isBangla ? 'জনপ্রিয় প্রস্তুতকারক প্রতিষ্ঠান' : 'Popular manufacturers'} />
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {manufacturerHighlights.map((manufacturer) => (
-              <div key={manufacturer.id} className="flex items-center gap-3 border border-[#d7ebe7] bg-[#e8f7f4]/80 p-3">
-                <img
-                  src={resolveImage(manufacturer.logo_url)}
-                  alt={manufacturer.manufacturer_name}
-                  className="h-11 w-11 border border-[#b7e5df] bg-[#f7fffd] object-cover"
-                  onError={handleImageFallback}
-                />
-                <div className="min-w-0">
-                  <div className="truncate text-md font-semibold text-[#07343d]">{manufacturer.manufacturer_name}</div>                  
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* <div className="rounded-[24px] border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
-          <HomeSectionHeader
-            eyebrow={isBangla ? 'কেন My Pharmecy' : 'Why My Pharmecy'}
-            title={isBangla ? 'সাধারণ ইকমার্স নয়, ফার্মেসির জন্য তৈরি' : 'Built for pharmacy, not generic ecommerce'}
-          />
-          <div className="mt-6 space-y-3">
-            {serviceItems.map((item) => {
-              const Icon = item.icon
-
-              return (
-                <div key={item.title} className="flex gap-4 rounded-[16px] border border-slate-100 bg-slate-50/80 p-4">
-                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eefbfa] text-[#0e6574]">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <h3 className="font-bold text-slate-950">{item.title}</h3>
-                    <p className="mt-1 text-sm leading-7 text-slate-500">{item.body}</p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div> */}
       </div>
     </section>
   )

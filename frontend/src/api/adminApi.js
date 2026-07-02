@@ -1,11 +1,13 @@
 import api from './axios'
 import { productApi } from './productApi'
+import { queryClient } from '../lib/queryClient'
 import {
   clearAdminResourceCache,
   getCachedResponse,
   responseKey,
   setCachedResponse,
 } from '../utils/adminResourceCache'
+import { clearAdminSessionCaches } from '../utils/adminCacheRegistry'
 
 function cachedGet(url, params, options = {}) {
   const key = responseKey(url, params)
@@ -24,6 +26,8 @@ function cachedGet(url, params, options = {}) {
 function clearAfter(request, options = {}) {
   return request.then((response) => {
     clearAdminResourceCache()
+    clearAdminSessionCaches()
+    queryClient.invalidateQueries({ queryKey: ['admin'] })
     if (options.storefrontCatalog) {
       productApi.clearCache()
     }
@@ -46,6 +50,9 @@ export const adminApi = {
   loginHistory: (params) => cachedGet('/admin/security/login-history', params, { fresh: true }),
   updateTwoFactor: (payload) => clearAfter(api.patch('/admin/security/2fa', payload)),
   revokeStaffSession: (id) => clearAfter(api.post(`/admin/security/staff-sessions/${id}/revoke`)),
+  aiSummary: () => cachedGet('/admin/ai/summary', undefined, { fresh: true }),
+  updateAiSettings: (payload) => clearAfter(api.put('/admin/ai/settings', payload)),
+  aiInteractions: (params) => cachedGet('/admin/ai/interactions', params, { fresh: true }),
   userHistory: (id, type) => cachedGet(`/admin/users/${id}/${type}`),
   report: (type, params, options) => cachedGet(`/admin/reports/${type}`, params, options),
   reportPdf: (type, params, download = false) => api.get(`/admin/reports/${type}/pdf`, {
@@ -91,6 +98,14 @@ export const adminApi = {
   },
   createManufacturer: (payload) => clearAfter(api.post('/admin/manufacturers', payload), { storefrontCatalog: true }),
   updateManufacturer: (id, payload) => clearAfter(api.post(`/admin/manufacturers/${id}`, payload), { storefrontCatalog: true }),
+  createCategory: (payload) => clearAfter(api.post('/admin/categories', payload, { headers: { 'Content-Type': 'multipart/form-data' } }), { storefrontCatalog: true }),
+  updateCategory: (id, payload) => {
+    if (payload instanceof FormData && !payload.has('_method')) {
+      payload.append('_method', 'PUT')
+    }
+
+    return clearAfter(api.post(`/admin/categories/${id}`, payload, { headers: { 'Content-Type': 'multipart/form-data' } }), { storefrontCatalog: true })
+  },
   patch: (resource, id, action, payload) => clearAfter(api.patch(`/admin/${resource}/${id}/${action}`, payload), { storefrontCatalog: touchesStorefrontCatalog(resource) }),
   remove: (resource, id) => clearAfter(api.delete(`/admin/${resource}/${id}`), { storefrontCatalog: touchesStorefrontCatalog(resource) }),
   uploadProductImages: (id, payload) => clearAfter(api.put(`/admin/products/${id}/images`, payload), { storefrontCatalog: true }),

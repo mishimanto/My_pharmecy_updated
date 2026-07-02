@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\BannerImage;
 use App\Services\AdminActivityService;
+use App\Services\PublicImageOptimizerService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class BannerImageController extends Controller
 {
@@ -28,20 +28,20 @@ class BannerImageController extends Controller
         return $this->ok($query->get(), 'Banner images loaded successfully.');
     }
 
-    public function store(Request $request, AdminActivityService $activity)
+    public function store(Request $request, AdminActivityService $activity, PublicImageOptimizerService $images)
     {
-        $data = $this->applyImage($request, $this->validated($request));
+        $data = $this->applyImage($request, $this->validated($request), $images);
         $banner = BannerImage::create($data);
         $activity->log($request, 'create', 'banner_images', $banner->id, null, $banner->toArray());
 
         return $this->ok($banner->fresh(), 'Banner image created successfully.', 201);
     }
 
-    public function update(Request $request, int $id, AdminActivityService $activity)
+    public function update(Request $request, int $id, AdminActivityService $activity, PublicImageOptimizerService $images)
     {
         $banner = BannerImage::findOrFail($id);
         $old = $banner->toArray();
-        $data = $this->applyImage($request, $this->validated($request), $banner);
+        $data = $this->applyImage($request, $this->validated($request), $images, $banner);
 
         $banner->update($data);
         $activity->log($request, 'update', 'banner_images', $banner->id, $old, $banner->fresh()->toArray());
@@ -53,7 +53,7 @@ class BannerImageController extends Controller
     {
         $banner = BannerImage::findOrFail($id);
         $old = $banner->toArray();
-        $this->deleteImage($banner->image_path);
+        app(PublicImageOptimizerService::class)->delete($banner->image_path);
         $banner->delete();
         $activity->log($request, 'delete', 'banner_images', $id, $old);
 
@@ -80,16 +80,15 @@ class BannerImageController extends Controller
         ]);
     }
 
-    private function applyImage(Request $request, array $data, ?BannerImage $banner = null): array
+    private function applyImage(Request $request, array $data, PublicImageOptimizerService $images, ?BannerImage $banner = null): array
     {
         unset($data['image']);
 
         if ($request->hasFile('image')) {
-            $this->deleteImage($banner?->image_path);
-            $data['image_path'] = $request->file('image')->store('banner-images', 'public');
+            $data['image_path'] = $images->store($request->file('image'), 'banner-images', $banner?->image_path, 1600, 900, 82);
             $data['image_url'] = null;
         } elseif ($request->filled('image_url') && $request->string('image_url')->toString() !== $banner?->image_url) {
-            $this->deleteImage($banner?->image_path);
+            $images->delete($banner?->image_path);
             $data['image_path'] = null;
         }
 
@@ -98,12 +97,5 @@ class BannerImageController extends Controller
         $data['status'] = $data['status'] ?? 'active';
 
         return $data;
-    }
-
-    private function deleteImage(?string $path): void
-    {
-        if ($path) {
-            Storage::disk('public')->delete($path);
-        }
     }
 }

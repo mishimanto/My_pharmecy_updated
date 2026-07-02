@@ -8,49 +8,10 @@ import AdminFilterBar from '../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import AdminStatCard from '../../components/admin/AdminStatCard'
 import { adminApi } from '../../api/adminApi'
+import { useAdminFreshListQuery } from '../../queries/adminQueries'
 
 const statuses = ['', 'active', 'inactive', 'suspended']
 const statusLabels = { active: 'Active', inactive: 'Inactive', suspended: 'Suspended' }
-const STAFF_CACHE_KEY = 'admin_staff_payload_v1'
-const STAFF_CACHE_TTL = 2 * 60 * 1000
-
-function cacheKey(params) {
-  return JSON.stringify({
-    search: params.search || '',
-    status: params.status || '',
-    page: params.page || 1,
-  })
-}
-
-function readCache(params) {
-  if (typeof window === 'undefined') return null
-
-  try {
-    const cache = JSON.parse(window.sessionStorage.getItem(STAFF_CACHE_KEY) || '{}')
-    const cached = cache[cacheKey(params)]
-    if (!cached || Date.now() - cached.cachedAt > STAFF_CACHE_TTL) return null
-    return cached.payload
-  } catch {
-    return null
-  }
-}
-
-function writeCache(params, payload) {
-  if (typeof window === 'undefined') return
-
-  try {
-    const cache = JSON.parse(window.sessionStorage.getItem(STAFF_CACHE_KEY) || '{}')
-    cache[cacheKey(params)] = { payload, cachedAt: Date.now() }
-    window.sessionStorage.setItem(STAFF_CACHE_KEY, JSON.stringify(cache))
-  } catch {
-    // Ignore storage issues.
-  }
-}
-
-function clearCache() {
-  if (typeof window === 'undefined') return
-  window.sessionStorage.removeItem(STAFF_CACHE_KEY)
-}
 
 function getInitials(name) {
   return String(name || 'S')
@@ -80,14 +41,20 @@ function actionButtonClass(tone = 'slate') {
 
 export default function Staff() {
   const initialParams = { search: '', status: '', page: 1 }
-  const initialCache = readCache(initialParams)
   const [params, setParams] = useState(initialParams)
-  const [staff, setStaff] = useState(initialCache?.staff || [])
-  const [allStaff, setAllStaff] = useState([])
-  const [meta, setMeta] = useState(initialCache?.meta || null)
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(!initialCache)
-  const [updating, setUpdating] = useState(false)
+  const staffQuery = useAdminFreshListQuery('staff', params, {
+    placeholderData: (previous) => previous,
+    staleTime: 1000 * 30,
+  })
+  const statsQuery = useAdminFreshListQuery('staff', { page: 1, per_page: 100 }, {
+    staleTime: 1000 * 30,
+  })
+  const staff = staffQuery.data?.data || []
+  const allStaff = statsQuery.data?.data || []
+  const meta = staffQuery.data || null
+  const loading = staffQuery.isLoading && !staffQuery.data
+  const updating = staffQuery.isFetching && Boolean(staffQuery.data)
 
   const stats = useMemo(() => ({
     total: allStaff.length,
@@ -119,52 +86,11 @@ export default function Staff() {
     },
   ]
 
-  const loadStats = () => {
-    adminApi.listFresh('staff', { page: 1, per_page: 100 })
-      .then(({ data }) => setAllStaff(data.data?.data || []))
-      .catch(() => {})
-  }
-
   useEffect(() => {
-    loadStats()
-  }, [])
-
-  useEffect(() => {
-    let active = true
-    const cached = readCache(params)
-
-    if (cached) {
-      setStaff(cached.staff || [])
-      setMeta(cached.meta || null)
-      setLoading(false)
-      setUpdating(false)
-      return () => { active = false }
+    if (staffQuery.isError) {
+      toast.error('Unable to load staff.')
     }
-
-    const hasRows = staff.length > 0
-    setLoading(!hasRows)
-    setUpdating(hasRows)
-
-    adminApi.listFresh('staff', params)
-      .then(({ data }) => {
-        if (!active) return
-        const payload = {
-          staff: data.data?.data || [],
-          meta: data.data,
-        }
-        setStaff(payload.staff)
-        setMeta(payload.meta)
-        writeCache(params, payload)
-      })
-      .catch(() => active && toast.error('Unable to load staff.'))
-      .finally(() => {
-        if (!active) return
-        setLoading(false)
-        setUpdating(false)
-      })
-
-    return () => { active = false }
-  }, [params])
+  }, [staffQuery.isError])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -173,13 +99,6 @@ export default function Staff() {
 
     return () => clearTimeout(timeout)
   }, [search])
-
-  const refresh = () => {
-    clearCache()
-    loadStats()
-    setParams((current) => ({ ...current }))
-  }
-
   const changeStatus = async (member, status) => {
     const result = await Swal.fire({
       title: 'Update staff status?',
@@ -193,7 +112,7 @@ export default function Staff() {
     try {
       await adminApi.patch('staff', member.id, 'status', { status })
       toast.success('Status updated.')
-      refresh()
+      await Promise.all([staffQuery.refetch(), statsQuery.refetch()])
     } catch (error) {
       toast.error(error.response?.data?.message || 'Unable to update staff status.')
     }
@@ -213,7 +132,7 @@ export default function Staff() {
     try {
       await adminApi.remove('staff', member.id)
       toast.success('Staff member deleted.')
-      refresh()
+      await Promise.all([staffQuery.refetch(), statsQuery.refetch()])
     } catch (error) {
       toast.error(error.response?.data?.message || 'Unable to delete staff member.')
     }

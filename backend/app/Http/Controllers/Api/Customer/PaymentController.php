@@ -81,7 +81,7 @@ class PaymentController extends Controller
 
         return $this->ok(
             $order->fresh()->load('payment'),
-            'Payment proof submitted successfully. The admin team will verify it.'
+            'Payment proof submitted successfully. We will verify it shortly.'
         );
     }
 

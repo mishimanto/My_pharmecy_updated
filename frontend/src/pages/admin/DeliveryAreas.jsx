@@ -7,56 +7,16 @@ import AdminFilterBar from '../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import AdminStatCard from '../../components/admin/AdminStatCard'
 import EmptyState from '../../components/common/EmptyState'
+import { useAdminFreshListQuery } from '../../queries/adminQueries'
 import { date, money } from '../../utils/formatters'
 
 const statuses = ['', 'active', 'inactive']
-const DELIVERY_AREAS_CACHE_KEY = 'admin_delivery_areas_payload_v1'
-const DELIVERY_AREAS_CACHE_TTL = 2 * 60 * 1000
 
 const defaultForm = {
   area_name: '',
   city: '',
   delivery_charge: '',
   status: 'active',
-}
-
-function cacheKey(params) {
-  return JSON.stringify({
-    search: params.search || '',
-    status: params.status || '',
-    city: params.city || '',
-    page: params.page || 1,
-  })
-}
-
-function readCache(params) {
-  if (typeof window === 'undefined') return null
-
-  try {
-    const cache = JSON.parse(window.sessionStorage.getItem(DELIVERY_AREAS_CACHE_KEY) || '{}')
-    const cached = cache[cacheKey(params)]
-    if (!cached || Date.now() - cached.cachedAt > DELIVERY_AREAS_CACHE_TTL) return null
-    return cached.payload
-  } catch {
-    return null
-  }
-}
-
-function writeCache(params, payload) {
-  if (typeof window === 'undefined') return
-
-  try {
-    const cache = JSON.parse(window.sessionStorage.getItem(DELIVERY_AREAS_CACHE_KEY) || '{}')
-    cache[cacheKey(params)] = { payload, cachedAt: Date.now() }
-    window.sessionStorage.setItem(DELIVERY_AREAS_CACHE_KEY, JSON.stringify(cache))
-  } catch {
-    // Ignore storage issues.
-  }
-}
-
-function clearCache() {
-  if (typeof window === 'undefined') return
-  window.sessionStorage.removeItem(DELIVERY_AREAS_CACHE_KEY)
 }
 
 function statusBadgeClass(status) {
@@ -86,17 +46,23 @@ function actionButtonClass(tone = 'slate') {
 
 export default function DeliveryAreas() {
   const initialParams = { search: '', status: '', city: '', page: 1 }
-  const initialCache = readCache(initialParams)
   const [params, setParams] = useState(initialParams)
-  const [areas, setAreas] = useState(initialCache?.areas || [])
-  const [meta, setMeta] = useState(initialCache?.meta || null)
-  const [allAreas, setAllAreas] = useState([])
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(!initialCache)
-  const [updating, setUpdating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(defaultForm)
+  const areasQuery = useAdminFreshListQuery('delivery-areas', params, {
+    placeholderData: (previous) => previous,
+    staleTime: 1000 * 30,
+  })
+  const statsQuery = useAdminFreshListQuery('delivery-areas', { page: 1, per_page: 100 }, {
+    staleTime: 1000 * 30,
+  })
+  const areas = areasQuery.data?.data || []
+  const meta = areasQuery.data || null
+  const allAreas = statsQuery.data?.data || []
+  const loading = areasQuery.isLoading && !areasQuery.data
+  const updating = areasQuery.isFetching && Boolean(areasQuery.data)
 
   const cityOptions = useMemo(() => {
     const cities = allAreas.map((area) => area.city).filter(Boolean)
@@ -144,52 +110,11 @@ export default function DeliveryAreas() {
     },
   ]
 
-  const loadAreaOptions = () => {
-    adminApi.listFresh('delivery-areas', { page: 1, per_page: 100 })
-      .then((res) => setAllAreas(res.data.data?.data || []))
-      .catch(() => {})
-  }
-
   useEffect(() => {
-    loadAreaOptions()
-  }, [])
-
-  useEffect(() => {
-    let active = true
-    const cached = readCache(params)
-
-    if (cached) {
-      setAreas(cached.areas || [])
-      setMeta(cached.meta || null)
-      setLoading(false)
-      setUpdating(false)
-      return () => { active = false }
+    if (areasQuery.isError) {
+      toast.error('Unable to load delivery areas.')
     }
-
-    const hasRows = areas.length > 0
-    setLoading(!hasRows)
-    setUpdating(hasRows)
-
-    adminApi.listFresh('delivery-areas', params)
-      .then((res) => {
-        if (!active) return
-        const payload = {
-          areas: res.data.data?.data || [],
-          meta: res.data.data,
-        }
-        setAreas(payload.areas)
-        setMeta(payload.meta)
-        writeCache(params, payload)
-      })
-      .catch(() => active && toast.error('Unable to load delivery areas.'))
-      .finally(() => {
-        if (!active) return
-        setLoading(false)
-        setUpdating(false)
-      })
-
-    return () => { active = false }
-  }, [params])
+  }, [areasQuery.isError])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -202,12 +127,6 @@ export default function DeliveryAreas() {
   const resetForm = () => {
     setEditingId(null)
     setForm(defaultForm)
-  }
-
-  const refreshList = () => {
-    clearCache()
-    loadAreaOptions()
-    setParams((current) => ({ ...current }))
   }
 
   const startEdit = (area) => {
@@ -251,7 +170,7 @@ export default function DeliveryAreas() {
         toast.success('Delivery area created.')
       }
       resetForm()
-      refreshList()
+      await Promise.all([areasQuery.refetch(), statsQuery.refetch()])
     } catch (error) {
       const message = error.response?.data?.message || 'Unable to save delivery area.'
       toast.error(message)
@@ -276,7 +195,7 @@ export default function DeliveryAreas() {
       await adminApi.remove('delivery-areas', area.id)
       toast.success('Delivery area deleted.')
       if (editingId === area.id) resetForm()
-      refreshList()
+      await Promise.all([areasQuery.refetch(), statsQuery.refetch()])
     } catch (error) {
       toast.error(error.response?.data?.message || 'Unable to delete delivery area.')
     }

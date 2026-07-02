@@ -1,20 +1,34 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { FiArrowRight, FiCamera, FiFileText, FiHeart, FiMapPin, FiMessageSquare } from 'react-icons/fi'
 import { notificationApi } from '../../api/notificationApi'
-import { orderApi } from '../../api/orderApi'
-import { prescriptionApi } from '../../api/prescriptionApi'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
-import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
+import { useSiteSettings } from '../../context/SiteSettingsContext'
+import {
+  customerQueryKeys,
+  markNotificationReadInQueryData,
+  normalizeNotifications,
+  useNotificationsQuery,
+  useOrdersQuery,
+  usePrescriptionsQuery,
+} from '../../queries/customerQueries'
 import { date } from '../../utils/formatters'
-import { getOrderPath } from '../../utils/orderRouting'
 import { getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
+import { getCustomerNotificationLink, getCustomerNotificationMessage, getCustomerNotificationTitle } from '../../utils/customerNotificationDisplay'
 
-const ACCOUNT_ORDERS_CACHE_KEY = 'orders_list'
-const ACCOUNT_NOTIFICATIONS_CACHE_KEY = 'notifications_list'
-const ACCOUNT_PRESCRIPTIONS_CACHE_KEY = 'prescriptions_list'
+function statusTextClass(status, fallback = 'text-slate-950') {
+  const value = String(status || '').toLowerCase()
+
+  if (['delivered', 'paid', 'completed', 'refunded'].includes(value)) return 'text-emerald-700'
+  if (['cancelled', 'failed', 'returned', 'rejected', 'unpaid'].includes(value)) return 'text-rose-700'
+  if (['pending_confirmation', 'prescription_review', 'awaiting_proof', 'pending'].includes(value)) return 'text-amber-700'
+  if (['confirmed', 'processing', 'under_review', 'assigned', 'picked_up', 'out_for_delivery'].includes(value)) return 'text-sky-700'
+
+  return fallback
+}
 
 function formFromCustomer(customer) {
   return {
@@ -27,26 +41,55 @@ function formFromCustomer(customer) {
 }
 
 export default function Account() {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { customer, updateProfile } = useCustomerAuth()
   const { isBangla } = useLanguage()
+  const { settings } = useSiteSettings()
   const t = (bn, en) => (isBangla ? bn : en)
   const locale = isBangla ? 'bn-BD' : 'en-US'
-  const banglaFontClass = isBangla ? 'font-bangla' : ''
   const fileInputRef = useRef(null)
   const previewUrlRef = useRef('')
   const [form, setForm] = useState(() => formFromCustomer(customer))
   const [avatarFile, setAvatarFile] = useState(null)
   const [avatarPreview, setAvatarPreview] = useState(customer?.avatar || '')
   const [saving, setSaving] = useState(false)
-  const [orders, setOrders] = useState(() => readCustomerCache(ACCOUNT_ORDERS_CACHE_KEY, []))
-  const [notifications, setNotifications] = useState(() => readCustomerCache(ACCOUNT_NOTIFICATIONS_CACHE_KEY, []))
-  const [prescriptions, setPrescriptions] = useState(() => readCustomerCache(ACCOUNT_PRESCRIPTIONS_CACHE_KEY, []))
+  const ordersQuery = useOrdersQuery({ placeholderData: (previous) => previous })
+  const notificationsQuery = useNotificationsQuery({ placeholderData: (previous) => previous })
+  const prescriptionsQuery = usePrescriptionsQuery({ placeholderData: (previous) => previous })
+  const orders = useMemo(() => ordersQuery.data || [], [ordersQuery.data])
+  const notifications = useMemo(() => normalizeNotifications(notificationsQuery.data), [notificationsQuery.data])
+  const prescriptions = useMemo(() => prescriptionsQuery.data || [], [prescriptionsQuery.data])
   const quickLinks = useMemo(() => ([
-    { to: '/addresses', title: t('সেভ করা ঠিকানা', 'Saved addresses'), body: t('দ্রুত চেকআউটের জন্য ডিফল্ট ডেলিভারি ঠিকানা ম্যানেজ করুন।', 'Manage default delivery addresses for quicker checkout.'), icon: FiMapPin, tone: 'emerald' },
-    { to: '/prescriptions', title: t('প্রেসক্রিপশন', 'Prescriptions'), body: t('আপলোড করা প্রেসক্রিপশন ও ফার্মাসিস্ট রিভিউ ট্র্যাক করুন।', 'Track uploaded prescription files and pharmacist review.'), icon: FiFileText, tone: 'amber' },
-    { to: '/support', title: t('সাপোর্ট টিকিট', 'Support tickets'), body: t('সমস্যা জানান, প্রশ্ন করুন, এবং সাপোর্ট থ্রেড চালিয়ে যান।', 'Open complaints, ask questions, and continue support threads.'), icon: FiMessageSquare, tone: 'violet' },
-    { to: '/rewards', title: t('রিওয়ার্ড সেন্টার', 'Rewards center'), body: t('অর্ডার অ্যাক্টিভিটি থেকে আপনার মেম্বার পয়েন্ট সামারি দেখুন।', 'View your member points summary from order activity.'), icon: FiHeart, tone: 'rose' },
-  ]), [isBangla])
+    {
+      to: '/addresses',
+      title: t('সংরক্ষিত ঠিকানা', 'Saved addresses'),
+      body: t('দ্রুত চেকআউটের জন্য ডিফল্ট ডেলিভারি ঠিকানা ম্যানেজ করুন।', 'Manage default delivery addresses for quicker checkout.'),
+      icon: FiMapPin,
+      tone: 'emerald',
+    },
+    {
+      to: '/prescriptions',
+      title: t('প্রেসক্রিপশন', 'Prescriptions'),
+      body: t('আপলোড করা প্রেসক্রিপশন এবং রিভিউয়ের অবস্থা এক জায়গা থেকে দেখুন।', 'Review uploaded prescriptions and their approval status in one place.'),
+      icon: FiFileText,
+      tone: 'amber',
+    },
+    {
+      to: '/support',
+      title: t('সাপোর্ট টিকিট', 'Support tickets'),
+      body: t('সমস্যা জানান, প্রশ্ন করুন, এবং চলমান সাপোর্ট কথোপকথন দেখুন।', 'Report issues, ask questions, and continue support conversations.'),
+      icon: FiMessageSquare,
+      tone: 'violet',
+    },
+    {
+      to: '/rewards',
+      title: t('রিওয়ার্ড সেন্টার', 'Rewards center'),
+      body: t('অর্ডার এক্টিভিটি থেকে আপনার পয়েন্ট এবং সদস্য সুবিধার সারাংশ দেখুন।', 'View your points and member benefits summary from order activity.'),
+      icon: FiHeart,
+      tone: 'rose',
+    },
+  ].filter((item) => item.to !== '/rewards' || settings?.rewards_enabled !== false)), [isBangla, settings?.rewards_enabled])
 
   useEffect(() => {
     setForm(formFromCustomer(customer))
@@ -57,32 +100,45 @@ export default function Account() {
   }, [avatarFile, customer])
 
   useEffect(() => {
-    Promise.allSettled([orderApi.list(), notificationApi.list(), prescriptionApi.list()]).then((results) => {
-      const [ordersResult, notificationsResult, prescriptionsResult] = results
+    if (ordersQuery.isError) {
+      toast.error(t('সাম্প্রতিক অর্ডার লোড করা যায়নি।', 'Recent orders could not be loaded.'))
+    }
+  }, [ordersQuery.isError, t])
 
-      if (ordersResult.status === 'fulfilled') {
-        const nextOrders = ordersResult.value.data.data?.data || []
-        setOrders(nextOrders)
-        writeCustomerCache(ACCOUNT_ORDERS_CACHE_KEY, nextOrders)
-      }
-      if (notificationsResult.status === 'fulfilled') {
-        const nextNotifications = notificationsResult.value.data.data?.data || []
-        setNotifications(nextNotifications)
-        writeCustomerCache(ACCOUNT_NOTIFICATIONS_CACHE_KEY, nextNotifications)
-      }
-      if (prescriptionsResult.status === 'fulfilled') {
-        const nextPrescriptions = prescriptionsResult.value.data.data?.data || []
-        setPrescriptions(nextPrescriptions)
-        writeCustomerCache(ACCOUNT_PRESCRIPTIONS_CACHE_KEY, nextPrescriptions)
-      }
-    })
-  }, [])
+  useEffect(() => {
+    if (notificationsQuery.isError) {
+      toast.error(t('নোটিফিকেশন লোড করা যায়নি।', 'Notifications could not be loaded.'))
+    }
+  }, [notificationsQuery.isError, t])
+
+  useEffect(() => {
+    if (prescriptionsQuery.isError) {
+      toast.error(t('প্রেসক্রিপশন লোড করা যায়নি।', 'Prescriptions could not be loaded.'))
+    }
+  }, [prescriptionsQuery.isError, t])
 
   useEffect(() => () => {
     if (previewUrlRef.current) {
       URL.revokeObjectURL(previewUrlRef.current)
     }
   }, [])
+
+  const openNotification = async (item, event) => {
+    event.preventDefault()
+
+    const link = getCustomerNotificationLink(item) || '/notifications'
+
+    if (item.status !== 'read') {
+      try {
+        await notificationApi.read(item.id)
+        markNotificationReadInQueryData(queryClient, item.id)
+      } catch {
+        queryClient.invalidateQueries({ queryKey: customerQueryKeys.notifications })
+      }
+    }
+
+    navigate(link)
+  }
 
   const stats = useMemo(() => {
     const activeOrders = orders.filter((order) => !['delivered', 'cancelled', 'returned', 'refunded'].includes(order.order_status)).length
@@ -173,17 +229,17 @@ export default function Account() {
   }
 
   return (
-    <div className={banglaFontClass}>
+    <>
       <div className="grid gap-4 sm:gap-5 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="relative isolate overflow-hidden border border-sky-200 bg-[linear-gradient(180deg,#fdfefe_0%,#eef8ff_100%)] shadow-[0_24px_60px_-42px_rgba(14,116,144,0.28)]">
           <BubbleBackdrop tone="sky" />
-          <div className="relative flex flex-col items-start gap-4 border-b border-sky-100/80 p-4 sm:flex-row sm:items-center sm:p-6">
+          <div className="relative flex flex-row items-center gap-4 border-b border-sky-100/80 p-4 sm:flex-row sm:items-center sm:p-6">
             <div className="shrink-0">
               <button
                 type="button"
                 onClick={openAvatarPicker}
                 className="group relative block h-12 w-12 overflow-hidden rounded-full border border-sky-200 bg-white/90 shadow-[0_18px_30px_-24px_rgba(14,116,144,0.5)] focus:outline-none focus:ring-2 focus:ring-sky-300/40"
-                aria-label={t('প্রোফাইল ছবি আপলোড করুন', 'Upload profile photo')}
+                aria-label={t('প্রোফাইল ছবি আপলোড করুন।', 'Upload profile photo')}
               >
                 {avatarPreview ? (
                   <img src={avatarPreview} alt={form.full_name || customer?.full_name || t('কাস্টমার অ্যাভাটার', 'Customer avatar')} className="h-full w-full object-cover" />
@@ -208,8 +264,9 @@ export default function Account() {
 
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">{t('অ্যাকাউন্ট সেন্টার', 'Account center')}</p>
-              <h2 className="truncate text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl lg:text-3xl">{form.full_name || customer?.full_name || t('কাস্টমার অ্যাকাউন্ট', 'Customer account')}</h2>
-              
+              <h2 className="truncate text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl lg:text-3xl">
+                {form.full_name || customer?.full_name || t('কাস্টমার অ্যাকাউন্ট', 'Customer account')}
+              </h2>
             </div>
           </div>
 
@@ -232,17 +289,28 @@ export default function Account() {
               </select>
             </div>
             <div className="md:col-span-2">
-              <button disabled={saving} className="bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <button
+                  disabled={saving}
+                  className="inline-flex w-full items-center justify-center bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 sm:w-auto"
+                >
                 {saving ? t('প্রোফাইল সেভ হচ্ছে...', 'Saving profile...') : t('প্রোফাইল আপডেট করুন', 'Update profile')}
-              </button>
+                </button>
+                <Link
+                  to="/account/password"
+                  className="inline-flex w-full items-center justify-center border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700 sm:w-auto"
+                >
+                  {t('পাসওয়ার্ড পরিবর্তন', 'Change password')}
+                </Link>
+              </div>
             </div>
           </form>
         </section>
 
         <section className="grid gap-6">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
             <StatCard label={t('চলমান অর্ডার', 'Active orders')} value={stats.activeOrders.toLocaleString(locale)} tone="sky" />
-            <StatCard label={t('সেভ করা ঠিকানা', 'Saved addresses')} value={stats.addressCount.toLocaleString(locale)} tone="emerald" />
+            <StatCard label={t('সংরক্ষিত ঠিকানা', 'Saved addresses')} value={stats.addressCount.toLocaleString(locale)} tone="emerald" />
             <StatCard label={t('অনুমোদিত প্রেসক্রিপশন', 'Approved prescriptions')} value={stats.approvedPrescriptions.toLocaleString(locale)} tone="amber" />
             <StatCard label={t('অপঠিত আপডেট', 'Unread updates')} value={stats.unreadNotifications.toLocaleString(locale)} tone="violet" />
           </div>
@@ -278,10 +346,9 @@ export default function Account() {
       <div className="mt-8 grid gap-5 sm:mt-10 sm:gap-6 lg:grid-cols-2">
         <div className="relative isolate overflow-hidden border border-emerald-200 bg-[linear-gradient(180deg,#fcfffd_0%,#effcf6_100%)] p-4 shadow-[0_24px_60px_-42px_rgba(5,150,105,0.26)] sm:p-6">
           <BubbleBackdrop tone="emerald" />
-          <div className="relative flex flex-col items-start justify-between gap-3 border-b border-emerald-100/80 pb-4 sm:flex-row sm:items-center sm:gap-4">
+          <div className="relative flex flex-row items-center justify-between gap-3 border-b border-emerald-100/80 pb-4 sm:flex-row sm:items-center sm:gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">{t('সাম্প্রতিক অর্ডার', 'Recent orders')}</p>
-              <h3 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">{t('সর্বশেষ অ্যাকাউন্ট অ্যাক্টিভিটি।', 'Latest account activity.')}</h3>
             </div>
             <Link to="/orders" className="text-sm font-semibold text-slate-600 hover:text-slate-950">
               {t('সব দেখুন', 'View all')}
@@ -289,13 +356,13 @@ export default function Account() {
           </div>
           <div className="relative mt-4 space-y-3">
             {orders.slice(0, 3).map((order) => (
-              <Link key={order.id} to={getOrderPath(order)} className="block border border-white/70 bg-white/80 p-3 shadow-[0_18px_35px_-30px_rgba(5,150,105,0.36)] transition hover:border-emerald-300 sm:p-4">
+              <Link key={order.id} to={`/orders/${order.id}`} className="block border border-white/70 bg-white/80 p-3 shadow-[0_18px_35px_-30px_rgba(5,150,105,0.36)] transition hover:border-emerald-300 sm:p-4">
                 <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center sm:gap-3">
                   <div className="min-w-0">
                     <p className="font-semibold text-slate-950">{order.order_number}</p>
-                    <p className="mt-1 text-sm text-slate-500">{date(order.order_date, locale)} • {getOrderStatusLabel(order.order_status, isBangla)}</p>
+                    <p className={`mt-1 text-sm ${statusTextClass(order.order_status, 'text-slate-500')}`}>{date(order.order_date, locale)} • {getOrderStatusLabel(order.order_status, isBangla)}</p>
                   </div>
-                  <div className="text-sm font-semibold text-slate-950">{getPaymentStatusLabel(order.payment_status, isBangla)}</div>
+                  <div className={`text-sm font-semibold ${statusTextClass(order.payment_status)}`}>{getPaymentStatusLabel(order.payment_status, isBangla)}</div>
                 </div>
               </Link>
             ))}
@@ -305,10 +372,9 @@ export default function Account() {
 
         <div className="relative isolate overflow-hidden border border-violet-200 bg-[linear-gradient(180deg,#fefeff_0%,#f5f3ff_100%)] p-4 shadow-[0_24px_60px_-42px_rgba(124,58,237,0.24)] sm:p-6">
           <BubbleBackdrop tone="violet" />
-          <div className="relative flex flex-col items-start justify-between gap-3 border-b border-violet-100/80 pb-4 sm:flex-row sm:items-center sm:gap-4">
+          <div className="relative flex flex-row items-center justify-between gap-3 border-b border-violet-100/80 pb-4 sm:flex-row sm:items-center sm:gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-600">{t('নোটিফিকেশন', 'Notifications')}</p>
-              <h3 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">{t('অ্যাকাউন্ট ও ফার্মেসি আপডেট।', 'Account and pharmacy updates.')}</h3>
             </div>
             <Link to="/notifications" className="text-sm font-semibold text-slate-600 hover:text-slate-950">
               {t('সব দেখুন', 'View all')}
@@ -316,33 +382,35 @@ export default function Account() {
           </div>
           <div className="relative mt-4 space-y-3">
             {notifications.slice(0, 3).map((item) => (
-              <div key={item.id} className="border border-white/70 bg-white/85 p-3 shadow-[0_18px_35px_-30px_rgba(124,58,237,0.34)] sm:p-4">
+              <Link
+                key={item.id}
+                to={getCustomerNotificationLink(item) || '/notifications'}
+                onClick={(event) => openNotification(item, event)}
+                className={`block border p-3 shadow-[0_18px_35px_-30px_rgba(124,58,237,0.34)] transition hover:-translate-y-0.5 sm:p-4 ${
+                  item.status !== 'read'
+                    ? 'border-rose-200 bg-rose-50/90 hover:border-rose-300'
+                    : 'border-white/70 bg-white/85 hover:border-violet-200'
+                }`}
+              >
                 <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
                   <div className="min-w-0">
-                    <p className="font-semibold text-slate-950">{item.title}</p>
-                    <p className="mt-1 text-sm text-slate-500">{item.message}</p>
+                    <p className="font-semibold text-slate-950">{getCustomerNotificationTitle(item, isBangla)}</p>
+                    <p className="mt-1 text-sm text-slate-500">{getCustomerNotificationMessage(item, isBangla)}</p>
                   </div>
-                  <span className={`shrink-0 border px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${item.status === 'read' ? 'border-slate-200 bg-white text-slate-500' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
-                    {notificationStatusLabel(item.status, isBangla)}
-                  </span>
+                  {item.status !== 'read' ? (
+                    <span className="shrink-0 border border-rose-200 bg-rose-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-700">
+                      {t('নতুন', 'Unread')}
+                    </span>
+                  ) : null}
                 </div>
-              </div>
+              </Link>
             ))}
             {notifications.length === 0 ? <p className="text-sm text-slate-500">{t('এখনও কোনো নোটিফিকেশন নেই।', 'No notifications yet.')}</p> : null}
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
-}
-
-function notificationStatusLabel(status, isBangla = false) {
-  const labels = {
-    read: isBangla ? 'পড়া হয়েছে' : 'Read',
-    unread: isBangla ? 'নতুন' : 'Unread',
-  }
-
-  return labels[status] || status || (isBangla ? 'নতুন' : 'Unread')
 }
 
 function Field({ label, value, onChange, type = 'text' }) {

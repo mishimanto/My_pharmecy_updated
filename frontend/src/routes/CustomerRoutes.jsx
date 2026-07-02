@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import CustomerLoader from '../components/customer/CustomerLoader'
 import NotFoundPage from '../components/common/NotFoundPage'
+import { useSiteSettings } from '../context/SiteSettingsContext'
 import CustomerLayout from '../layouts/CustomerLayout'
 import ProtectedCustomerRoute from './ProtectedCustomerRoute'
 
@@ -17,6 +19,7 @@ const Checkout = lazyWithLoader(() => import('../pages/customer/Checkout'))
 const TrackOrder = lazyWithLoader(() => import('../pages/customer/TrackOrder'))
 const Wishlist = lazyWithLoader(() => import('../pages/customer/Wishlist'))
 const Account = lazyWithLoader(() => import('../pages/customer/Account'))
+const ChangePassword = lazyWithLoader(() => import('../pages/customer/ChangePassword'))
 const Addresses = lazyWithLoader(() => import('../pages/customer/Addresses'))
 const MyOrders = lazyWithLoader(() => import('../pages/customer/MyOrders'))
 const OrderDetails = lazyWithLoader(() => import('../pages/customer/OrderDetails'))
@@ -36,9 +39,15 @@ const PrivacyPolicy = lazyWithLoader(() => import('../pages/customer/PrivacyPoli
 const TermsConditions = lazyWithLoader(() => import('../pages/customer/TermsConditions'))
 const RefundPolicy = lazyWithLoader(() => import('../pages/customer/RefundPolicy'))
 
+function CustomerRouteFallback() {
+  return <CustomerLoader transition />
+}
+
 export default function CustomerRoutes() {
+  const { settings } = useSiteSettings()
+
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<CustomerRouteFallback />}>
       <Routes>
         <Route element={<CustomerLayout />}>
           <Route index element={<Home />} />
@@ -50,6 +59,7 @@ export default function CustomerRoutes() {
           <Route path="checkout" element={<Checkout />} />
           <Route path="track-order" element={<TrackOrder />} />
           <Route path="account" element={<ProtectedCustomerRoute><Account /></ProtectedCustomerRoute>} />
+          <Route path="account/password" element={<ProtectedCustomerRoute><ChangePassword /></ProtectedCustomerRoute>} />
           <Route path="addresses" element={<ProtectedCustomerRoute><Addresses /></ProtectedCustomerRoute>} />
           <Route path="orders" element={<ProtectedCustomerRoute><MyOrders /></ProtectedCustomerRoute>} />
           <Route path="orders/:id" element={<OrderDetails />} />
@@ -57,7 +67,14 @@ export default function CustomerRoutes() {
           <Route path="orders/:id/tracking" element={<Tracking />} />
           <Route path="prescriptions" element={<ProtectedCustomerRoute><Prescriptions /></ProtectedCustomerRoute>} />
           <Route path="prescriptions/:id" element={<ProtectedCustomerRoute><PrescriptionDetails /></ProtectedCustomerRoute>} />
-          <Route path="rewards" element={<ProtectedCustomerRoute><Rewards /></ProtectedCustomerRoute>} />
+          <Route
+            path="rewards"
+            element={
+              settings?.rewards_enabled === false
+                ? <Navigate to="/account" replace />
+                : <ProtectedCustomerRoute><Rewards /></ProtectedCustomerRoute>
+            }
+          />
           <Route path="upload-prescription" element={<ProtectedCustomerRoute><UploadPrescription /></ProtectedCustomerRoute>} />
           <Route path="support" element={<ProtectedCustomerRoute><Support /></ProtectedCustomerRoute>} />
           <Route path="support/:reference" element={<ProtectedCustomerRoute><SupportDetails /></ProtectedCustomerRoute>} />

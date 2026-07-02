@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\AdminAuthController;
 use App\Http\Controllers\Api\Admin\AdminActivityLogController;
+use App\Http\Controllers\Api\Admin\AdminAiController;
 use App\Http\Controllers\Api\Admin\BannerImageController as AdminBannerImageController;
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\DashboardController;
@@ -34,6 +35,7 @@ use App\Http\Controllers\Api\Admin\SupplierController;
 use App\Http\Controllers\Api\Admin\SupportManagementController;
 use App\Http\Controllers\Api\Admin\UserManagementController;
 use App\Http\Controllers\Api\Customer\AddressController;
+use App\Http\Controllers\Api\Customer\AiAssistantController;
 use App\Http\Controllers\Api\Customer\AuthController;
 use App\Http\Controllers\Api\Customer\BannerImageController;
 use App\Http\Controllers\Api\Customer\CartController;
@@ -50,6 +52,7 @@ use App\Http\Controllers\Api\Customer\PaymentController;
 use App\Http\Controllers\Api\Customer\PaymentMethodController;
 use App\Http\Controllers\Api\Customer\PrescriptionController;
 use App\Http\Controllers\Api\Customer\ProductBrowseController;
+use App\Http\Controllers\Api\Customer\RewardController;
 use App\Http\Controllers\Api\Customer\ReturnRequestController;
 use App\Http\Controllers\Api\Customer\SupportTicketController;
 use App\Http\Controllers\Api\SiteSettingsController;
@@ -74,12 +77,27 @@ Route::get('/delivery-areas', fn () => [
         ->get(),
     'errors' => null,
 ]);
-Route::get('/manufacturers', fn () => [
-    'success' => true,
-    'message' => 'ম্যানুফ্যাকচারার তালিকা পাওয়া গেছে।',
-    'data' => \App\Models\Manufacturer::where('status', 'active')->orderBy('manufacturer_name')->get(),
-    'errors' => null,
-]);
+Route::get('/manufacturers', function () {
+    $catalog = app(\App\Services\ProductCatalogService::class);
+
+    return [
+        'success' => true,
+        'message' => 'Manufacturers loaded successfully.',
+        'data' => \App\Models\Manufacturer::query()
+            ->where('status', 'active')
+            ->withCount([
+                'products as products_count' => function ($query) use ($catalog) {
+                    $query
+                        ->where('is_active', true)
+                        ->whereHas('batches', $catalog->validBatchConstraint());
+                },
+            ])
+            ->orderByDesc('products_count')
+            ->orderBy('manufacturer_name')
+            ->get(),
+        'errors' => null,
+    ];
+});
 
 Route::get('/site-settings', [SiteSettingsController::class, 'show']);
 Route::get('/hero-slides', [HeroSlideController::class, 'index']);
@@ -100,6 +118,9 @@ Route::prefix('customer')->group(function () {
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');
     Route::get('/products', [ProductBrowseController::class, 'index']);
     Route::get('/products/{slug}', [ProductBrowseController::class, 'show']);
+    Route::get('/ai/config', [AiAssistantController::class, 'config']);
+    Route::post('/ai/search', [AiAssistantController::class, 'smartSearch'])->middleware('throttle:20,1');
+    Route::post('/ai/products/{slug}/question', [AiAssistantController::class, 'productQuestion'])->middleware('throttle:20,1');
     Route::get('/auth/{provider}/redirect', [AuthController::class, 'redirect']);
     Route::get('/auth/{provider}/callback', [AuthController::class, 'callback']);
     Route::get('/cart', [CartController::class, 'index']);
@@ -119,6 +140,7 @@ Route::prefix('customer')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::get('/profile', [AuthController::class, 'profile']);
         Route::put('/profile', [AuthController::class, 'updateProfile']);
+        Route::put('/profile/password', [AuthController::class, 'changePassword']);
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::apiResource('addresses', AddressController::class)->except(['show']);
         Route::patch('/addresses/{id}/default', [AddressController::class, 'setDefault']);
@@ -129,6 +151,7 @@ Route::prefix('customer')->group(function () {
         Route::post('/support-tickets', [SupportTicketController::class, 'store']);
         Route::get('/support-tickets/{id}', [SupportTicketController::class, 'show']);
         Route::post('/support-tickets/{id}/replies', [SupportTicketController::class, 'reply']);
+        Route::post('/ai/support/draft', [AiAssistantController::class, 'supportDraft'])->middleware('throttle:15,1');
         Route::get('/returns', [ReturnRequestController::class, 'index']);
         Route::get('/returns/{id}', [ReturnRequestController::class, 'show']);
         Route::get('/notifications', [NotificationController::class, 'index']);
@@ -137,13 +160,16 @@ Route::prefix('customer')->group(function () {
         Route::post('/prescriptions', [PrescriptionController::class, 'store']);
         Route::get('/prescriptions/{id}', [PrescriptionController::class, 'show']);
         Route::delete('/prescriptions/{id}', [PrescriptionController::class, 'destroy']);
-
+        Route::get('/rewards', [RewardController::class, 'summary']);
+        Route::post('/rewards/claim', [RewardController::class, 'claim']);
     });
 });
 
 Route::prefix('admin')->group(function () {
     Route::post('/login', [AdminAuthController::class, 'login'])->middleware('throttle:5,1');
     Route::post('/login/2fa', [AdminAuthController::class, 'verifyTwoFactor'])->middleware('throttle:5,1');
+    Route::post('/forgot-password', [AdminAuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
+    Route::post('/reset-password', [AdminAuthController::class, 'resetPassword'])->middleware('throttle:5,1');
 
     Route::middleware(['auth:sanctum', 'staff.auth'])->group(function () {
         Route::get('/me', [AdminAuthController::class, 'me']);
@@ -156,6 +182,9 @@ Route::prefix('admin')->group(function () {
         Route::post('/security/password-confirm', [SecurityController::class, 'confirmPassword']);
         Route::patch('/security/2fa', [SecurityController::class, 'updateTwoFactor']);
         Route::post('/security/staff-sessions/{id}/revoke', [SecurityController::class, 'revokeStaffSession'])->middleware(['permission:staff.manage', 'sensitive.confirm']);
+        Route::get('/ai/summary', [AdminAiController::class, 'summary'])->middleware('permission:ai.manage');
+        Route::put('/ai/settings', [AdminAiController::class, 'updateSettings'])->middleware(['permission:ai.manage', 'sensitive.confirm']);
+        Route::get('/ai/interactions', [AdminAiController::class, 'interactions'])->middleware('permission:ai.manage');
         Route::get('/dashboard', [DashboardController::class, 'summary'])->middleware('permission:report.view');
         Route::get('/dashboard/summary', [DashboardController::class, 'summary'])->middleware('permission:report.view');
         Route::get('/dashboard/recent-orders', [DashboardController::class, 'recentOrders'])->middleware('permission:report.view');
@@ -314,3 +343,5 @@ Route::prefix('admin')->group(function () {
 
     });
 });
+
+

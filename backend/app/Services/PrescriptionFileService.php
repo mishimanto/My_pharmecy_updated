@@ -15,10 +15,6 @@ class PrescriptionFileService
 {
     public function store(UploadedFile $file): string
     {
-        if ($this->isPdf($file)) {
-            return $file->store('prescriptions', 'public');
-        }
-
         return $this->storeImage($file);
     }
 
@@ -42,18 +38,12 @@ class PrescriptionFileService
                 ->encode(new WebpEncoder(82));
         } catch (Throwable) {
             throw ValidationException::withMessages([
-                'prescription_file' => 'The prescription file must be a valid image or PDF.',
+                'prescription_file' => 'The prescription file must be a valid image.',
             ]);
         }
 
         Storage::disk('public')->put($path, (string) $image);
 
         return $path;
-    }
-
-    private function isPdf(UploadedFile $file): bool
-    {
-        return $file->getClientOriginalExtension()
-            && strtolower($file->getClientOriginalExtension()) === 'pdf';
     }
 }

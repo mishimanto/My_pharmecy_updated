@@ -1,35 +1,62 @@
-const CATEGORY_NAME_TRANSLATIONS = {
-  'Cardiac Care': 'কার্ডিয়াক কেয়ার',
-  'Child Care': 'চাইল্ড কেয়ার',
-  'Diabetes Care': 'ডায়াবেটিস কেয়ার',
-  'Gastric Care': 'গ্যাস্ট্রিক কেয়ার',
-  'Pain Relief': 'ব্যথা উপশম',
-  'Prescription Medicines': 'প্রেসক্রিপশন পণ্য',
-  'Prescription Products': 'প্রেসক্রিপশন পণ্য',
-  'Respiratory': 'শ্বাসযন্ত্রিক',
-  'Skin Care': 'ত্বকের যত্ন',
-  'Vitamins & Supplements': 'ভিটামিন ও সাপ্লিমেন্ট',
-  "Women's Health": 'মহিলাদের স্বাস্থ্য',
-  'Medical Devices': 'মেডিকেল ডিভাইস',
-  'First Aid & Hygiene': 'ফার্স্ট এইড ও হাইজিন',
-  'Mother & Baby Care': 'মা ও শিশু যত্ন',
-  'Personal Care': 'পার্সোনাল কেয়ার',
-}
-
 export function getCategoryName(category, isBangla = false, fallback = null) {
   const effectiveFallback = fallback ?? (isBangla ? 'স্বাস্থ্যসেবা' : 'Healthcare')
   if (!category) return effectiveFallback
 
-  const categoryName = typeof category === 'string' ? category : category.category_name || ''
+  const categoryName = typeof category === 'string'
+    ? String(category).trim()
+    : String(category.category_name || '').trim()
+
   if (!categoryName) return effectiveFallback
 
   if (!isBangla) {
     return categoryName
   }
 
-  if (typeof category === 'object' && category.category_name_bn) {
-    return category.category_name_bn
+  if (typeof category === 'object') {
+    const banglaName = String(category.category_name_bn || '').trim()
+    if (banglaName) {
+      return banglaName
+    }
   }
 
-  return CATEGORY_NAME_TRANSLATIONS[categoryName] || categoryName
+  return categoryName
+}
+
+export function getCategorySlug(category) {
+  if (!category) return ''
+
+  const explicitSlug = typeof category === 'object' ? category.slug || category.category_slug : ''
+  const source = explicitSlug || (typeof category === 'string' ? category : category.category_name || category.name || '')
+  const slug = slugifyCatalogValue(source)
+
+  return slug || String(typeof category === 'object' ? category.id || '' : '')
+}
+
+export function getManufacturerSlug(manufacturer) {
+  if (!manufacturer) return ''
+
+  const explicitSlug = typeof manufacturer === 'object' ? manufacturer.slug || manufacturer.manufacturer_slug : ''
+  const source = explicitSlug || (typeof manufacturer === 'string' ? manufacturer : manufacturer.manufacturer_name || manufacturer.name || '')
+  const slug = slugifyCatalogValue(source)
+
+  return slug || String(typeof manufacturer === 'object' ? manufacturer.id || '' : '')
+}
+
+export function getCategoryProductsPath(category) {
+  const slug = getCategorySlug(category)
+  return slug ? `/products?category=${encodeURIComponent(slug)}` : '/products'
+}
+
+export function getManufacturerProductsPath(manufacturer) {
+  const slug = getManufacturerSlug(manufacturer)
+  return slug ? `/products?manufacturer=${encodeURIComponent(slug)}` : '/products'
+}
+
+export function slugifyCatalogValue(value) {
+  return String(value || '')
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, ' and ')
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-+|-+$/g, '')
 }

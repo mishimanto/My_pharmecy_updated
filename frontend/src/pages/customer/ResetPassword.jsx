@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import AuthLayout from '../../layouts/AuthLayout'
 import { customerAuthApi } from '../../api/customerAuthApi'
+import AuthPasswordField from '../../components/common/AuthPasswordField'
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams()
@@ -59,27 +60,23 @@ export default function ResetPassword() {
           />
         </div>
 
-        <div>
-          <label className="text-sm font-medium text-slate-700">New password</label>
-          <input
-            className="mt-2 w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
-            type="password"
-            placeholder="Enter a new password"
-            value={form.password}
-            onChange={(event) => setForm({ ...form, password: event.target.value })}
-          />
-        </div>
+        <AuthPasswordField
+          label="New password"
+          placeholder="Enter a new password"
+          className="mt-2"
+          autoComplete="new-password"
+          value={form.password}
+          onChange={(event) => setForm({ ...form, password: event.target.value })}
+        />
 
-        <div>
-          <label className="text-sm font-medium text-slate-700">Confirm password</label>
-          <input
-            className="mt-2 w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
-            type="password"
-            placeholder="Re-enter your new password"
-            value={form.password_confirmation}
-            onChange={(event) => setForm({ ...form, password_confirmation: event.target.value })}
-          />
-        </div>
+        <AuthPasswordField
+          label="Confirm password"
+          placeholder="Re-enter your new password"
+          className="mt-2"
+          autoComplete="new-password"
+          value={form.password_confirmation}
+          onChange={(event) => setForm({ ...form, password_confirmation: event.target.value })}
+        />
 
         {!isReady ? (
           <div className="border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">

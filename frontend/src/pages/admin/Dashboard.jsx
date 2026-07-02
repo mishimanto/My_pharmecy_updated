@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
@@ -13,11 +13,18 @@ import {
   FiTruck,
   FiUsers,
 } from 'react-icons/fi'
-import { adminApi } from '../../api/adminApi'
 import AdminChart from '../../components/admin/AdminChart'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import AdminStatCard from '../../components/admin/AdminStatCard'
 // import PageHeader from '../../components/common/PageHeader'
+import {
+  useAdminDashboardLowStockQuery,
+  useAdminDashboardNearExpiryQuery,
+  useAdminDashboardPendingPrescriptionsQuery,
+  useAdminDashboardRecentOrdersQuery,
+  useAdminDashboardSummaryQuery,
+  useAdminReportQuery,
+} from '../../queries/adminQueries'
 import { date, money } from '../../utils/formatters'
 import { getOrderStatusLabel } from '../../utils/statusLabels'
 import { delayedAnimation } from '../../utils/adminChartOptions'
@@ -34,8 +41,6 @@ const labels = {
   open_support_tickets: 'Support Tickets',
   pending_return_requests: 'Pending Returns',
 }
-const DASHBOARD_CACHE_KEY = 'admin_dashboard_payload_v3'
-const DASHBOARD_CACHE_TTL = 2 * 60 * 1000
 const DASHBOARD_REPORT_DAYS = 30
 const statVariants = {
   total_users: 'emerald',
@@ -60,32 +65,6 @@ const statIcons = {
   near_expiry_batches: FiPackage,
   open_support_tickets: FiMessageSquare,
   pending_return_requests: FiRotateCcw,
-}
-
-function getCachedDashboard() {
-  if (typeof window === 'undefined') return null
-
-  try {
-    const cached = JSON.parse(window.sessionStorage.getItem(DASHBOARD_CACHE_KEY) || 'null')
-    if (!cached || Date.now() - cached.cachedAt > DASHBOARD_CACHE_TTL) return null
-    return cached.payload
-  } catch {
-    return null
-  }
-}
-
-function setCachedDashboard(payload) {
-  if (typeof window === 'undefined') return
-
-  try {
-    window.sessionStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ payload, cachedAt: Date.now() }))
-  } catch {
-    // Ignore storage issues.
-  }
-}
-
-function mergeCachedDashboard(payload) {
-  setCachedDashboard({ ...(getCachedDashboard() || {}), ...payload })
 }
 
 function localDateString(value) {
@@ -122,16 +101,30 @@ function rowsFrom(payload) {
 }
 
 export default function Dashboard() {
-  const cachedDashboard = useMemo(() => getCachedDashboard(), [])
-  const [summary, setSummary] = useState(cachedDashboard?.summary || {})
-  const [orders, setOrders] = useState(cachedDashboard?.orders || [])
-  const [prescriptions, setPrescriptions] = useState(cachedDashboard?.prescriptions || [])
-  const [lowStock, setLowStock] = useState(cachedDashboard?.lowStock || [])
-  const [nearExpiry, setNearExpiry] = useState(cachedDashboard?.nearExpiry || [])
-  const [salesReport, setSalesReport] = useState(cachedDashboard?.salesReport || { tables: {} })
-  const [inventoryReport, setInventoryReport] = useState(cachedDashboard?.inventoryReport || { tables: {} })
-  const [loading, setLoading] = useState(!cachedDashboard)
-  const [reportsLoading, setReportsLoading] = useState(!cachedDashboard?.salesReport || !cachedDashboard?.inventoryReport)
+  const reportParams = useMemo(() => dashboardReportParams(), [])
+  const summaryQuery = useAdminDashboardSummaryQuery({ staleTime: 1000 * 30 })
+  const ordersQuery = useAdminDashboardRecentOrdersQuery({ staleTime: 1000 * 30 })
+  const prescriptionsQuery = useAdminDashboardPendingPrescriptionsQuery({ staleTime: 1000 * 30 })
+  const lowStockQuery = useAdminDashboardLowStockQuery({ staleTime: 1000 * 30 })
+  const nearExpiryQuery = useAdminDashboardNearExpiryQuery({ staleTime: 1000 * 30 })
+  const salesReportQuery = useAdminReportQuery('sales', reportParams, { staleTime: 1000 * 60 })
+  const inventoryReportQuery = useAdminReportQuery('inventory', reportParams, { staleTime: 1000 * 60 })
+
+  const summary = summaryQuery.data || {}
+  const orders = listFrom(ordersQuery.data)
+  const prescriptions = listFrom(prescriptionsQuery.data)
+  const lowStock = listFrom(lowStockQuery.data)
+  const nearExpiry = listFrom(nearExpiryQuery.data)
+  const salesReport = salesReportQuery.data || { tables: {} }
+  const inventoryReport = inventoryReportQuery.data || { tables: {} }
+  const loading = (
+    summaryQuery.isLoading
+    || ordersQuery.isLoading
+    || prescriptionsQuery.isLoading
+    || lowStockQuery.isLoading
+    || nearExpiryQuery.isLoading
+  ) && !summaryQuery.data
+  const reportsLoading = salesReportQuery.isLoading || inventoryReportQuery.isLoading
   const dailySalesTrend = useMemo(() => buildDailySalesTrend(salesReport?.tables?.daily_sales || []), [salesReport])
   const inventoryShare = useMemo(() => buildInventoryShare(inventoryReport?.tables?.stock_value || []), [inventoryReport])
   const topSellingProducts = useMemo(() => buildTopSellingProducts(salesReport?.tables?.top_selling_medicines || []), [salesReport])
@@ -162,67 +155,28 @@ export default function Dashboard() {
   }), [])
 
   useEffect(() => {
-    if (cachedDashboard) return
-
-    Promise.all([
-      adminApi.dashboardSummary(),
-      adminApi.listFresh('orders', { per_page: 10 }),
-      adminApi.listFresh('prescriptions', { status: 'pending', per_page: 10 }),
-      adminApi.dashboardLowStock(),
-      adminApi.dashboardNearExpiry(),
-    ]).then(([summaryRes, orderRes, prescriptionRes, lowStockRes, nearExpiryRes]) => {
-      const payload = {
-        summary: summaryRes.data.data || {},
-        orders: listFrom(orderRes.data.data?.data || orderRes.data.data),
-        prescriptions: listFrom(prescriptionRes.data.data?.data || prescriptionRes.data.data),
-        lowStock: listFrom(lowStockRes.data.data),
-        nearExpiry: listFrom(nearExpiryRes.data.data),
-      }
-
-      setSummary(payload.summary)
-      setOrders(payload.orders)
-      setPrescriptions(payload.prescriptions)
-      setLowStock(payload.lowStock)
-      setNearExpiry(payload.nearExpiry)
-      mergeCachedDashboard(payload)
-    }).catch(() => toast.error('Unable to load dashboard data.')).finally(() => setLoading(false))
-  }, [cachedDashboard])
+    if (
+      summaryQuery.isError
+      || ordersQuery.isError
+      || prescriptionsQuery.isError
+      || lowStockQuery.isError
+      || nearExpiryQuery.isError
+    ) {
+      toast.error('Unable to load dashboard data.')
+    }
+  }, [
+    lowStockQuery.isError,
+    nearExpiryQuery.isError,
+    ordersQuery.isError,
+    prescriptionsQuery.isError,
+    summaryQuery.isError,
+  ])
 
   useEffect(() => {
-    if (loading) {
-      return undefined
+    if (salesReportQuery.isError || inventoryReportQuery.isError) {
+      toast.error('Unable to load dashboard chart data.')
     }
-
-    if (cachedDashboard?.salesReport && cachedDashboard?.inventoryReport) {
-      return undefined
-    }
-
-    let active = true
-
-    Promise.all([
-      adminApi.report('sales', dashboardReportParams(), { fresh: true }),
-      adminApi.report('inventory', dashboardReportParams(), { fresh: true }),
-    ]).then(([salesReportRes, inventoryReportRes]) => {
-      if (!active) return
-
-      const payload = {
-        salesReport: salesReportRes.data.data || { tables: {} },
-        inventoryReport: inventoryReportRes.data.data || { tables: {} },
-      }
-
-      setSalesReport(payload.salesReport)
-      setInventoryReport(payload.inventoryReport)
-      mergeCachedDashboard(payload)
-    }).catch(() => {
-      if (active) toast.error('Unable to load dashboard chart data.')
-    }).finally(() => {
-      if (active) setReportsLoading(false)
-    })
-
-    return () => {
-      active = false
-    }
-  }, [cachedDashboard, loading])
+  }, [inventoryReportQuery.isError, salesReportQuery.isError])
 
   if (loading) {
     return (

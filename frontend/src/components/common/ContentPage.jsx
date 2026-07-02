@@ -10,7 +10,7 @@ export default function ContentPage({ eyebrow, title, subtitle, sections, varian
   ))
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-7xl">
       <div className="border border-green-300 bg-green-50 p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)] sm:p-8">
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>

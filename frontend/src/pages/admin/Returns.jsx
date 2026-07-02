@@ -8,49 +8,10 @@ import AdminFilterBar from '../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import AdminStatCard from '../../components/admin/AdminStatCard'
 import EmptyState from '../../components/common/EmptyState'
+import { useAdminFreshListQuery } from '../../queries/adminQueries'
 import { date, money } from '../../utils/formatters'
 
 const statuses = ['requested', 'approved', 'rejected', 'picked_up', 'refunded', 'closed']
-const RETURNS_CACHE_KEY = 'admin_returns_payload_v1'
-const RETURNS_CACHE_TTL = 2 * 60 * 1000
-
-function cacheKey(params) {
-  return JSON.stringify({
-    search: params.search || '',
-    status: params.status || '',
-    page: params.page || 1,
-  })
-}
-
-function readCache(params) {
-  if (typeof window === 'undefined') return null
-
-  try {
-    const cache = JSON.parse(window.sessionStorage.getItem(RETURNS_CACHE_KEY) || '{}')
-    const cached = cache[cacheKey(params)]
-    if (!cached || Date.now() - cached.cachedAt > RETURNS_CACHE_TTL) return null
-    return cached.payload
-  } catch {
-    return null
-  }
-}
-
-function writeCache(params, payload) {
-  if (typeof window === 'undefined') return
-
-  try {
-    const cache = JSON.parse(window.sessionStorage.getItem(RETURNS_CACHE_KEY) || '{}')
-    cache[cacheKey(params)] = { payload, cachedAt: Date.now() }
-    window.sessionStorage.setItem(RETURNS_CACHE_KEY, JSON.stringify(cache))
-  } catch {
-    // Ignore storage issues.
-  }
-}
-
-function clearCache() {
-  if (typeof window === 'undefined') return
-  window.sessionStorage.removeItem(RETURNS_CACHE_KEY)
-}
 
 function statusLabel(status) {
   return String(status || '-')
@@ -86,14 +47,20 @@ function actionButtonClass(tone = 'slate') {
 
 export default function Returns() {
   const initialParams = { search: '', status: '', page: 1 }
-  const initialCache = readCache(initialParams)
   const [params, setParams] = useState(initialParams)
-  const [returns, setReturns] = useState(initialCache?.returns || [])
-  const [allReturns, setAllReturns] = useState([])
-  const [meta, setMeta] = useState(initialCache?.meta || null)
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(!initialCache)
-  const [updating, setUpdating] = useState(false)
+  const returnsQuery = useAdminFreshListQuery('returns', params, {
+    placeholderData: (previous) => previous,
+    staleTime: 1000 * 30,
+  })
+  const statsQuery = useAdminFreshListQuery('returns', { page: 1, per_page: 100 }, {
+    staleTime: 1000 * 30,
+  })
+  const returns = returnsQuery.data?.data || []
+  const allReturns = statsQuery.data?.data || []
+  const meta = returnsQuery.data || null
+  const loading = returnsQuery.isLoading && !returnsQuery.data
+  const updating = returnsQuery.isFetching && Boolean(returnsQuery.data)
 
   const stats = useMemo(() => ({
     total: allReturns.length,
@@ -125,52 +92,11 @@ export default function Returns() {
     },
   ]
 
-  const loadStats = () => {
-    adminApi.listFresh('returns', { page: 1, per_page: 100 })
-      .then((res) => setAllReturns(res.data.data?.data || []))
-      .catch(() => {})
-  }
-
   useEffect(() => {
-    loadStats()
-  }, [])
-
-  useEffect(() => {
-    let active = true
-    const cached = readCache(params)
-
-    if (cached) {
-      setReturns(cached.returns || [])
-      setMeta(cached.meta || null)
-      setLoading(false)
-      setUpdating(false)
-      return () => { active = false }
+    if (returnsQuery.isError) {
+      toast.error('Unable to load returns.')
     }
-
-    const hasRows = returns.length > 0
-    setLoading(!hasRows)
-    setUpdating(hasRows)
-
-    adminApi.listFresh('returns', params)
-      .then((res) => {
-        if (!active) return
-        const payload = {
-          returns: res.data.data?.data || [],
-          meta: res.data.data,
-        }
-        setReturns(payload.returns)
-        setMeta(payload.meta)
-        writeCache(params, payload)
-      })
-      .catch(() => active && toast.error('Unable to load returns.'))
-      .finally(() => {
-        if (!active) return
-        setLoading(false)
-        setUpdating(false)
-      })
-
-    return () => { active = false }
-  }, [params])
+  }, [returnsQuery.isError])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -179,13 +105,6 @@ export default function Returns() {
 
     return () => clearTimeout(timeout)
   }, [search])
-
-  const refresh = () => {
-    clearCache()
-    loadStats()
-    setParams((current) => ({ ...current }))
-  }
-
   const updateStatus = async (item, status) => {
     if (item.status === status) return
 
@@ -202,7 +121,7 @@ export default function Returns() {
     try {
       await adminApi.patch('returns', item.id, 'status', { status })
       toast.success('Return status updated.')
-      refresh()
+      await Promise.all([returnsQuery.refetch(), statsQuery.refetch()])
     } catch (error) {
       toast.error(error.response?.data?.message || 'Unable to update return status.')
     }
@@ -255,7 +174,7 @@ export default function Returns() {
     try {
       await adminApi.create(`returns/${item.id}/refund`, result.value)
       toast.success('Refund created.')
-      refresh()
+      await Promise.all([returnsQuery.refetch(), statsQuery.refetch()])
     } catch (error) {
       toast.error(error.response?.data?.message || 'Unable to create refund.')
     }

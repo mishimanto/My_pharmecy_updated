@@ -20,5 +20,6 @@ export const customerAuthApi = {
 
     return api.put('/customer/profile', payload)
   },
+  changePassword: (payload) => api.put('/customer/profile/password', payload),
   logout: () => api.post('/customer/logout'),
 }

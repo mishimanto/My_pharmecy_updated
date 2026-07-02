@@ -62,7 +62,7 @@ function OfferCard({ offer, isBangla, nowTick }) {
   }[offer.applies_to || 'all']
 
   return (
-    <article className="group overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-[#9de8e1] hover:shadow-[0_24px_60px_-38px_rgba(14,101,116,0.45)]">
+    <article className="group overflow-hidden border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-[#9de8e1] hover:shadow-[0_24px_60px_-38px_rgba(14,101,116,0.45)]">
       <div className="relative h-52 overflow-hidden bg-[#e9fbf8]">
         {localized.image ? (
           <img src={localized.image} alt={localized.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" />
@@ -86,13 +86,13 @@ function OfferCard({ offer, isBangla, nowTick }) {
 
       <div className="flex min-h-60 flex-col p-5">
         <div className="flex flex-wrap gap-2">
-          <span className="rounded-full bg-[#e9fbf8] px-3 py-1 text-xs font-bold text-[#0e6574]">{scopeLabel}</span>
-          {localized.label ? <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{localized.label}</span> : null}
+          <span className=" bg-[#e9fbf8] px-3 py-1 text-xs font-bold text-[#0e6574]">{scopeLabel}</span>
+          {localized.label ? <span className=" bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{localized.label}</span> : null}
         </div>
         <h2 className="mt-4 line-clamp-2 text-xl font-bold leading-snug text-slate-950">{localized.title}</h2>
         {localized.body ? <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{localized.body}</p> : null}
         <div className="mt-auto pt-5">
-          <Link to={localized.linkUrl} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#0e6574] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0b5360]">
+          <Link to={localized.linkUrl} className="inline-flex w-full items-center justify-center gap-2  bg-[#0e6574] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#0b5360]">
             {localized.buttonLabel || t('অফার দেখুন', 'View offer')}
             <FiArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
           </Link>

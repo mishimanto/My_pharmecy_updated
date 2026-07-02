@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { FiArrowLeft, FiCalendar, FiExternalLink, FiFileText, FiUser } from 'react-icons/fi'
-import { prescriptionApi } from '../../api/prescriptionApi'
 import EmptyState from '../../components/common/EmptyState'
 import { useLanguage } from '../../context/LanguageContext'
+import { usePrescriptionQuery, usePrescriptionsQuery } from '../../queries/customerQueries'
 import { date } from '../../utils/formatters'
 import { prescriptionIndexFromSlug } from '../../utils/prescriptionDisplay'
 
@@ -32,12 +32,26 @@ function fallbackPrescriptionName(index, id, isBangla) {
 export default function PrescriptionDetails() {
   const { id: routeKey } = useParams()
   const { isBangla } = useLanguage()
-  const [item, setItem] = useState(null)
-  const [loading, setLoading] = useState(true)
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
   const locale = isBangla ? 'bn-BD' : 'en-US'
   const routeIndex = prescriptionIndexFromSlug(routeKey)
   const isNumericRoute = /^\d+$/.test(String(routeKey || ''))
+  const prescriptionsQuery = usePrescriptionsQuery({
+    enabled: !isNumericRoute,
+    placeholderData: (previous) => previous,
+  })
+  const matchedPrescription = useMemo(() => {
+    if (isNumericRoute) return null
+    const prescriptions = prescriptionsQuery.data || []
+    return prescriptions[routeIndex] || null
+  }, [isNumericRoute, prescriptionsQuery.data, routeIndex])
+  const prescriptionId = isNumericRoute ? routeKey : matchedPrescription?.id
+  const itemQuery = usePrescriptionQuery(prescriptionId, {
+    enabled: Boolean(prescriptionId),
+    placeholderData: (previous) => previous,
+  })
+  const item = itemQuery.data || null
+  const loading = (!isNumericRoute && prescriptionsQuery.isLoading) || itemQuery.isLoading
   const title = useMemo(() => {
     if (!item) return routeIndex >= 0 ? fallbackPrescriptionName(routeIndex, routeKey, isBangla) : t('প্রেসক্রিপশন', 'Prescription')
     return fallbackPrescriptionName(routeIndex, item.id, isBangla)
@@ -45,44 +59,76 @@ export default function PrescriptionDetails() {
   const previewKind = getPreviewKind(item?.file_url)
 
   useEffect(() => {
-    let cancelled = false
-
-    const request = isNumericRoute
-      ? prescriptionApi.show(routeKey)
-      : prescriptionApi.list().then((response) => {
-        const prescriptions = response.data?.data?.data || []
-        const matched = prescriptions[routeIndex] || null
-
-        if (!matched) {
-          return { data: { data: null } }
-        }
-
-        return prescriptionApi.show(matched.id)
-      })
-
-    request
-      .then(({ data }) => {
-        if (!cancelled) {
-          setItem(data.data)
-        }
-      })
-      .catch(() => toast.error(t('প্রেসক্রিপশনের বিস্তারিত লোড করা যায়নি।', 'Prescription details could not be loaded.')))
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false)
-        }
-      })
-
-    return () => {
-      cancelled = true
+    if (prescriptionsQuery.isError || itemQuery.isError) {
+      toast.error(t('প্রেসক্রিপশনের বিস্তারিত লোড করা যায়নি।', 'Prescription details could not be loaded.'))
     }
-  }, [isNumericRoute, routeIndex, routeKey, t])
+  }, [itemQuery.isError, prescriptionsQuery.isError, t])
 
   if (loading) {
     return (
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="h-[620px] animate-pulse border border-slate-200 bg-white" />
-        <div className="h-80 animate-pulse border border-slate-200 bg-white" />
+      <div className="space-y-6">
+        <div className="border border-slate-200 bg-white p-5 sm:p-6">
+          <div className="animate-pulse">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="h-8 w-56 bg-slate-200 sm:w-72" />
+                <div className="mt-3 h-4 w-40 bg-slate-100" />
+              </div>
+              <div className="h-5 w-32 bg-slate-100" />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[460px_minmax(0,1fr)]">
+          <aside className="space-y-4">
+            {[1, 2, 3].map((section) => (
+              <div key={section} className="border border-slate-200 bg-white p-5">
+                <div className="animate-pulse">
+                  <div className="h-4 w-24 bg-slate-200" />
+                  <div className="mt-5 space-y-3">
+                    {section === 1 ? (
+                      <>
+                        <div className="border border-slate-100 bg-slate-50 p-4">
+                          <div className="h-3 w-20 bg-slate-200" />
+                          <div className="mt-3 h-4 w-32 bg-slate-100" />
+                        </div>
+                        <div className="border border-slate-100 bg-slate-50 p-4">
+                          <div className="h-3 w-20 bg-slate-200" />
+                          <div className="mt-3 h-4 w-28 bg-slate-100" />
+                        </div>
+                        <div className="border border-slate-100 bg-slate-50 p-4">
+                          <div className="h-3 w-20 bg-slate-200" />
+                          <div className="mt-3 h-4 w-36 bg-slate-100" />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="h-4 w-full bg-slate-100" />
+                        <div className="h-4 w-5/6 bg-slate-100" />
+                        <div className="h-4 w-2/3 bg-slate-100" />
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </aside>
+
+          <section className="overflow-hidden border border-slate-200 bg-white">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <div className="h-4 w-40 animate-pulse bg-slate-200" />
+              <div className="h-4 w-20 animate-pulse bg-slate-100" />
+            </div>
+
+            <div className="bg-slate-50 p-4">
+              <div className="flex min-h-[620px] items-center justify-center border border-slate-200 bg-white">
+                <div className="animate-pulse">
+                  <div className="h-[32rem] w-[22rem] max-w-full bg-slate-100 sm:h-[38rem] sm:w-[28rem]" />
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
     )
   }

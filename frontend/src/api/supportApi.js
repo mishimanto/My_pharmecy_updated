@@ -5,4 +5,5 @@ export const supportApi = {
   show: (id) => api.get(`/customer/support-tickets/${id}`),
   create: (formData) => api.post('/customer/support-tickets', formData),
   reply: (id, formData) => api.post(`/customer/support-tickets/${id}/replies`, formData),
+  draft: (payload) => api.post('/customer/ai/support/draft', payload),
 }

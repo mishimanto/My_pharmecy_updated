@@ -59,18 +59,14 @@ class AuthController extends Controller
 
         $user = User::query()->where('email', $data['email'])->first();
 
-        if (! $user) {
-            return $this->fail('No customer account was found for that email address.', 404, [
-                'email' => ['No customer account was found for that email address.'],
-            ]);
-        }
-
-        $token = Password::broker('users')->createToken($user);
-        $user->sendPasswordResetNotification($token);
-
         $payload = null;
 
-        if (app()->isLocal() || config('app.debug')) {
+        if ($user) {
+            $token = Password::broker('users')->createToken($user);
+            $user->sendPasswordResetNotification($token);
+        }
+
+        if ($user && (app()->isLocal() || config('app.debug'))) {
             $payload = [
                 'email' => $user->email,
                 'reset_url' => $this->frontendResetUrl($token, $user->email),
@@ -122,11 +118,34 @@ class AuthController extends Controller
             'email' => ['nullable', 'email', 'unique:users,email,' . $request->user()->id],
             'date_of_birth' => ['nullable', 'date'],
             'gender' => ['nullable', 'string', 'max:50'],
-            'password' => ['nullable', 'string', 'min:8'],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
         return $this->ok($auth->updateProfile($request->user(), $data, $request->file('avatar')), 'Customer profile updated successfully.');
+    }
+
+    public function changePassword(Request $request)
+    {
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'new_password' => ['required', 'string', 'min:8', 'different:current_password'],
+            'new_password_confirmation' => ['required', 'same:new_password'],
+        ]);
+
+        $user = $request->user();
+
+        if (! Hash::check($data['current_password'], $user->password)) {
+            return $this->fail('Current password is incorrect.', 422, [
+                'current_password' => ['Current password is incorrect.'],
+            ]);
+        }
+
+        $user->forceFill([
+            'password' => Hash::make($data['new_password']),
+            'remember_token' => Str::random(60),
+        ])->save();
+
+        return $this->ok(null, 'Password changed successfully.');
     }
 
     public function me(Request $request)

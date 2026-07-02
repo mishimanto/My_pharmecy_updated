@@ -11,7 +11,7 @@ export default function CustomerLayout() {
     <div className="customer-app min-h-screen bg-[#f4f6f8] text-slate-900">
       <CustomerHeader />
 
-      <main className={isHome ? '' : 'mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8'}>
+      <main className={isHome ? '' : 'mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8'}>
         <Outlet />
       </main>
 

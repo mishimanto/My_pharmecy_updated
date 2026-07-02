@@ -5,6 +5,7 @@ import Swal from 'sweetalert2'
 import { FiArrowRight, FiPlus, FiMinus, FiShoppingCart } from 'react-icons/fi'
 import { FaFilePrescription } from 'react-icons/fa'
 import { GrCheckboxSelected } from 'react-icons/gr'
+import { PiPrescriptionBold } from 'react-icons/pi'
 import { orderApi } from '../../api/orderApi'
 import PageHeader from '../../components/common/PageHeader'
 import EmptyState from '../../components/common/EmptyState'
@@ -63,8 +64,9 @@ export default function Cart() {
     return Number.isFinite(num) ? num : 0
   }, [])
 
-  const cartItemUnitLabel = useCallback((item) => getUnitLabel(item.purchase_unit, isBangla), [isBangla])
-  const cartItemConversionLabel = useCallback((item) => getLocalizedConversionLabel({ code: item.purchase_unit, pieces_per_unit: item.pieces_per_unit }, isBangla), [isBangla])
+  const cartItemUnitLabel = useCallback((item) => item.purchase_unit_label || getUnitLabel(item.purchase_unit, isBangla), [isBangla])
+  const cartItemConversionLabel = useCallback((item) => item.conversion_label || getLocalizedConversionLabel({ code: item.purchase_unit, pieces_per_unit: item.pieces_per_unit }, isBangla), [isBangla])
+  const cartItemStockUnitLabel = useCallback((item) => Number(item.pieces_per_unit || 1) === 1 ? cartItemUnitLabel(item) : getUnitLabel('piece', isBangla), [cartItemUnitLabel, isBangla])
   const cartItemProductName = useCallback((item) => (isBangla ? item.product_name_bn || item.product_name : item.product_name), [isBangla])
   const cartItemGenericName = useCallback((item) => (isBangla ? item.generic_name_bn || item.generic_name : item.generic_name), [isBangla])
 
@@ -93,7 +95,7 @@ export default function Cart() {
       return data.data
     } catch (error) {
       if (!silent) {
-        toast.error(error.response?.data?.message || t('কার্ট সংক্ষিপ্তাংশ আপডেট করা যায়নি।', 'Cart summary could not be updated.'))
+        toast.error(error.response?.data?.message || t('কার্ট সারসংক্ষেপ আপডেট করা যায়নি।', 'Cart summary could not be updated.'))
       }
       return null
     }
@@ -141,7 +143,6 @@ export default function Cart() {
     setUpdatingId(item.cart_item_id)
     try {
       await updateCartItem(item.cart_item_id, { quantity })
-      toast.success(t('পণ্যের পরিমাণ সফলভাবে আপডেট করা হয়েছে।', 'Item quantity updated successfully.'))
     } catch (error) {
       toast.error(error.response?.data?.message || t('পরিমাণ হালনাগাদ করা যায়নি।', 'Quantity could not be updated.'))
     } finally {
@@ -161,7 +162,7 @@ export default function Cart() {
     if (!result.isConfirmed) return
 
     await removeCartItem(item.cart_item_id)
-    toast.success(t('আইটেমটি কার্ট থেকে সরানো হয়েছে।', 'Item removed from the cart.'))
+    toast.success(t('আইটেমটি কার্ট থেকে সরানো হয়েছে।', 'Item removed from the cart.'))
   }
 
   const clear = async () => {
@@ -176,7 +177,7 @@ export default function Cart() {
     if (!result.isConfirmed) return
 
     await clearCart()
-    toast.success(t('কার্ট সফলভাবে মুছে ফেলা হয়েছে।', 'Cart cleared successfully.'))
+    toast.success(t('কার্ট সফলভাবে মুছে ফেলা হয়েছে।', 'Cart cleared successfully.'))
   }
 
   const pageLoading = authLoading || (cartLoading && !cart)
@@ -195,12 +196,12 @@ export default function Cart() {
       <PageHeader title={t('কার্ট', 'Cart')} />
 
       {pageLoading ? <p className="text-slate-500">{t('কার্ট লোড হচ্ছে...', 'Loading cart...')}</p> : null}
-      {!pageLoading && items.length === 0 ? <EmptyState title={t('কার্ট খালি', 'Cart is empty')} text={t('পণ্য যোগ করুন, সেগুলি এখানে দেখাবে।', 'Add products and they will appear here.')} /> : null}
+      {!pageLoading && items.length === 0 ? <EmptyState title={t('কার্ট খালি', 'Cart is empty')} text={t('পণ্য যোগ করুন, সেগুলো এখানে দেখা যাবে।', 'Add products and they will appear here.')} /> : null}
 
       {items.length > 0 ? (
-        <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+        <div className="grid gap-5 xl:grid-cols-[1fr_360px] xl:gap-6">
           <section className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="hidden gap-4 md:grid md:grid-cols-3">
               <MiniStat label={t('আইটেম সংখ্যা', 'Line items')} value={formatNumber(items.length)} icon={FiShoppingCart} />
               <MiniStat label={t('নির্বাচিত ইউনিট', 'Selected units')} value={formatNumber(totalQuantity)} icon={GrCheckboxSelected} />
               <MiniStat label={t('প্রেসক্রিপশন আইটেম', 'Prescription items')} value={hasPrescription ? t('হ্যাঁ', 'Yes') : t('না', 'No')} icon={FaFilePrescription} tone={hasPrescription ? 'danger' : 'default'} />
@@ -223,59 +224,68 @@ export default function Cart() {
                 const image = resolveImageUrl(item.thumbnail_url || item.image_url)
 
                 return (
-                  <div key={item.cart_item_id} className="grid gap-5 border-b border-slate-200 p-5 last:border-b-0 lg:grid-cols-[84px_1fr_160px_140px] lg:items-center">
+                  <div key={item.cart_item_id} className="grid grid-cols-[70px_minmax(0,1fr)] gap-3 border-b border-slate-200 p-3 last:border-b-0 sm:p-5 lg:grid-cols-[84px_1fr_160px_140px] lg:items-center lg:gap-5">
                     <div className="overflow-hidden border border-slate-200 bg-slate-50">
                       {image ? (
-                        <OptimizedImage className="h-21 w-full object-cover" src={image} alt={cartItemProductName(item)} onError={handleImageFallback} />
+                        <OptimizedImage className="h-18 w-full object-cover sm:h-21" src={image} alt={cartItemProductName(item)} onError={handleImageFallback} />
                       ) : (
-                        <div className="flex h-21 items-center justify-center text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">Rx</div>
+                        <div className="flex h-18 items-center justify-center text-xs font-semibold uppercase tracking-[0.14em] text-slate-400 sm:h-21">Rx</div>
                       )}
                     </div>
 
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-lg font-semibold text-slate-950">{cartItemProductName(item)}</h2>
+                    <div className="min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <h2 className="line-clamp-1 text-sm font-semibold leading-5 text-slate-950 sm:text-lg">{cartItemProductName(item)}</h2>
                         {item.requires_prescription ? (
-                          <span className="border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-700">
-                            {t('প্রেসক্রিপশন', 'Prescription')}
+                          <span
+                            className="hidden items-center justify-center rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-rose-700 sm:inline-flex"
+                            aria-label={t('এই পণ্যের জন্য প্রেসক্রিপশন প্রয়োজন', 'This product requires a prescription')}
+                          >
+                            <PiPrescriptionBold className="h-3.5 w-3.5" />
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-2 text-sm text-slate-500">{cartItemGenericName(item) || '-'} {item.strength || ''} {item.dosage_form || ''}</p>
-                      <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                      <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-500 sm:mt-1 sm:text-sm">{cartItemGenericName(item) || '-'} {item.strength || ''} {item.dosage_form || ''}</p>
+                      <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] sm:mt-3 sm:gap-2 sm:text-xs">
                         <span className="border border-slate-200 bg-slate-50 px-2 py-1 text-slate-700">{cartItemUnitLabel(item)}</span>
-                        <span className="border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">{cartItemConversionLabel(item)}</span>
-                        <span className="border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">{t('স্টক', 'Stock')} {item.available_stock.toLocaleString(locale)} {getUnitLabel('piece', isBangla)}</span>
+                        <span className="hidden border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600 sm:inline-flex">{cartItemConversionLabel(item)}</span>
+                        <span className="hidden border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600 sm:inline-flex">{t('স্টক', 'Stock')} {item.available_stock.toLocaleString(locale)} {cartItemStockUnitLabel(item)}</span>
                       </div>
-                      <p className="mt-3 text-xs leading-6 text-slate-500">{t('এই ইউনিটে সর্বোচ্চ:', 'Maximum in this unit:')} {item.available_quantity.toLocaleString(locale)} {cartItemUnitLabel(item)}</p>
+                      <p className="mt-2 hidden text-xs leading-6 text-slate-500 sm:block">{t('এই ইউনিটে সর্বোচ্চ:', 'Maximum in this unit:')} {item.available_quantity.toLocaleString(locale)} {cartItemUnitLabel(item)}</p>
                     </div>
 
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('পরিমাণ', 'Quantity')}</div>
-                      <div className="mt-3 flex items-center gap-2">
-                        <button className="flex h-10 w-10 items-center justify-center border border-slate-300 text-lg text-slate-900" disabled={updatingId === item.cart_item_id} onClick={() => updateQuantity(item, item.quantity - 1)}>
+                    <div className="col-span-2 border-t border-slate-200 pt-3 lg:col-span-1 lg:border-t-0 lg:pt-0">
+                      <div className="flex items-center justify-between gap-3 lg:block">
+                        <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('পরিমাণ', 'Quantity')}</div>
+                        <div className="mt-0 flex items-center gap-1.5 lg:mt-3 lg:gap-2">
+                        <button className="flex h-8.5 w-8.5 items-center justify-center border border-slate-300 bg-white text-base text-slate-900 sm:h-10 sm:w-10 sm:text-lg" disabled={updatingId === item.cart_item_id} onClick={() => updateQuantity(item, item.quantity - 1)}>
                           <FiMinus />
                         </button>
                         <input
                           inputMode="numeric"
-                          className="h-10 w-20 border border-slate-300 text-center text-sm text-slate-900 outline-none"
+                          className="h-8.5 w-14 border border-slate-300 bg-white text-center text-sm text-slate-900 outline-none sm:h-10 sm:w-20"
                           value={formatNumber(item.quantity)}
                           onChange={(event) => updateQuantity(item, parseNumber(event.target.value))}
                         />
-                        <button className="flex h-10 w-10 items-center justify-center border border-slate-300 text-lg text-slate-900" disabled={updatingId === item.cart_item_id || item.quantity >= item.available_quantity} onClick={() => updateQuantity(item, item.quantity + 1)}>
+                        <button className="flex h-8.5 w-8.5 items-center justify-center border border-slate-300 bg-white text-base text-slate-900 sm:h-10 sm:w-10 sm:text-lg" disabled={updatingId === item.cart_item_id || item.quantity >= item.available_quantity} onClick={() => updateQuantity(item, item.quantity + 1)}>
                           <FiPlus />
                         </button>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="text-left lg:text-right">
-                      <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('সাবটোটাল', 'Subtotal')}</div>
-                      <div className="mt-2 text-2xl font-semibold text-slate-950">{formatMoney(item.subtotal)}</div>
-                      <div className="mt-1 text-xs text-slate-500">{formatMoney(item.unit_price)} / {cartItemUnitLabel(item)}</div>
-                      <div className="mt-1 text-xs text-slate-500">{formatNumber(item.piece_quantity)} {t('পিস মোট', 'pieces total')}</div>
-                      <button className="mt-3 border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700" onClick={() => remove(item)}>
-                        {t('সরান', 'Remove')}
-                      </button>
+                    <div className="col-span-2 border-t border-slate-200 pt-3 text-left lg:col-span-1 lg:border-t-0 lg:pt-0 lg:text-right">
+                      <div className="flex items-start justify-between gap-3 lg:block">
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('সাবটোটাল', 'Subtotal')}</div>
+                          <div className="mt-1 text-lg font-semibold text-slate-950 sm:mt-1.5 sm:text-2xl">{formatMoney(item.subtotal)}</div>
+                          <div className="mt-0.5 text-[11px] text-slate-500 sm:mt-1 sm:text-xs">{formatMoney(item.unit_price)} / {cartItemUnitLabel(item)}</div>
+                          <div className="mt-1 hidden text-xs text-slate-500 sm:block">{formatNumber(item.piece_quantity)} {t('মোট পিস', 'pieces total')}</div>
+                        </div>
+                        <button className="shrink-0 border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-medium text-rose-700 sm:px-3 sm:py-2 sm:text-sm lg:mt-3" onClick={() => remove(item)}>
+                          {t('সরান', 'Remove')}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )
@@ -284,7 +294,7 @@ export default function Cart() {
           </section>
 
           <aside className="space-y-6">
-            <div className="border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)] xl:sticky xl:top-24 xl:self-start">
+            <div className="border border-slate-200 bg-white p-4 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)] sm:p-6 xl:sticky xl:top-24 xl:self-start">
               <div className="border-b border-slate-200 pb-4">
                 <p className="text-sm text-center font-semibold uppercase tracking-[0.18em] text-emerald-600">{t('কার্টের সারসংক্ষেপ', 'Cart summary')}</p>
                 {/* <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Ready for checkout.</h2> */}
@@ -310,7 +320,7 @@ export default function Cart() {
                 <div className="flex justify-between"><span>{t('আইটেম সাবটোটাল', 'Items subtotal')}</span><span>{formatMoney(subtotal)}</span></div>
                 <div className="flex justify-between"><span>{t('ডেলিভারি চার্জ', 'Delivery charge')}</span><span>{formatMoney(deliveryCharge)}</span></div>
                 <div className="flex justify-between border-t border-slate-200 pt-3 text-base font-semibold text-slate-950">
-                  <span>{t('সর্বমোট (অনুমানিক)', 'Estimated total')}</span>
+                  <span>{t('সর্বমোট (আনুমানিক)', 'Estimated total')}</span>
                   <span>{formatMoney(total)}</span>
                 </div>
               </div>
@@ -352,4 +362,3 @@ function MiniStat({ label, value, icon: Icon, tone = 'default' }) {
     </div>
       )
     }
-

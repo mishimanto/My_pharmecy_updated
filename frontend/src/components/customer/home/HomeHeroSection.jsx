@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 
 export default function HomeHeroSection({ heroSlides, currentSlide, slide, isBangla }) {
   return (
-    <section className="relative overflow-hidden bg-[#083f49]">
+    <section className="relative overflow-hidden bg-[#052b34] min-h-[420px] sm:min-h-[500px] lg:min-h-[580px] xl:min-h-[640px]">
       <div className="absolute inset-0">
         {heroSlides.map((item, index) => (
           <img
@@ -16,29 +16,37 @@ export default function HomeHeroSection({ heroSlides, currentSlide, slide, isBan
             }`}
           />
         ))}
-        <div className="absolute inset-0 bg-[linear-gradient(105deg,rgba(5,34,42,0.94)_0%,rgba(8,63,73,0.78)_46%,rgba(19,184,176,0.34)_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-32" />
+        <div className="absolute inset-0 bg-[linear-gradient(92deg,rgba(5,34,42,0.96)_0%,rgba(6,49,59,0.86)_36%,rgba(11,93,104,0.50)_64%,rgba(19,184,176,0.18)_100%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-[linear-gradient(180deg,rgba(5,34,42,0)_0%,rgba(5,34,42,0.48)_100%)]" />
       </div>
 
-      <div className="relative mx-auto grid min-h-[82vh] max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:px-8 xl:grid-cols-[1.12fr_0.88fr] xl:items-center xl:py-20">
-        <div className="text-white">
-          <div className="inline-flex items-center gap-2 border border-[#9de8e1]/45 bg-[#083f49]/55 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#d7fffb] backdrop-blur-sm">
-            <span className="inline-flex h-2 w-2 rounded-full bg-[#13b8b0]" />
-            {slide.eyebrow}
-          </div>
+      <div className="relative mx-auto flex min-h-[420px] max-w-7xl items-center px-4 py-12 sm:min-h-[500px] sm:px-6 sm:py-14 lg:min-h-[580px] lg:px-8 lg:py-16 xl:min-h-[640px] xl:py-20">
+        <div className="items-end gap-10 lg:flex lg:gap-16 xl:gap-20">
+          <div className="max-w-3xl text-white">
+            <div className="inline-flex items-center gap-2 border border-white/15 bg-white/8 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#d6fffb] backdrop-blur-sm sm:px-4 sm:py-2 sm:text-[11px] sm:tracking-[0.22em]">
+              <span className="inline-flex h-2 w-2 rounded-full bg-[#13b8b0]" />
+              {slide?.eyebrow}
+            </div>
 
-          <h1 key={slide.id} className="mt-3 max-w-3xl animate-in text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-[3.25rem]">
-            {slide.title}
-          </h1>
+            <h1 className="mt-5 text-[2rem] font-bold leading-[1.06] tracking-tight text-white sm:mt-6 sm:text-[2.7rem] lg:text-[3.1rem] xl:text-[3.45rem]">
+              {slide?.title}
+            </h1>
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link to={slide.primaryUrl || '/products'} className="inline-flex items-center gap-2 bg-[#13b8b0] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-teal-950/30 transition hover:bg-[#0ea8a1]">
-              {slide.primaryLabel || (isBangla ? 'পণ্য দেখুন' : 'Shop products')}
-              <FiArrowRight className="h-4 w-4" />
-            </Link>
-            <Link to={slide.secondaryUrl || '/upload-prescription'} className="inline-flex items-center gap-2 border border-[#9de8e1]/35 bg-[#083f49]/40 px-6 py-3.5 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-[#0e6574]/55">
-              {slide.secondaryLabel || (isBangla ? 'প্রেসক্রিপশন আপলোড' : 'Upload prescription')}
-            </Link>
+            <div className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:flex-wrap sm:gap-4">
+              <Link
+                to={slide?.primaryUrl || '/products'}
+                className="inline-flex items-center justify-center gap-2 bg-[#13b8b0] px-5 py-3 text-sm font-bold text-white shadow-[0_26px_50px_-24px_rgba(19,184,176,0.58)] transition hover:bg-[#0ea8a1] sm:justify-start sm:px-6 sm:py-3.5"
+              >
+                {slide?.primaryLabel || (isBangla ? 'পণ্য দেখুন' : 'Shop Products')}
+                <FiArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to={slide?.secondaryUrl || '/prescriptions'}
+                className="inline-flex items-center justify-center gap-2 border border-white/18 bg-white/8 px-5 py-3 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/12 sm:justify-start sm:px-6 sm:py-3.5"
+              >
+                {slide?.secondaryLabel || (isBangla ? 'প্রেসক্রিপশন আপলোড করুন' : 'Upload Prescription')}
+              </Link>
+            </div>
           </div>
         </div>
       </div>

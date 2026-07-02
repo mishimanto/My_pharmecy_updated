@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Staff;
 use App\Services\StaffAuthService;
 use App\Support\ApiResponse;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class AdminAuthController extends Controller
@@ -47,6 +51,59 @@ class AdminAuthController extends Controller
         }
 
         return $this->ok($result['data'], $result['message']);
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        $staff = Staff::query()->where('email', $data['email'])->first();
+        $payload = null;
+
+        if ($staff) {
+            $token = Password::broker('staffs')->createToken($staff);
+            $staff->sendPasswordResetNotification($token);
+
+            if (app()->isLocal() || config('app.debug')) {
+                $payload = [
+                    'email' => $staff->email,
+                    'reset_url' => $this->frontendResetUrl($token, $staff->email),
+                ];
+            }
+        }
+
+        return $this->ok($payload, 'Password reset instructions have been sent to your email address.');
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $data = $request->validate([
+            'token' => ['required', 'string'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $status = Password::broker('staffs')->reset(
+            $data,
+            function (Staff $staff, string $password) {
+                $staff->forceFill([
+                    'password' => Hash::make($password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+
+                event(new PasswordReset($staff));
+            }
+        );
+
+        if ($status !== Password::PASSWORD_RESET) {
+            return $this->fail('The password reset link is invalid or has expired.', 422, [
+                'token' => ['The password reset link is invalid or has expired.'],
+            ]);
+        }
+
+        return $this->ok(null, 'Your password has been reset successfully.');
     }
 
     public function profile(Request $request, StaffAuthService $auth)
@@ -102,5 +159,11 @@ class AdminAuthController extends Controller
         $request->user()->currentAccessToken()?->delete();
 
         return $this->ok(null, 'লগআউট সফল হয়েছে।');
+    }
+    protected function frontendResetUrl(string $token, string $email): string
+    {
+        $baseUrl = rtrim((string) env('FRONTEND_URL', 'http://127.0.0.1:5173'), '/');
+
+        return $baseUrl.'/admin/reset-password?token='.urlencode($token).'&email='.urlencode($email);
     }
 }

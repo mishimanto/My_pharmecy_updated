@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\StaffResetPasswordNotification;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -32,5 +33,10 @@ class Staff extends Authenticatable
     public function sessions()
     {
         return $this->hasMany(StaffSession::class);
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new StaffResetPasswordNotification($token));
     }
 }

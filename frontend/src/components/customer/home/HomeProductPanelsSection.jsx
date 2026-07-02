@@ -25,7 +25,7 @@ export default function HomeProductPanelsSection({ isBangla, prescriptionProduct
        
         products={otcProducts}
         emptyMessage={isBangla ? 'ক্যাটালগ বড় হলে ওটিসি ও ওয়েলনেস পণ্য এখানে দেখাবে।' : 'OTC and wellness products will appear here as the catalog grows.'}
-        actionTo="/products?requires_prescription=0"
+        actionTo="/products?prescription=not-required"
         actionLabel={isBangla ? 'ওটিসি পণ্য দেখুন' : 'Browse OTC products'}
       />
     </section>

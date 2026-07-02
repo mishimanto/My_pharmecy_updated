@@ -64,6 +64,16 @@ class User extends Authenticatable
         return $this->hasMany(Notification::class);
     }
 
+    public function rewardTransactions()
+    {
+        return $this->hasMany(RewardTransaction::class);
+    }
+
+    public function rewardCoupons()
+    {
+        return $this->hasMany(Coupon::class);
+    }
+
     public function getAvatarAttribute($value): ?string
     {
         if (blank($value)) {

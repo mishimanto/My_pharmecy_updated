@@ -46,6 +46,7 @@ class SiteSettingsController extends Controller
             'map_embed_url' => ['nullable', 'string', 'max:2000'],
             'footer_note' => ['nullable', 'string', 'max:1000'],
             'footer_note_bn' => ['nullable', 'string', 'max:1000'],
+            'rewards_enabled' => ['required', 'boolean'],
             'logo_url' => ['nullable', 'url', 'max:2000'],
             'logo' => ['nullable', 'file'],
             'logo_data' => ['nullable', 'string'],

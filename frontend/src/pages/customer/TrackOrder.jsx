@@ -1,10 +1,10 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { FiArrowRight, FiMapPin } from 'react-icons/fi'
-import { orderApi } from '../../api/orderApi'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
+import { useOrderTrackingQuery } from '../../queries/customerQueries'
 import { getDeliveryStatusLabel, getOrderStatusLabel } from '../../utils/statusLabels'
 
 export default function TrackOrder() {
@@ -12,24 +12,32 @@ export default function TrackOrder() {
   const { isBangla } = useLanguage()
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
   const [orderId, setOrderId] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [tracking, setTracking] = useState(null)
+  const [submittedOrderId, setSubmittedOrderId] = useState('')
+  const {
+    data: tracking,
+    isFetching: loading,
+    error,
+  } = useOrderTrackingQuery(submittedOrderId, {
+    enabled: Boolean(submittedOrderId),
+    placeholderData: (previous) => previous,
+    retry: false,
+  })
+
+  useEffect(() => {
+    if (!error) return
+    toast.error(error.response?.data?.message || t('ট্র্যাকিং তথ্য লোড করা যায়নি।', 'Tracking information could not be loaded.'))
+  }, [error, t])
 
   const submit = async (event) => {
     event.preventDefault()
-    if (!orderId.trim()) return
-
-    setLoading(true)
+    const nextOrderId = orderId.trim()
+    if (!nextOrderId) return
 
     try {
       await ensureGuestToken()
-      const res = await orderApi.tracking(orderId.trim())
-      setTracking(res.data.data)
-    } catch (error) {
-      setTracking(null)
-      toast.error(error.response?.data?.message || t('ট্র্যাকিং তথ্য লোড করা যায়নি।', 'Tracking information could not be loaded.'))
-    } finally {
-      setLoading(false)
+      setSubmittedOrderId(nextOrderId)
+    } catch (guestError) {
+      toast.error(guestError.response?.data?.message || t('ট্র্যাকিং তথ্য লোড করা যায়নি।', 'Tracking information could not be loaded.'))
     }
   }
 
@@ -106,8 +114,8 @@ export default function TrackOrder() {
                 </div>
                 <p className="mt-3 text-sm leading-8 text-slate-600">
                   {t(
-                    `এই অর্ডার নিয়ে বেশি সাহায্য বা ডেলিভারি ব্যাখ্যা লাগলে সাপোর্ট সেন্টারে গিয়ে অর্ডার আইডি ${orderId} উল্লেখ করুন।`,
-                    `If this order needs more attention or delivery clarification, open the support center and reference order ID ${orderId}.`,
+                    `এই অর্ডার নিয়ে বেশি সাহায্য বা ডেলিভারি ব্যাখ্যা লাগলে সাপোর্ট সেন্টারে গিয়ে অর্ডার আইডি ${submittedOrderId} উল্লেখ করুন।`,
+                    `If this order needs more attention or delivery clarification, open the support center and reference order ID ${submittedOrderId}.`,
                   )}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-3">

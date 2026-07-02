@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FiEye, FiShield, FiShoppingBag, FiTrash2, FiUser, FiUserCheck, FiUserX, FiUsers } from 'react-icons/fi'
+import { useQueryClient } from '@tanstack/react-query'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../api/adminApi'
@@ -8,6 +9,7 @@ import AdminFilterBar from '../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import AdminStatCard from '../../components/admin/AdminStatCard'
 import EmptyState from '../../components/common/EmptyState'
+import { adminQueryKeys, useAdminListQuery } from '../../queries/adminQueries'
 import { date, money } from '../../utils/formatters'
 
 const userStatuses = ['', 'active', 'blocked', 'inactive']
@@ -16,49 +18,6 @@ const customerTypeClasses = {
   registered: 'text-sky-600',
   guest: 'text-violet-600',
 }
-const USERS_CACHE_KEY = 'admin_users_payload_v2'
-const USERS_CACHE_TTL = 2 * 60 * 1000
-
-function cacheKey(params) {
-  return JSON.stringify({
-    view: params.view || 'users',
-    search: params.search || '',
-    status: params.status || '',
-    type: params.type || '',
-    page: params.page || 1,
-  })
-}
-
-function readUsersCache(params) {
-  if (typeof window === 'undefined') return null
-
-  try {
-    const cache = JSON.parse(window.sessionStorage.getItem(USERS_CACHE_KEY) || '{}')
-    const cached = cache[cacheKey(params)]
-    if (!cached || Date.now() - cached.cachedAt > USERS_CACHE_TTL) return null
-    return cached.payload
-  } catch {
-    return null
-  }
-}
-
-function writeUsersCache(params, payload) {
-  if (typeof window === 'undefined') return
-
-  try {
-    const cache = JSON.parse(window.sessionStorage.getItem(USERS_CACHE_KEY) || '{}')
-    cache[cacheKey(params)] = { payload, cachedAt: Date.now() }
-    window.sessionStorage.setItem(USERS_CACHE_KEY, JSON.stringify(cache))
-  } catch {
-    // Ignore storage issues.
-  }
-}
-
-function clearUsersCache() {
-  if (typeof window === 'undefined') return
-  window.sessionStorage.removeItem(USERS_CACHE_KEY)
-}
-
 function statusChipClass(status) {
   if (status === 'active') return 'border-emerald-200 bg-emerald-50 text-emerald-700'
   if (status === 'blocked') return 'border-rose-200 bg-rose-50 text-rose-700'
@@ -94,67 +53,31 @@ function getInitials(name) {
 }
 
 export default function Users() {
-  const initialParams = { view: 'users', search: '', status: '', type: '', page: 1 }
-  const initialCache = readUsersCache(initialParams)
+  const queryClient = useQueryClient()
   const [view, setView] = useState('users')
-  const [rows, setRows] = useState(initialCache?.rows || [])
   const [query, setQuery] = useState('')
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
   const [customerType, setCustomerType] = useState('')
   const [page, setPage] = useState(1)
-  const [meta, setMeta] = useState(initialCache?.meta || null)
-  const [loading, setLoading] = useState(!initialCache)
-  const [updating, setUpdating] = useState(false)
+  const resource = view === 'users' ? 'users' : 'users/customers'
+  const requestParams = view === 'users'
+    ? { search, status, page }
+    : { search, type: customerType, page }
+  const usersQuery = useAdminListQuery(resource, requestParams, {
+    placeholderData: (previous) => previous,
+    staleTime: 1000 * 30,
+  })
+  const meta = usersQuery.data || null
+  const rows = meta?.data || []
+  const loading = usersQuery.isLoading && rows.length === 0
+  const updating = usersQuery.isFetching && rows.length > 0
 
   useEffect(() => {
-    let active = true
-    const params = {
-      view,
-      search,
-      status: view === 'users' ? status : '',
-      type: view === 'customers' ? customerType : '',
-      page,
+    if (usersQuery.isError) {
+      toast.error(`Unable to load ${view}.`)
     }
-    const cached = readUsersCache(params)
-
-    if (cached) {
-      setRows(cached.rows || [])
-      setMeta(cached.meta || null)
-      setLoading(false)
-      setUpdating(false)
-      return () => { active = false }
-    }
-
-    const hasRows = rows.length > 0
-    setLoading(!hasRows)
-    setUpdating(hasRows)
-
-    const resource = view === 'users' ? 'users' : 'users/customers'
-    const requestParams = view === 'users'
-      ? { search, status, page }
-      : { search, type: customerType, page }
-
-    adminApi.listFresh(resource, requestParams)
-      .then((res) => {
-        if (!active) return
-        const payload = {
-          rows: res.data.data?.data || [],
-          meta: res.data.data,
-        }
-        setRows(payload.rows)
-        setMeta(payload.meta)
-        writeUsersCache(params, payload)
-      })
-      .catch(() => active && toast.error(`Unable to load ${view}.`))
-      .finally(() => {
-        if (!active) return
-        setLoading(false)
-        setUpdating(false)
-      })
-
-    return () => { active = false }
-  }, [view, search, status, customerType, page])
+  }, [usersQuery.isError, view])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -184,36 +107,13 @@ export default function Users() {
 
   const hasActiveFilters = Boolean(query || status || customerType)
 
-  const refreshCurrentView = () => {
-    clearUsersCache()
-    const params = {
-      view,
-      search,
-      status: view === 'users' ? status : '',
-      type: view === 'customers' ? customerType : '',
-      page,
+  const refreshCurrentView = async () => {
+    try {
+      await queryClient.invalidateQueries({ queryKey: adminQueryKeys.resourceList(resource) })
+      await usersQuery.refetch()
+    } catch {
+      toast.error(`Unable to refresh ${view}.`)
     }
-
-    setLoading(rows.length === 0)
-    setUpdating(rows.length > 0)
-
-    adminApi.listFresh(view === 'users' ? 'users' : 'users/customers', view === 'users'
-      ? { search, status, page }
-      : { search, type: customerType, page })
-      .then((res) => {
-        const payload = {
-          rows: res.data.data?.data || [],
-          meta: res.data.data,
-        }
-        setRows(payload.rows)
-        setMeta(payload.meta)
-        writeUsersCache(params, payload)
-      })
-      .catch(() => toast.error(`Unable to refresh ${view}.`))
-      .finally(() => {
-        setLoading(false)
-        setUpdating(false)
-      })
   }
 
   const updateStatus = async (user, nextStatus) => {

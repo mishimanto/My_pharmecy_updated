@@ -1,30 +1,35 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { FiArrowRight, FiFileText, FiMessageSquare, FiPackage, FiUpload } from 'react-icons/fi'
+import { FiArrowRight, FiCheckCircle, FiClock, FiCpu, FiFileText, FiMessageSquare, FiPackage, FiUpload } from 'react-icons/fi'
 import { supportApi } from '../../api/supportApi'
 import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
+import { customerQueryKeys, useCustomerAiConfigQuery, useSupportTicketsQuery } from '../../queries/customerQueries'
 import { date } from '../../utils/formatters'
 
 export default function Support() {
   const { isBangla } = useLanguage()
   const t = (bn, en) => (isBangla ? bn : en)
   const locale = isBangla ? 'bn-BD' : 'en-US'
-  const [tickets, setTickets] = useState([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
+  const aiConfigQuery = useCustomerAiConfigQuery()
+  const ticketsQuery = useSupportTicketsQuery({ placeholderData: (previous) => previous })
+  const aiSupportDraftEnabled = Boolean(aiConfigQuery.data?.features?.support_assistant)
+  const tickets = useMemo(() => ticketsQuery.data || [], [ticketsQuery.data])
+  const loading = ticketsQuery.isLoading
   const [submitting, setSubmitting] = useState(false)
+  const [drafting, setDrafting] = useState(false)
+  const [aiDraft, setAiDraft] = useState(null)
+  const [aiDraftError, setAiDraftError] = useState('')
   const [form, setForm] = useState({ subject: '', description: '', order_id: '', attachment: null })
 
-  const load = () => {
-    supportApi.list()
-      .then((res) => setTickets(res.data.data?.data || []))
-      .catch(() => toast.error(t('সাপোর্ট টিকিট লোড করা যায়নি।', 'Support tickets could not be loaded.')))
-      .finally(() => setLoading(false))
-  }
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(load, [])
+  useEffect(() => {
+    if (ticketsQuery.isError) {
+      toast.error(t('সাপোর্ট টিকিট লোড করা যায়নি।', 'Support tickets could not be loaded.'))
+    }
+  }, [ticketsQuery.isError, t])
 
   const stats = useMemo(() => ({
     open: tickets.filter((ticket) => ticket.status === 'open').length,
@@ -54,7 +59,7 @@ export default function Support() {
       await supportApi.create(payload)
       toast.success(t('সাপোর্ট টিকিট তৈরি হয়েছে।', 'Support ticket created successfully.'))
       setForm({ subject: '', description: '', order_id: '', attachment: null })
-      load()
+      await queryClient.invalidateQueries({ queryKey: customerQueryKeys.supportTickets })
     } catch (error) {
       const validationErrors = error.response?.data?.errors
       const firstError = validationErrors ? Object.values(validationErrors).flat()[0] : null
@@ -64,6 +69,48 @@ export default function Support() {
     }
   }
 
+  const generateDraft = async () => {
+    const description = form.description.trim()
+
+    if (!aiSupportDraftEnabled) return
+
+    if (description.length < 10) {
+      toast.error(t('AI ড্রাফটের জন্য আগে সমস্যার বিস্তারিত লিখুন।', 'Write a few issue details before generating an AI draft.'))
+      return
+    }
+
+    setDrafting(true)
+    setAiDraft(null)
+    setAiDraftError('')
+
+    try {
+      const { data } = await supportApi.draft({
+        subject: form.subject.trim(),
+        description,
+        order_id: form.order_id.trim(),
+      })
+
+      setAiDraft(data.data)
+    } catch (error) {
+      const message = error.response?.data?.message || t('AI সাপোর্ট ড্রাফট এখন পাওয়া যাচ্ছে না।', 'AI support draft is not available right now.')
+      setAiDraftError(message)
+      toast.error(message)
+    } finally {
+      setDrafting(false)
+    }
+  }
+
+  const applyDraft = () => {
+    if (!aiDraft) return
+
+    setForm((current) => ({
+      ...current,
+      subject: aiDraft.subject || current.subject,
+      description: aiDraft.draft_message || current.description,
+    }))
+    toast.success(t('AI ড্রাফট ফর্মে বসানো হয়েছে।', 'AI draft applied to the form.'))
+  }
+
   return (
     <>
       <PageHeader
@@ -71,7 +118,12 @@ export default function Support() {
       />
 
       <div className="grid gap-6">
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid grid-cols-2 gap-4 md:hidden">
+          <StatCard label={t('ওপেন টিকিট', 'Open tickets')} value={stats.open.toLocaleString(locale)} icon={FiClock} tone="amber" />
+          <StatCard label={t('সমাধান হয়েছে', 'Resolved')} value={stats.resolved.toLocaleString(locale)} icon={FiCheckCircle} tone="emerald" />
+        </section>
+
+        <section className="hidden gap-4 md:grid md:grid-cols-3">
           <StatCard label={t('ওপেন টিকিট', 'Open tickets')} value={stats.open.toLocaleString(locale)} />
           <StatCard label={t('চলমান', 'In progress')} value={stats.inProgress.toLocaleString(locale)} />
           <StatCard label={t('সমাধান হয়েছে', 'Resolved')} value={stats.resolved.toLocaleString(locale)} />
@@ -80,8 +132,7 @@ export default function Support() {
         <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
           <form onSubmit={submit} className="border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
             <div className="border-b border-slate-200 pb-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">{t('নতুন অভিযোগ বা প্রশ্ন', 'New complaint or question')}</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{t('সাপোর্ট টিকিট শুরু করুন।', 'Start a support ticket.')}</h2>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">{t('নতুন অভিযোগ বা প্রশ্ন', 'New complain or question')}</p>
             </div>
 
             <div className="mt-5 space-y-4">
@@ -94,6 +145,71 @@ export default function Support() {
               <FormField label={t('বিস্তারিত', 'Description')}>
                 <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} required className="mt-2 min-h-36 w-full border border-slate-300 px-4 py-3 text-sm outline-none" placeholder={t('সমস্যা, পণ্য সংক্রান্ত প্রশ্ন বা ডেলিভারি সমস্যা লিখুন', 'Describe the issue, product concern, or delivery problem')} />
               </FormField>
+              {aiSupportDraftEnabled ? (
+                <div className="border border-[#b7d5d2] bg-[#f4fffd] p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-[#0e6574]">
+                        <FiCpu className="h-4 w-4" />
+                        {t('AI সাপোর্ট ড্রাফট', 'AI support draft')}
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        {t('আপনার লেখা থেকে পরিষ্কার সাপোর্ট মেসেজ সাজিয়ে দেবে।', 'Turns your notes into a clearer support message.')}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={generateDraft}
+                      disabled={drafting}
+                      className="inline-flex items-center justify-center gap-2 border border-[#13b8b0] bg-[#13b8b0] px-3 py-2 text-xs font-semibold text-white transition hover:border-[#0ea8a1] hover:bg-[#0ea8a1] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <FiCpu className="h-4 w-4" />
+                      {drafting ? t('ড্রাফট হচ্ছে...', 'Drafting...') : t('ড্রাফট বানান', 'Generate draft')}
+                    </button>
+                  </div>
+
+                  {aiDraftError ? (
+                    <div className="mt-3 border border-rose-100 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-700">
+                      {aiDraftError}
+                    </div>
+                  ) : null}
+
+                  {aiDraft ? (
+                    <div className="mt-4 border border-[#d7ebe8] bg-white">
+                      <div className="border-b border-slate-100 px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="border border-[#b7d5d2] bg-[#e7f8f6] px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#0e6574]">
+                            {aiDraft.priority || 'normal'}
+                          </span>
+                          <span className="border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
+                            {aiDraft.category || 'general'}
+                          </span>
+                        </div>
+                        <h3 className="mt-3 text-sm font-semibold text-slate-950">{aiDraft.subject}</h3>
+                        <p className="mt-2 text-xs leading-5 text-slate-500">{aiDraft.summary}</p>
+                      </div>
+                      <div className="px-4 py-3">
+                        <p className="whitespace-pre-line text-sm leading-7 text-slate-700">{aiDraft.draft_message}</p>
+                        {aiDraft.missing_information?.length ? (
+                          <div className="mt-3 border border-amber-100 bg-amber-50 px-3 py-2">
+                            <p className="text-xs font-semibold text-amber-800">{t('আরও তথ্য দিলে ভালো হবে', 'Useful extra details')}</p>
+                            <ul className="mt-2 space-y-1 text-xs leading-5 text-amber-800">
+                              {aiDraft.missing_information.map((item) => <li key={item}>- {item}</li>)}
+                            </ul>
+                          </div>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={applyDraft}
+                          className="mt-4 border border-slate-950 bg-slate-950 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+                        >
+                          {t('এই ড্রাফট ব্যবহার করুন', 'Use this draft')}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               <FormField label={t('অ্যাটাচমেন্ট', 'Attachment')}>
                 <label className="mt-2 flex cursor-pointer items-center gap-3 border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-500">
                   <FiUpload className="h-4 w-4" />
@@ -118,7 +234,7 @@ export default function Support() {
             {loading ? <p className="text-sm text-slate-500">{t('সাপোর্ট টিকিট লোড হচ্ছে...', 'Loading support tickets...')}</p> : null}
             {!loading && !tickets.length ? (
               <div className="border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
-                {t('এখনও কোনো সাপোর্ট টিকিট নেই।', 'No support tickets yet.')}
+                {t('এখনো কোনো সাপোর্ট টিকিট নেই।', 'No support tickets yet.')}
               </div>
             ) : null}
 
@@ -149,11 +265,52 @@ export default function Support() {
   )
 }
 
-function StatCard({ label, value }) {
+function StatCard({ label, value, icon: Icon, tone = 'slate' }) {
+  const normalizedLabel = String(label || '').toLowerCase()
+  const fallbackPreset = normalizedLabel.includes('open') || normalizedLabel.includes('ওপেন')
+    ? { icon: FiClock, tone: 'amber' }
+    : normalizedLabel.includes('progress') || normalizedLabel.includes('চলমান')
+      ? { icon: FiMessageSquare, tone: 'sky' }
+      : normalizedLabel.includes('resolved') || normalizedLabel.includes('সমাধান')
+        ? { icon: FiCheckCircle, tone: 'emerald' }
+        : null
+
+  const ResolvedIcon = Icon || fallbackPreset?.icon
+  const resolvedTone = tone === 'slate' && fallbackPreset?.tone ? fallbackPreset.tone : tone
+  const tones = {
+    amber: {
+      card: 'border-amber-200 bg-amber-50/70',
+      iconWrap: 'text-amber-700',
+    },
+    sky: {
+      card: 'border-sky-200 bg-sky-50/70',
+      iconWrap: 'text-sky-700',
+    },
+    emerald: {
+      card: 'border-emerald-200 bg-emerald-50/70',
+      iconWrap: 'text-emerald-700',
+    },
+    slate: {
+      card: 'border-slate-200 bg-white',
+      iconWrap: 'text-slate-700',
+    },
+  }
+
+  const palette = tones[resolvedTone] || tones.slate
+
   return (
-    <div className="border border-slate-200 bg-white p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
-      <div className="text-sm text-slate-500">{label}</div>
-      <div className="mt-2 text-3xl font-semibold text-slate-950">{value}</div>
+    <div className={`border p-3.5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)] sm:p-5 ${palette.card}`}>
+      <div className="flex items-center justify-between gap-2.5 sm:gap-3">
+        <div>
+          <div className="text-[11px] leading-4 text-slate-600 sm:text-sm">{label}</div>
+          <div className="mt-1 text-xl font-semibold text-slate-950 sm:mt-2 sm:text-3xl">{value}</div>
+        </div>
+        {ResolvedIcon ? (
+          <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center sm:h-11 sm:w-11 ${palette.iconWrap}`}>
+            <ResolvedIcon className="h-4 w-4 sm:h-6 sm:w-6" />
+          </span>
+        ) : null}
+      </div>
     </div>
   )
 }
@@ -170,10 +327,12 @@ function FormField({ label, children }) {
 function MiniHelpCard({ icon: Icon, title, body }) {
   return (
     <div className="border border-slate-200 bg-white p-4 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
-      <div className="inline-flex h-9 w-9 items-center justify-center border border-slate-200 bg-slate-50 text-slate-950">
-        <Icon className="h-4 w-4" />
+      <div className="flex items-center gap-2">
+        <div className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-slate-950">
+          <Icon className="h-5 w-5" />
+        </div>
+        <h3 className="text-sm font-semibold text-slate-950">{title}</h3>
       </div>
-      <h3 className="mt-3 text-sm font-semibold text-slate-950">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-slate-500">{body}</p>
     </div>
   )

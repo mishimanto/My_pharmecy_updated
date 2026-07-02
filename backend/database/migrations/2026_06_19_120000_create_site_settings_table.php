@@ -40,7 +40,7 @@ return new class extends Migration
             'support_hours' => '8AM to 11PM support',
             'whatsapp_number' => '09610-001122',
             'map_embed_url' => 'https://www.google.com/maps?q=Dhaka%2C%20Bangladesh&z=12&output=embed',
-            'footer_note' => 'Prescription-aware online pharmacy experience',
+            'footer_note' => 'All rights reserved',
             'created_at' => now(),
             'updated_at' => now(),
         ]);

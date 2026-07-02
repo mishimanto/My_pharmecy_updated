@@ -8,7 +8,7 @@ use Illuminate\Validation\ValidationException;
 
 class CouponService
 {
-    public function buildSummary(float $subtotal, float $deliveryCharge, ?string $couponCode = null, bool $lockForUsage = false): array
+    public function buildSummary(float $subtotal, float $deliveryCharge, ?string $couponCode = null, bool $lockForUsage = false, ?int $userId = null): array
     {
         $subtotal = Currency::whole($subtotal);
         $deliveryCharge = Currency::whole($deliveryCharge);
@@ -17,7 +17,7 @@ class CouponService
         $discountAmount = 0.0;
 
         if ($normalizedCode !== null) {
-            $coupon = $this->resolve($normalizedCode, $lockForUsage);
+            $coupon = $this->resolve($normalizedCode, $lockForUsage, $userId);
 
             if (! $coupon) {
                 throw ValidationException::withMessages([
@@ -82,7 +82,7 @@ class CouponService
         return $normalized !== '' ? $normalized : null;
     }
 
-    private function resolve(string $couponCode, bool $lockForUsage = false): ?array
+    private function resolve(string $couponCode, bool $lockForUsage = false, ?int $userId = null): ?array
     {
         $query = Coupon::query()
             ->where('code', $couponCode)
@@ -96,7 +96,11 @@ class CouponService
 
         $coupon = $query->first();
 
-        if ($coupon && (! $coupon->usage_limit || $coupon->used_count < $coupon->usage_limit)) {
+        if (
+            $coupon
+            && (! $coupon->usage_limit || $coupon->used_count < $coupon->usage_limit)
+            && (! $coupon->user_id || $coupon->user_id === $userId)
+        ) {
             return [
                 'id' => $coupon->id,
                 'label' => $coupon->label ?: $coupon->code,

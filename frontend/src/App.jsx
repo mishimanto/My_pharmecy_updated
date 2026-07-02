@@ -14,6 +14,8 @@ import Register from './pages/customer/Register'
 import ForgotPassword from './pages/customer/ForgotPassword'
 import ResetPassword from './pages/customer/ResetPassword'
 import AdminLogin from './pages/admin/AdminLogin'
+import AdminForgotPassword from './pages/admin/AdminForgotPassword'
+import AdminResetPassword from './pages/admin/AdminResetPassword'
 
 const CUSTOMER_STARTUP_LOADER_MIN_MS = 1000
 const CUSTOMER_STARTUP_LOADER_FADE_MS = 360
@@ -95,6 +97,8 @@ export default function App() {
         <Route path="/forgot-password" element={<CustomerAuthApp><ForgotPassword /></CustomerAuthApp>} />
         <Route path="/reset-password" element={<CustomerAuthApp><ResetPassword /></CustomerAuthApp>} />
         <Route path="/admin/login" element={<AdminApp><AdminLogin /></AdminApp>} />
+        <Route path="/admin/forgot-password" element={<AdminApp><AdminForgotPassword /></AdminApp>} />
+        <Route path="/admin/reset-password" element={<AdminApp><AdminResetPassword /></AdminApp>} />
         <Route path="/admin/*" element={<AdminApp><AdminRoutes /></AdminApp>} />
         <Route path="/*" element={<CustomerApp><CustomerRoutes /></CustomerApp>} />
       </Routes>

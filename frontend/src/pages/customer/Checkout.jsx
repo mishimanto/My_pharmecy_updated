@@ -1,16 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { FiArrowRight, FiCheckCircle, FiFileText, FiTruck, FiX } from 'react-icons/fi'
 import { GrCurrency } from "react-icons/gr";
-import { addressApi } from '../../api/addressApi'
 import { orderApi } from '../../api/orderApi'
-import { paymentMethodApi, readCachedPaymentMethods } from '../../api/paymentMethodApi'
-import { prescriptionApi } from '../../api/prescriptionApi'
 import PageHeader from '../../components/common/PageHeader'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
+import { useAddressesQuery, useDeliveryAreasQuery, usePaymentMethodsQuery, usePrescriptionsQuery } from '../../queries/customerQueries'
 import { clearCheckoutDraft, readCheckoutDraft, writeCheckoutDraft } from '../../utils/checkoutDraft'
 import { money } from '../../utils/formatters'
 import { getOrderPath } from '../../utils/orderRouting'
@@ -80,15 +78,11 @@ export default function Checkout() {
   const locale = isBangla ? 'bn-BD' : 'en-US'
   const formatNumber = useCallback((value) => new Intl.NumberFormat(locale).format(Number(value || 0)), [locale])
   const draft = useMemo(() => readCheckoutDraft(), [])
+  const checkoutInitRef = useRef('')
 
-  const [addresses, setAddresses] = useState([])
-  const [deliveryAreas, setDeliveryAreas] = useState([])
-  const [prescriptions, setPrescriptions] = useState([])
-  const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [useSavedAddress, setUseSavedAddress] = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
-  const [paymentMethods, setPaymentMethods] = useState(() => readCachedPaymentMethods() || fallbackPaymentMethods)
   const [guestAddress, setGuestAddress] = useState(createGuestAddressForm())
   const [couponInput, setCouponInput] = useState(draft.couponCode)
   const [appliedCouponCode, setAppliedCouponCode] = useState('')
@@ -101,6 +95,37 @@ export default function Checkout() {
     prescription_id: readPreferredPrescriptionId(),
     notes: '',
   })
+  const shouldLoadCheckoutData = !authLoading && Boolean(cart)
+  const shouldLoadAddresses = shouldLoadCheckoutData && Boolean(customer)
+  const shouldLoadPrescriptions = shouldLoadCheckoutData && Boolean(customer && cart?.requires_prescription)
+  const deliveryAreasQuery = useDeliveryAreasQuery({
+    enabled: shouldLoadCheckoutData,
+    placeholderData: (previous) => previous,
+  })
+  const paymentMethodsQuery = usePaymentMethodsQuery({
+    enabled: shouldLoadCheckoutData,
+    placeholderData: (previous) => previous,
+  })
+  const addressesQuery = useAddressesQuery({
+    enabled: shouldLoadAddresses,
+    placeholderData: (previous) => previous,
+  })
+  const prescriptionsQuery = usePrescriptionsQuery({
+    enabled: shouldLoadPrescriptions,
+    placeholderData: (previous) => previous,
+  })
+  const deliveryAreas = deliveryAreasQuery.data || []
+  const paymentMethods = paymentMethodsQuery.data?.length ? paymentMethodsQuery.data : fallbackPaymentMethods
+  const addresses = addressesQuery.data || []
+  const prescriptions = prescriptionsQuery.data || []
+  const loading = Boolean(
+    shouldLoadCheckoutData && (
+      deliveryAreasQuery.isLoading
+      || paymentMethodsQuery.isLoading
+      || (shouldLoadAddresses && addressesQuery.isLoading)
+      || (shouldLoadPrescriptions && prescriptionsQuery.isLoading)
+    )
+  )
 
   const loadPricing = useCallback(async (nextAreaId, nextCouponCode, { silent = false } = {}) => {
     if (!cart?.items?.length) {
@@ -165,83 +190,49 @@ export default function Checkout() {
   }, [cart?.items?.length, cart?.subtotal, t])
 
   useEffect(() => {
-    if (authLoading || !cart) return
+    const error = deliveryAreasQuery.error || paymentMethodsQuery.error || addressesQuery.error || prescriptionsQuery.error
+    if (!error) return
+    toast.error(error.response?.data?.message || t('Checkout data could not be loaded.', 'Checkout data could not be loaded.'))
+  }, [addressesQuery.error, deliveryAreasQuery.error, paymentMethodsQuery.error, prescriptionsQuery.error, t])
 
-    const requests = [
-      orderApi.deliveryAreas().then((response) => ({
-        type: 'deliveryAreas',
-        payload: response.data.data || [],
-      })),
-      paymentMethodApi.list().then((response) => ({
-        type: 'paymentMethods',
-        payload: response.data.data || [],
-      })),
-    ]
+  useEffect(() => {
+    if (!shouldLoadCheckoutData || loading) return
 
-    if (cart.requires_prescription && customer) {
-      requests.push(
-        prescriptionApi.list().then((response) => ({
-          type: 'prescriptions',
-          payload: response.data.data?.data || response.data.data || [],
-        })),
-      )
-    }
+    const initKey = `${customer?.id || 'guest'}:${cart?.requires_prescription ? 'rx' : 'no-rx'}:${cart?.items?.length || 0}`
+    if (checkoutInitRef.current === initKey) return
 
-    if (customer) {
-      requests.push(
-        addressApi.list().then((response) => ({
-          type: 'addresses',
-          payload: response.data.data?.data || response.data.data || [],
-        })),
-      )
-    }
+    const preferredAreaId = deliveryAreas.some((item) => String(item.id) === String(form.delivery_area_id || draft.deliveryAreaId))
+      ? String(form.delivery_area_id || draft.deliveryAreaId)
+      : (deliveryAreas[0]?.id ? String(deliveryAreas[0].id) : '')
+    const preferredArea = deliveryAreas.find((item) => String(item.id) === String(preferredAreaId)) || null
+    const compatible = preferredArea ? addresses.filter((item) => matchesArea(item, preferredArea)) : []
+    const defaultAddressId = compatible.find((item) => item.is_default)?.id || compatible[0]?.id || ''
+    const preferredPrescriptionId = form.prescription_id || readPreferredPrescriptionId()
 
-    Promise.all(requests)
-      .then((responses) => {
-        const nextAreas = responses.find((item) => item.type === 'deliveryAreas')?.payload || []
-        const nextPaymentMethods = responses.find((item) => item.type === 'paymentMethods')?.payload || []
-        const nextPrescriptions = responses.find((item) => item.type === 'prescriptions')?.payload || []
-        const nextAddresses = responses.find((item) => item.type === 'addresses')?.payload || []
-        const preferredAreaId = nextAreas.some((item) => String(item.id) === String(form.delivery_area_id || draft.deliveryAreaId))
-          ? String(form.delivery_area_id || draft.deliveryAreaId)
-          : (nextAreas[0]?.id ? String(nextAreas[0].id) : '')
-        const preferredArea = nextAreas.find((item) => String(item.id) === preferredAreaId) || null
-        const compatible = preferredArea ? nextAddresses.filter((item) => matchesArea(item, preferredArea)) : []
-        const defaultAddressId = compatible.find((item) => item.is_default)?.id || compatible[0]?.id || ''
-        const preferredPrescriptionId = form.prescription_id || readPreferredPrescriptionId()
+    setUseSavedAddress(Boolean(customer && compatible.length > 0))
+    writeCheckoutDraft({ deliveryAreaId: preferredAreaId })
 
-        setDeliveryAreas(nextAreas)
-        if (nextPaymentMethods.length) {
-          setPaymentMethods(nextPaymentMethods)
-        }
-        setPrescriptions(nextPrescriptions)
-        setAddresses(nextAddresses)
-        setUseSavedAddress(Boolean(customer && compatible.length > 0))
-        writeCheckoutDraft({ deliveryAreaId: preferredAreaId })
+    setForm((current) => ({
+      ...current,
+      delivery_area_id: preferredAreaId || current.delivery_area_id,
+      payment_method: paymentMethods.length && !paymentMethods.some((method) => method.code === current.payment_method)
+        ? (paymentMethods.find((method) => !method.requires_proof) || paymentMethods[0]).code
+        : current.payment_method,
+      address_id: defaultAddressId ? String(defaultAddressId) : '',
+      prescription_id: cart.requires_prescription && prescriptions.some((item) => String(item.id) === String(preferredPrescriptionId))
+        ? String(preferredPrescriptionId)
+        : '',
+    }))
 
-        setForm((current) => ({
-          ...current,
-          delivery_area_id: preferredAreaId || current.delivery_area_id,
-          payment_method: nextPaymentMethods.length && !nextPaymentMethods.some((method) => method.code === current.payment_method)
-            ? (nextPaymentMethods.find((method) => !method.requires_proof) || nextPaymentMethods[0]).code
-            : current.payment_method,
-          address_id: defaultAddressId ? String(defaultAddressId) : '',
-          prescription_id: cart.requires_prescription && nextPrescriptions.some((item) => String(item.id) === String(preferredPrescriptionId))
-            ? String(preferredPrescriptionId)
-            : '',
-        }))
+    setGuestAddress((current) => ({
+      ...current,
+      full_name: current.full_name || customer?.full_name || '',
+      phone: current.phone || customer?.phone || '',
+      email: current.email || customer?.email || '',
+    }))
 
-        setGuestAddress((current) => ({
-          ...current,
-          full_name: current.full_name || customer?.full_name || '',
-          phone: current.phone || customer?.phone || '',
-          email: current.email || customer?.email || '',
-        }))
-      })
-      .catch(() => toast.error(t('চেকআউট তথ্য লোড করা যায়নি।', 'Checkout data could not be loaded.')))
-      .finally(() => setLoading(false))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, cart, customer, draft.deliveryAreaId, t])
+    checkoutInitRef.current = initKey
+  }, [addresses, cart, customer, deliveryAreas, draft.deliveryAreaId, form.delivery_area_id, form.prescription_id, loading, paymentMethods, prescriptions, shouldLoadCheckoutData])
 
   const pageLoading = authLoading || (cartLoading && !cart)
   const selectedDeliveryArea = useMemo(
@@ -455,9 +446,9 @@ export default function Checkout() {
     <>
       <PageHeader title={t('চেকআউট', 'Checkout')} />
 
-      <form onSubmit={submit} className="grid gap-6 xl:grid-cols-[1fr_380px]">
+      <form onSubmit={submit} className="grid gap-5 xl:grid-cols-[1fr_380px] xl:gap-6">
         <section className="space-y-6">
-          <div className="border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
+          <div className="border border-slate-200 bg-white p-4 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)] sm:p-5 lg:p-6">
             <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">{t('ডেলিভারি সেটআপ', 'Delivery setup')}</p>
@@ -498,7 +489,7 @@ export default function Checkout() {
               <div className="mt-5">
                 <button
                   type="button"
-                  className="border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                   onClick={handleAddressModeToggle}
                   disabled={!useSavedAddress && compatibleAddresses.length === 0}
                 >
@@ -512,7 +503,7 @@ export default function Checkout() {
             {customer && useSavedAddress && compatibleAddresses.length > 0 ? (
               <div className="mt-5 grid gap-3">
                 {compatibleAddresses.map((address) => (
-                  <label key={address.id} className={`block cursor-pointer border p-4 transition ${String(form.address_id) === String(address.id) ? 'border-slate-950 bg-slate-50' : 'border-slate-200 bg-white hover:border-slate-400'}`}>
+                  <label key={address.id} className={`block cursor-pointer border p-3.5 transition sm:p-4 ${String(form.address_id) === String(address.id) ? 'border-slate-950 bg-slate-50' : 'border-slate-200 bg-white hover:border-slate-400'}`}>
                     <input
                       type="radio"
                       name="address_id"
@@ -527,7 +518,7 @@ export default function Checkout() {
                           <span className="text-sm font-semibold text-slate-950">{address.full_name}</span>
                           {address.is_default ? <span className="border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700">{t('ডিফল্ট', 'Default')}</span> : null}
                         </div>
-                        <p className="mt-2 text-sm leading-7 text-slate-500">
+                        <p className="mt-2 text-sm leading-6 text-slate-500 sm:leading-7">
                           {address.phone}<br />
                           {address.address_line_1}
                           {address.address_line_2 ? `, ${address.address_line_2}` : ''}<br />
@@ -557,16 +548,16 @@ export default function Checkout() {
             )}
 
             {customer && useSavedAddress && compatibleAddresses.length === 0 ? (
-              <div className="mt-5 border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              <div className="mt-5 border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800 sm:leading-7">
                 {t('এই এরিয়ার জন্য কোনো সেভ করা ঠিকানা নেই। নতুন ঠিকানা দিন অথবা অন্য এরিয়া বাছুন।', 'No saved address matches this service area. Add a new address or choose another area.')}
               </div>
             ) : null}
           </div>
 
           {cart.requires_prescription ? (
-            <div className="border border-amber-200 bg-amber-50 p-6">
+            <div className="border border-amber-200 bg-amber-50 p-4 sm:p-5 lg:p-6">
               <div className="flex items-start gap-3">
-                <div className="inline-flex h-10 w-10 items-center justify-center border border-amber-200 bg-white text-amber-700">
+                <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center border border-amber-200 bg-white text-amber-700 sm:h-10 sm:w-10">
                   <FiFileText className="h-5 w-5" />
                 </div>
                 {customer ? (
@@ -583,7 +574,7 @@ export default function Checkout() {
                         writePreferredPrescriptionId(nextValue)
                       }}
                       required
-                      className="mt-4 block w-72 border border-amber-300 bg-white px-4 py-2 text-sm text-slate-900 outline-none"
+                      className="mt-4 block w-full max-w-full border border-amber-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none sm:w-72 sm:py-2"
                     >
                       <option value="">{loading ? t('প্রেসক্রিপশন লোড হচ্ছে...', 'Loading prescriptions...') : t('একটি প্রেসক্রিপশন বাছুন', 'Select a prescription')}</option>
                       {prescriptions.map((item, index) => (
@@ -591,14 +582,14 @@ export default function Checkout() {
                       ))}
                     </select>
                     {form.prescription_id ? (
-                      <p className="mt-3 text-sm leading-7 text-slate-600">
+                      <p className="mt-3 text-sm leading-6 text-slate-600 sm:leading-7">
                         {t(
                           `${prescriptionDisplayNameById(prescriptions, form.prescription_id)} এই অর্ডারের জন্য সিলেক্ট করা আছে।`,
                           `${prescriptionDisplayNameById(prescriptions, form.prescription_id)} is selected for this order.`,
                         )}
                       </p>
                     ) : null}
-                    <Link to={`/upload-prescription?returnTo=${encodeURIComponent('/checkout')}`} className="mt-4 flex w-fit items-center gap-2 text-sm font-semibold text-amber-700">
+                    <Link to={`/upload-prescription?returnTo=${encodeURIComponent('/checkout')}`} className="mt-4 inline-flex w-fit items-center gap-2 text-sm font-semibold text-amber-700">
                       {t('নতুন প্রেসক্রিপশন আপলোড করুন', 'Upload a new prescription')}
                       <FiArrowRight className="h-4 w-4" />
                     </Link>
@@ -623,10 +614,10 @@ export default function Checkout() {
             </div>
           ) : null}
 
-          <div className="border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
-            <div className="flex justify-between border-b border-slate-200 pb-4">
+          <div className="border border-slate-200 bg-white p-4 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)] sm:p-5 lg:p-6">
+            <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-start sm:justify-between">
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">{t('অর্ডারের মেথড বেছে নিন', 'Choose payment option')}</p>
-              <div className="text-sm text-slate-600">
+              <div className="text-sm leading-6 text-slate-600 sm:text-right">
                   <span className="font-semibold text-slate-950">{t('নির্বাচিত', 'Selected')}:</span>{' '}
                   {paymentMode === 'COD'
                     ? paymentLabel(selectedPaymentMethod, isBangla)
@@ -665,16 +656,16 @@ export default function Checkout() {
                     key={method.value}
                     type="button"
                     onClick={() => handlePaymentModeSelect(method.value)}
-                    className={`group relative border p-3 text-left transition ${method.selected ? 'border-slate-950 bg-slate-50 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.35)]' : 'border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50/60'}`}
+                    className={`group relative border p-3 text-left transition sm:p-4 ${method.selected ? 'border-slate-950 bg-slate-50 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.35)]' : 'border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50/60'}`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center">
                         <span
-                          className="inline-flex h-12 w-12 items-center justify-center"                        >
+                          className="inline-flex h-10 w-10 shrink-0 items-center justify-center sm:h-12 sm:w-12"                        >
                           <Icon className="h-5 w-5" />
                         </span>
 
-                        <div className="text-lg font-semibold text-slate-950">
+                        <div className="text-base font-semibold text-slate-950 sm:text-lg">
                           {method.title}
                         </div>
                       </div>
@@ -696,7 +687,7 @@ export default function Checkout() {
                   value={form.notes}
                   onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
                   placeholder={t('ডেলিভারি নির্দেশনা বা অর্ডার নোট', 'Delivery instructions or order notes')}
-                  className="mt-2 min-h-28 w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none"
+                  className="mt-2 min-h-24 w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none sm:min-h-28"
                 />
               </div>
             </div>
@@ -704,26 +695,26 @@ export default function Checkout() {
         </section>
 
         <aside className="space-y-6">
-          <div className="border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)] xl:sticky xl:top-24 xl:self-start">
+          <div className="border border-slate-200 bg-white p-4 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)] sm:p-5 lg:p-6 xl:sticky xl:top-24 xl:self-start">
             <div className="border-b border-slate-200 pb-4">
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">{t('অর্ডার সামারি', 'Order summary')}</p>
             </div>
 
             <div className="mt-4 space-y-3">
               {cart.items.map((item) => (
-                <div key={item.cart_item_id} className="flex justify-between gap-3 border border-slate-200 bg-slate-50 p-4 text-sm">
-                  <span className="text-slate-700">
+                <div key={item.cart_item_id} className="flex flex-col gap-2 border border-slate-200 bg-slate-50 p-3 text-sm sm:flex-row sm:justify-between sm:p-4">
+                  <span className="min-w-0 text-slate-700">
                     {item.product_name}
-                    <span className="mt-1 block text-xs text-slate-500">{formatNumber(item.quantity)} {getUnitLabel(item.purchase_unit, isBangla)} • {formatNumber(item.piece_quantity)} {t('পিস', 'pieces')}</span>
+                    <span className="mt-1 block text-xs text-slate-500">{formatNumber(item.quantity)} {item.purchase_unit_label || getUnitLabel(item.purchase_unit, isBangla)} • {formatNumber(item.piece_quantity)} {t('পিস', 'pieces')}</span>
                   </span>
-                  <span className="font-medium text-slate-950">{money(item.subtotal, locale)}</span>
+                  <span className="font-medium text-slate-950 sm:text-right">{money(item.subtotal, locale)}</span>
                 </div>
               ))}
             </div>
 
             <div className="mt-4 border-t border-slate-200 pt-4 text-sm text-slate-600">
               <label className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('কুপন', 'Coupon')}</label>
-              <div className="mt-2 flex gap-2">
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                 <input
                   value={couponInput}
                   onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
@@ -734,7 +725,7 @@ export default function Checkout() {
                   type="button"
                   onClick={applyCoupon}
                   disabled={!selectedDeliveryArea || pricingLoading}
-                  className="border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60 sm:self-start"
                 >
                   {t('অ্যাপ্লাই', 'Apply')}
                 </button>
@@ -747,9 +738,7 @@ export default function Checkout() {
                     {t('রিমুভ', 'Remove')}
                   </button>
                 </div>
-              ) : (
-                <p className="mt-2 text-xs text-slate-500">{t('ডেমো কোড: SAVE50, SAVE10, FREESHIP', 'Demo codes: SAVE50, SAVE10, FREESHIP')}</p>
-              )}
+              ) : null }
             </div>
 
             <div className="mt-4 space-y-2 border-t border-slate-200 pt-4 text-sm text-slate-600">
@@ -790,8 +779,8 @@ function PaymentMethodModal({ open, isBangla, methods, selectedMethod, onClose, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4" onClick={onClose}>
-      <div className="w-full max-w-2xl border border-slate-200 bg-white shadow-[0_30px_90px_-40px_rgba(15,23,42,0.45)]" onClick={(event) => event.stopPropagation()}>
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-slate-200 bg-white shadow-[0_30px_90px_-40px_rgba(15,23,42,0.45)]" onClick={(event) => event.stopPropagation()}>
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-4 sm:p-5">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">
               {isBangla ? 'একটি পেমেন্ট মেথড বাছুন' : 'Choose a payment method'}
@@ -803,7 +792,7 @@ function PaymentMethodModal({ open, isBangla, methods, selectedMethod, onClose, 
           </button>
         </div>
 
-        <div className="grid gap-3 p-5 md:grid-cols-2">
+        <div className="grid gap-3 p-4 sm:p-5 md:grid-cols-2">
           {methods.map((method) => {
             const selected = selectedMethod?.code === method.code
 
@@ -812,12 +801,12 @@ function PaymentMethodModal({ open, isBangla, methods, selectedMethod, onClose, 
                 key={method.code}
                 type="button"
                 onClick={() => onSelect(method.code)}
-                className={`border p-4 text-left transition ${selected ? 'border-slate-950 bg-slate-50' : 'border-slate-200 bg-white hover:border-slate-400'}`}
+                className={`border p-3 text-left transition sm:p-4 ${selected ? 'border-slate-950 bg-slate-50' : 'border-slate-200 bg-white hover:border-slate-400'}`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <PaymentBrandMark method={method} />
-                    <div className="text-lg font-semibold text-slate-950">{paymentLabel(method, isBangla)}</div>
+                    <div className="text-base font-semibold text-slate-950 sm:text-lg">{paymentLabel(method, isBangla)}</div>
                   </div>
                   {selected ? (
                     <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white">
@@ -867,7 +856,7 @@ function CheckoutField({ label, value, onChange, required = false, className = '
         value={value}
         onChange={(event) => onChange(event.target.value)}
         readOnly={readOnly}
-        className={`mt-1 w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none ${readOnly ? 'bg-slate-50 text-slate-600' : 'bg-white'}`}
+        className={`mt-1 w-full border border-slate-300 px-3.5 py-3 text-sm text-slate-900 outline-none sm:px-4 ${readOnly ? 'bg-slate-50 text-slate-600' : 'bg-white'}`}
       />
     </div>
   )
@@ -880,3 +869,4 @@ function paymentLabel(method, isBangla) {
 function paymentDescription(method, isBangla) {
   return isBangla ? method?.description_bn || method?.description || '' : method?.description || ''
 }
+

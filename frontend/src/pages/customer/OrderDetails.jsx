@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
@@ -10,51 +11,40 @@ import {
   FiCreditCard,
   FiDownload,
   FiMapPin,
-  FiPackage,
   FiTruck,
 } from 'react-icons/fi'
 import { orderApi } from '../../api/orderApi'
 import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
+import { customerQueryKeys, useOrderQuery } from '../../queries/customerQueries'
 import { date, money } from '../../utils/formatters'
 import { getOrderPath } from '../../utils/orderRouting'
 import { getDeliveryStatusLabel, getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
 import { getUnitLabel } from '../../utils/purchaseUnits'
-import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
 
 const cancellable = ['pending_confirmation', 'prescription_review']
 
 export default function OrderDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { isBangla } = useLanguage()
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
   const locale = isBangla ? 'bn-BD' : 'en-US'
-  const cacheKey = `order_details_${id}`
-  const [order, setOrder] = useState(() => readCustomerCache(cacheKey, null))
-  const [loading, setLoading] = useState(() => readCustomerCache(cacheKey, null) === null)
+  const orderQuery = useOrderQuery(id, { placeholderData: (previous) => previous })
+  const order = orderQuery.data || null
+  const loading = orderQuery.isLoading
 
   useEffect(() => {
-    let mounted = true
-    setLoading((prev) => (prev || readCustomerCache(cacheKey, null) === null))
-
-    orderApi.show(id)
-      .then((res) => {
-        if (!mounted) return
-        const orderData = res.data.data
-        setOrder(orderData)
-        writeCustomerCache(cacheKey, orderData)
-      })
-      .catch(() => mounted && toast.error(t('অর্ডারের বিস্তারিত লোড করা যায়নি।', 'Order details could not be loaded.')))
-      .finally(() => mounted && setLoading(false))
-
-    return () => { mounted = false }
-  }, [id, t, cacheKey])
+    if (orderQuery.isError) {
+      toast.error(t('অর্ডারের বিস্তারিত লোড করা যায়নি।', 'Order details could not be loaded.'))
+    }
+  }, [orderQuery.isError, t])
 
   const cancelOrder = async () => {
     const result = await Swal.fire({
       title: t('এই অর্ডার বাতিল করবেন?', 'Cancel this order?'),
-      text: t('অ্যাডমিন কনফার্ম করার আগে এই অর্ডার বাতিল করা যাবে।', 'This order can be cancelled before admin confirmation.'),
+      text: t('কনফার্ম হওয়ার আগে এই অর্ডার বাতিল করা যাবে।', 'This order can be cancelled before confirmation.'),
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: t('অর্ডার বাতিল', 'Cancel order'),
@@ -65,7 +55,8 @@ export default function OrderDetails() {
 
     try {
       const res = await orderApi.cancel(id)
-      setOrder(res.data.data)
+      queryClient.setQueryData(customerQueryKeys.order(id), res.data.data)
+      queryClient.invalidateQueries({ queryKey: customerQueryKeys.orders })
       toast.success(t('অর্ডার বাতিল হয়েছে।', 'Order cancelled successfully.'))
     } catch (error) {
       toast.error(error.response?.data?.message || t('অর্ডার বাতিল করা যায়নি।', 'Order could not be cancelled.'))
@@ -81,13 +72,8 @@ export default function OrderDetails() {
     }
   }
 
-  const formattedDate = useMemo(
-    () => date(order?.order_date, locale),
-    [locale, order?.order_date],
-  )
-
+  const formattedDate = useMemo(() => date(order?.order_date, locale), [locale, order?.order_date])
   const formatMoney = useCallback((value) => money(value, locale), [locale])
-
   const formatNumber = useCallback((value) => new Intl.NumberFormat(locale).format(Number(value || 0)), [locale])
 
   if (loading) {
@@ -174,55 +160,29 @@ export default function OrderDetails() {
               </div>
 
               <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <MetricCard
-                  label={t('মোট অর্ডার', 'Order total')}
-                  value={formatMoney(order.total_amount)}
-                  icon={FiCreditCard}
-                  tone="slate"
-                />
-                <MetricCard
-                  label={t('পেমেন্ট মেথড', 'Payment method')}
-                  value={paymentMethod}
-                  icon={FiClock}
-                  tone="amber"
-                />
-                <MetricCard
-                  label={t('ডেলিভারি স্ট্যাটাস', 'Delivery status')}
-                  value={deliveryStatus}
-                  icon={FiTruck}
-                  tone="sky"
-                />
+                <MetricCard label={t('মোট অর্ডার', 'Order total')} value={formatMoney(order.total_amount)} icon={FiCreditCard} tone="slate" />
+                <MetricCard label={t('পেমেন্ট মেথড', 'Payment method')} value={paymentMethod} icon={FiClock} tone="amber" />
+                <MetricCard label={t('ডেলিভারি স্ট্যাটাস', 'Delivery status')} value={deliveryStatus} icon={FiTruck} tone="sky" />
               </div>
             </div>
 
             <div className="grid gap-4 p-6 md:grid-cols-2">
-              <InlineInfo
-                label={t('অর্ডার তারিখ', 'Order date')}
-                value={formattedDate}
-              />
-
-              <InlineInfo
-                label={t('ট্রানজ্যাকশন আইডি', 'Transaction ID')}
-                value={order.payment?.transaction_id || t('জমা দেওয়া হয়নি', 'Not submitted')}
-              />
+              <InlineInfo label={t('অর্ডার তারিখ', 'Order date')} value={formattedDate} />
+              <InlineInfo label={t('ট্রানজ্যাকশন আইডি', 'Transaction ID')} value={order.payment?.transaction_id || t('জমা দেওয়া হয়নি', 'Not submitted')} />
             </div>
           </div>
 
           {hasPrescriptionClarification ? (
             <div className="border border-rose-200 bg-rose-50 p-5 text-sm leading-7 text-rose-800 shadow-[0_18px_50px_-40px_rgba(190,18,60,0.35)]">
               <div className="flex items-start gap-3">
-
                 <div className="min-w-0">
-                  <div className='flex gap-2 items-center'>
+                  <div className="flex gap-2 items-center">
                     <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center border border-rose-200 bg-white text-rose-700">
                       <FiAlertCircle className="h-5 w-5" />
                     </span>
                     <div className="text-lg font-semibold uppercase tracking-[0.16em] text-rose-700">
                       {t('প্রেসক্রিপশন ক্ল্যারিফিকেশন', 'Prescription clarification needed')}
                     </div>
-                    {/* <p className="mt-2 font-semibold text-rose-950">
-                      {getPrescriptionMatchMessage(order.prescription_match_status, isBangla)}
-                    </p> */}
                   </div>
 
                   {order.prescription_match_note ? (
@@ -322,7 +282,6 @@ export default function OrderDetails() {
                     className="inline-flex items-center gap-2 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
                   >
                     {t('পেমেন্ট করুন', 'Payment')}
-                    {/* <FiArrowRight className="h-4 w-4" /> */}
                   </button>
                 ) : (
                   <div className={`inline-flex h-11 w-11 items-center justify-center border ${paymentOverview.iconClass}`}>
@@ -412,24 +371,6 @@ function getPaymentOverview(status, isBangla) {
     iconClass: 'border-rose-200 bg-white text-rose-700',
     textClass: 'text-rose-700',
   }
-}
-
-function getPrescriptionMatchMessage(status, isBangla) {
-  if (status === 'mismatch') {
-    return isBangla
-      ? 'আপনার অর্ডারের পণ্যের সাথে প্রেসক্রিপশন পুরোপুরি মিলছে না।'
-      : 'The prescription does not fully match the ordered products.'
-  }
-
-  if (status === 'need_clarification') {
-    return isBangla
-      ? 'এই অর্ডার এগোনোর আগে প্রেসক্রিপশন নিয়ে আরও তথ্য প্রয়োজন।'
-      : 'More prescription information is needed before this order can continue.'
-  }
-
-  return isBangla
-    ? 'এই অর্ডারের প্রেসক্রিপশন নিয়ে অ্যাডমিনের একটি নোট আছে।'
-    : 'The admin added a note about this order prescription.'
 }
 
 function getPaymentMethodLabel(method, isBangla) {

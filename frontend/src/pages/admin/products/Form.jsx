@@ -12,11 +12,14 @@ import { handleImageFallback, resolveImageUrl } from '../../../utils/imageUrl'
 const initialForm = {
   category_id: '',
   manufacturer_id: '',
+  product_type: 'medicine',
   product_name: '',
   generic_name: '',
   brand_name: '',
   strength: '',
   dosage_form: '',
+  package_unit: 'piece',
+  package_size: '',
   pieces_per_strip: 10,
   strips_per_box: 10,
   strip_price: '',
@@ -26,6 +29,28 @@ const initialForm = {
   requires_prescription: false,
   description: '',
   description_bn: '',
+  indications: '',
+  indications_bn: '',
+  pharmacology: '',
+  pharmacology_bn: '',
+  dosage_administration: '',
+  dosage_administration_bn: '',
+  interaction_details: '',
+  interaction_details_bn: '',
+  contraindications: '',
+  contraindications_bn: '',
+  side_effects: '',
+  side_effects_bn: '',
+  pregnancy_lactation: '',
+  pregnancy_lactation_bn: '',
+  precautions_warnings: '',
+  precautions_warnings_bn: '',
+  therapeutic_class: '',
+  therapeutic_class_bn: '',
+  storage_conditions: '',
+  storage_conditions_bn: '',
+  leaflet_url: '',
+  specifications: '',
   description_draft: '',
   description_bn_draft: '',
   description_draft_status: '',
@@ -33,6 +58,85 @@ const initialForm = {
   drug_interactions: [],
   is_active: true,
 }
+
+const productTypeOptions = [
+  ['medicine', 'Medicine'],
+  ['healthcare', 'Healthcare product'],
+  ['device', 'Medical device'],
+  ['personal_care', 'Personal care'],
+  ['beauty', 'Beauty & skin care'],
+  ['baby_care', 'Mother & baby care'],
+]
+
+const packageUnitOptions = [
+  ['piece', 'Piece'],
+  ['pack', 'Pack'],
+  ['packet', 'Packet'],
+  ['bottle', 'Bottle'],
+  ['kit', 'Kit'],
+  ['device', 'Device'],
+  ['tube', 'Tube'],
+  ['jar', 'Jar'],
+  ['box', 'Box'],
+  ['unit', 'Unit'],
+]
+
+const medicineContentFields = [
+  {
+    key: 'indications',
+    bnKey: 'indications_bn',
+    label: 'Indications',
+    placeholder: 'Common uses, symptoms, or situations where this medicine is prescribed.',
+  },
+  {
+    key: 'pharmacology',
+    bnKey: 'pharmacology_bn',
+    label: 'Pharmacology',
+    placeholder: 'Explain how the medicine works in a concise, pharmacy-friendly way.',
+  },
+  {
+    key: 'dosage_administration',
+    bnKey: 'dosage_administration_bn',
+    label: 'Dosage & administration',
+    placeholder: 'Dose guidance, age groups, route, timing, or important administration instructions.',
+  },
+  {
+    key: 'interaction_details',
+    bnKey: 'interaction_details_bn',
+    label: 'Interaction details',
+    placeholder: 'General interaction notes beyond the structured warning pairs below.',
+  },
+  {
+    key: 'contraindications',
+    bnKey: 'contraindications_bn',
+    label: 'Contraindications',
+    placeholder: 'Who should avoid this medicine or when it should not be used.',
+  },
+  {
+    key: 'side_effects',
+    bnKey: 'side_effects_bn',
+    label: 'Side effects',
+    placeholder: 'Common or serious side effects to be aware of.',
+  },
+  {
+    key: 'pregnancy_lactation',
+    bnKey: 'pregnancy_lactation_bn',
+    label: 'Pregnancy & lactation',
+    placeholder: 'Pregnancy, breastfeeding, and special-care guidance.',
+  },
+  {
+    key: 'precautions_warnings',
+    bnKey: 'precautions_warnings_bn',
+    label: 'Precautions & warnings',
+    placeholder: 'Special warnings, monitoring points, or when to consult a clinician.',
+  },
+  {
+    key: 'storage_conditions',
+    bnKey: 'storage_conditions_bn',
+    label: 'Storage conditions',
+    placeholder: 'Storage temperature, light/moisture guidance, or child safety note.',
+  },
+]
 
 const initialBatchForm = {
   enabled: false,
@@ -51,6 +155,31 @@ function formFromProduct(product) {
     ...product,
     category_id: product?.category_id || '',
     manufacturer_id: product?.manufacturer_id || '',
+    product_type: product?.product_type || 'medicine',
+    package_unit: product?.package_unit || 'piece',
+    package_size: product?.package_size || '',
+    specifications: product?.specifications || '',
+    indications: product?.indications || '',
+    indications_bn: product?.indications_bn || '',
+    pharmacology: product?.pharmacology || '',
+    pharmacology_bn: product?.pharmacology_bn || '',
+    dosage_administration: product?.dosage_administration || '',
+    dosage_administration_bn: product?.dosage_administration_bn || '',
+    interaction_details: product?.interaction_details || '',
+    interaction_details_bn: product?.interaction_details_bn || '',
+    contraindications: product?.contraindications || '',
+    contraindications_bn: product?.contraindications_bn || '',
+    side_effects: product?.side_effects || '',
+    side_effects_bn: product?.side_effects_bn || '',
+    pregnancy_lactation: product?.pregnancy_lactation || '',
+    pregnancy_lactation_bn: product?.pregnancy_lactation_bn || '',
+    precautions_warnings: product?.precautions_warnings || '',
+    precautions_warnings_bn: product?.precautions_warnings_bn || '',
+    therapeutic_class: product?.therapeutic_class || '',
+    therapeutic_class_bn: product?.therapeutic_class_bn || '',
+    storage_conditions: product?.storage_conditions || '',
+    storage_conditions_bn: product?.storage_conditions_bn || '',
+    leaflet_url: product?.leaflet_url || '',
     strip_price: product?.strip_price ?? '',
     box_price: product?.box_price ?? '',
     strip_discount: product?.strip_discount ?? '',
@@ -176,13 +305,27 @@ export default function ProductForm({ mode = 'create' }) {
   const preview = useMemo(() => filePreview(files, images), [files, images])
   const selectedCategory = categories.find((category) => String(category.id) === String(form.category_id))
   const selectedManufacturer = manufacturers.find((manufacturer) => String(manufacturer.id) === String(form.manufacturer_id))
+  const isMedicine = (form.product_type || 'medicine') === 'medicine'
   const selectableAlternativeProducts = useMemo(
-    () => productOptions.filter((product) => String(product.id) !== String(id || form.id || '')),
+    () => productOptions.filter((product) => (product.product_type || 'medicine') === 'medicine' && String(product.id) !== String(id || form.id || '')),
     [form.id, id, productOptions],
   )
 
   const setField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  const setProductType = (value) => {
+    setForm((current) => ({
+      ...current,
+      product_type: value,
+      requires_prescription: value === 'medicine' ? current.requires_prescription : false,
+      package_unit: value === 'medicine' ? 'piece' : (current.package_unit === 'piece' ? 'pack' : current.package_unit || 'pack'),
+      pieces_per_strip: value === 'medicine' ? current.pieces_per_strip || 10 : 1,
+      strips_per_box: value === 'medicine' ? current.strips_per_box || 10 : 1,
+      strip_discount: value === 'medicine' ? current.strip_discount : '',
+      box_discount: value === 'medicine' ? current.box_discount : '',
+    }))
   }
 
   const setBatchField = (field, value) => {
@@ -282,29 +425,54 @@ export default function ProductForm({ mode = 'create' }) {
     try {
       const payload = {
         ...form,
+        product_type: form.product_type || 'medicine',
+        package_unit: form.product_type === 'medicine' ? 'piece' : (form.package_unit || 'pack'),
+        package_size: form.product_type === 'medicine' ? null : (form.package_size?.trim() || null),
         product_name: form.product_name.trim(),
-        generic_name: form.generic_name?.trim() || null,
+        generic_name: form.product_type === 'medicine' ? form.generic_name?.trim() || null : null,
         brand_name: form.brand_name?.trim() || null,
-        strength: form.strength?.trim() || null,
-        dosage_form: form.dosage_form?.trim() || null,
+        strength: form.product_type === 'medicine' ? form.strength?.trim() || null : null,
+        dosage_form: form.product_type === 'medicine' ? form.dosage_form?.trim() || null : null,
         description: form.description?.trim() || null,
         description_bn: form.description_bn?.trim() || null,
-        alternative_product_ids: (form.alternative_product_ids || []).map((item) => Number(item)),
-        drug_interactions: (form.drug_interactions || [])
+        indications: form.product_type === 'medicine' ? form.indications?.trim() || null : null,
+        indications_bn: form.product_type === 'medicine' ? form.indications_bn?.trim() || null : null,
+        pharmacology: form.product_type === 'medicine' ? form.pharmacology?.trim() || null : null,
+        pharmacology_bn: form.product_type === 'medicine' ? form.pharmacology_bn?.trim() || null : null,
+        dosage_administration: form.product_type === 'medicine' ? form.dosage_administration?.trim() || null : null,
+        dosage_administration_bn: form.product_type === 'medicine' ? form.dosage_administration_bn?.trim() || null : null,
+        interaction_details: form.product_type === 'medicine' ? form.interaction_details?.trim() || null : null,
+        interaction_details_bn: form.product_type === 'medicine' ? form.interaction_details_bn?.trim() || null : null,
+        contraindications: form.product_type === 'medicine' ? form.contraindications?.trim() || null : null,
+        contraindications_bn: form.product_type === 'medicine' ? form.contraindications_bn?.trim() || null : null,
+        side_effects: form.product_type === 'medicine' ? form.side_effects?.trim() || null : null,
+        side_effects_bn: form.product_type === 'medicine' ? form.side_effects_bn?.trim() || null : null,
+        pregnancy_lactation: form.product_type === 'medicine' ? form.pregnancy_lactation?.trim() || null : null,
+        pregnancy_lactation_bn: form.product_type === 'medicine' ? form.pregnancy_lactation_bn?.trim() || null : null,
+        precautions_warnings: form.product_type === 'medicine' ? form.precautions_warnings?.trim() || null : null,
+        precautions_warnings_bn: form.product_type === 'medicine' ? form.precautions_warnings_bn?.trim() || null : null,
+        therapeutic_class: form.product_type === 'medicine' ? form.therapeutic_class?.trim() || null : null,
+        therapeutic_class_bn: form.product_type === 'medicine' ? form.therapeutic_class_bn?.trim() || null : null,
+        storage_conditions: form.product_type === 'medicine' ? form.storage_conditions?.trim() || null : null,
+        storage_conditions_bn: form.product_type === 'medicine' ? form.storage_conditions_bn?.trim() || null : null,
+        leaflet_url: form.product_type === 'medicine' ? form.leaflet_url?.trim() || null : null,
+        specifications: form.product_type === 'medicine' ? null : (form.specifications?.trim() || null),
+        alternative_product_ids: form.product_type === 'medicine' ? (form.alternative_product_ids || []).map((item) => Number(item)) : [],
+        drug_interactions: form.product_type === 'medicine' ? (form.drug_interactions || [])
           .filter((item) => item.interacts_with_generic_name?.trim())
           .map((item) => ({
             interacts_with_generic_name: item.interacts_with_generic_name.trim(),
             severity: item.severity || 'moderate',
             warning: item.warning?.trim() || null,
             is_active: Boolean(item.is_active),
-          })),
-        pieces_per_strip: Number(form.pieces_per_strip || 1),
-        strips_per_box: Number(form.strips_per_box || 1),
+          })) : [],
+        pieces_per_strip: form.product_type === 'medicine' ? Number(form.pieces_per_strip || 1) : 1,
+        strips_per_box: form.product_type === 'medicine' ? Number(form.strips_per_box || 1) : 1,
         strip_price: null,
         box_price: null,
-        strip_discount: form.strip_discount === '' ? null : Number(form.strip_discount),
-        box_discount: form.box_discount === '' ? null : Number(form.box_discount),
-        requires_prescription: Boolean(form.requires_prescription),
+        strip_discount: form.product_type === 'medicine' && form.strip_discount !== '' ? Number(form.strip_discount) : null,
+        box_discount: form.product_type === 'medicine' && form.box_discount !== '' ? Number(form.box_discount) : null,
+        requires_prescription: form.product_type === 'medicine' ? Boolean(form.requires_prescription) : false,
         is_active: Boolean(form.is_active),
       }
 
@@ -384,8 +552,17 @@ export default function ProductForm({ mode = 'create' }) {
             <div className="mb-4 text-md font-semibold text-slate-900">Basic information</div>
             <div className="grid gap-4 md:grid-cols-2">
               <label className="block md:col-span-2">
+                <span className="mb-1 block text-sm font-medium text-slate-700">Product type</span>
+                <select value={form.product_type || 'medicine'} onChange={(event) => setProductType(event.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100">
+                  {productTypeOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+                <span className="mt-1 block text-xs text-slate-500">
+                  Medicine keeps prescription, generic, dosage and strip/box rules. Other product types use simple package-based inventory.
+                </span>
+              </label>
+              <label className="block md:col-span-2">
                 <span className="mb-1 block text-sm font-medium text-slate-700">Product name</span>
-                <input value={form.product_name} onChange={(event) => setField('product_name', event.target.value)} placeholder="Napa 500 mg Tablet" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
+                <input value={form.product_name} onChange={(event) => setField('product_name', event.target.value)} placeholder={isMedicine ? 'Napa 500 mg Tablet' : 'Digital thermometer'} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
               </label>
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700">Category</span>
@@ -402,21 +579,42 @@ export default function ProductForm({ mode = 'create' }) {
                 </select>
               </label>
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">Generic name</span>
-                <input value={form.generic_name || ''} onChange={(event) => setField('generic_name', event.target.value)} placeholder="Paracetamol" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
-              </label>
-              <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700">Brand name</span>
                 <input value={form.brand_name || ''} onChange={(event) => setField('brand_name', event.target.value)} placeholder="Napa" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
               </label>
-              <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">Strength</span>
-                <input value={form.strength || ''} onChange={(event) => setField('strength', event.target.value)} placeholder="500 mg" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">Dosage form</span>
-                <input value={form.dosage_form || ''} onChange={(event) => setField('dosage_form', event.target.value)} placeholder="Tablet" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
-              </label>
+              {isMedicine ? (
+                <>
+                  <label className="block">
+                    <span className="mb-1 block text-sm font-medium text-slate-700">Generic name</span>
+                    <input value={form.generic_name || ''} onChange={(event) => setField('generic_name', event.target.value)} placeholder="Paracetamol" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-sm font-medium text-slate-700">Strength</span>
+                    <input value={form.strength || ''} onChange={(event) => setField('strength', event.target.value)} placeholder="500 mg" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-sm font-medium text-slate-700">Dosage form</span>
+                    <input value={form.dosage_form || ''} onChange={(event) => setField('dosage_form', event.target.value)} placeholder="Tablet" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
+                  </label>
+                </>
+              ) : (
+                <>
+                  <label className="block">
+                    <span className="mb-1 block text-sm font-medium text-slate-700">Package unit</span>
+                    <select value={form.package_unit || 'pack'} onChange={(event) => setField('package_unit', event.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100">
+                      {packageUnitOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-sm font-medium text-slate-700">Package size</span>
+                    <input value={form.package_size || ''} onChange={(event) => setField('package_size', event.target.value)} placeholder="10 pcs, 100 ml, 1 device" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
+                  </label>
+                  <label className="block md:col-span-2">
+                    <span className="mb-1 block text-sm font-medium text-slate-700">Specifications</span>
+                    <textarea rows="3" value={form.specifications || ''} onChange={(event) => setField('specifications', event.target.value)} placeholder="Material, size, model, flavour, usage details, or other product-specific notes." className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
+                  </label>
+                </>
+              )}
             </div>
           </section>
 
@@ -471,31 +669,112 @@ export default function ProductForm({ mode = 'create' }) {
           </section>
 
           <section className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="mb-4 flex flex-col gap-1">
+            <div className="mb-4 flex flex-col gap-1 border-b border-slate-200 pb-4">
               <div className="text-md font-semibold text-slate-900">Packaging and unit rules</div>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">Pieces per strip</span>
-                <input type="number" min="1" value={form.pieces_per_strip} onChange={(event) => setField('pieces_per_strip', event.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">Strips per box</span>
-                <input type="number" min="1" value={form.strips_per_box} onChange={(event) => setField('strips_per_box', event.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">Strip discount</span>
-                <input type="number" min="0" step="0.01" value={form.strip_discount} onChange={(event) => setField('strip_discount', event.target.value)} placeholder="Optional" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
-                <span className="mt-1 block text-xs text-slate-500">Final strip price = piece selling price x pieces per strip - discount.</span>
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">Box discount</span>
-                <input type="number" min="0" step="0.01" value={form.box_discount} onChange={(event) => setField('box_discount', event.target.value)} placeholder="Optional" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
-                <span className="mt-1 block text-xs text-slate-500">Final box price = piece selling price x pieces per box - discount.</span>
-              </label>
-            </div>
+            {isMedicine ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium text-slate-700">Pieces per strip</span>
+                  <input type="number" min="1" value={form.pieces_per_strip} onChange={(event) => setField('pieces_per_strip', event.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium text-slate-700">Strips per box</span>
+                  <input type="number" min="1" value={form.strips_per_box} onChange={(event) => setField('strips_per_box', event.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium text-slate-700">Strip discount</span>
+                  <input type="number" min="0" step="0.01" value={form.strip_discount} onChange={(event) => setField('strip_discount', event.target.value)} placeholder="Optional" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
+                  <span className="mt-1 block text-xs text-slate-500">Final strip price = piece selling price x pieces per strip - discount.</span>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium text-slate-700">Box discount</span>
+                  <input type="number" min="0" step="0.01" value={form.box_discount} onChange={(event) => setField('box_discount', event.target.value)} placeholder="Optional" className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100" />
+                  <span className="mt-1 block text-xs text-slate-500">Final box price = piece selling price x pieces per box - discount.</span>
+                </label>
+              </div>
+            ) : (
+              <div className="rounded-md border border-emerald-100 bg-emerald-50 px-4 py-4 text-sm leading-6 text-emerald-800">
+                This product will be sold as one selected package unit. Inventory batch stock quantity, purchase price and selling price should be entered per {packageUnitOptions.find(([value]) => value === form.package_unit)?.[1]?.toLowerCase() || 'unit'}.
+              </div>
+            )}
           </section>
 
+          {isMedicine ? (
+          <section className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="mb-4 flex flex-col gap-1 border-b border-slate-200 pb-4">
+              <div className="text-md font-semibold text-slate-900">Medicine details for product page</div>
+              <div className="text-sm text-slate-500">
+                Structured medicine information appears on the customer product details page in dedicated sections.
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.15fr)]">
+                <label className="block rounded-md border border-slate-200 bg-slate-50 px-3 py-3">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Therapeutic class</span>
+                  <input
+                    value={form.therapeutic_class || ''}
+                    onChange={(event) => setField('therapeutic_class', event.target.value)}
+                    placeholder="Non opioid analgesic"
+                    className="w-full border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+                  />
+                </label>
+                <label className="block rounded-md border border-slate-200 bg-slate-50 px-3 py-3">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Therapeutic class BN</span>
+                  <input
+                    value={form.therapeutic_class_bn || ''}
+                    onChange={(event) => setField('therapeutic_class_bn', event.target.value)}
+                    placeholder="নন-অপিওয়েড অ্যানালজেসিক"
+                    className="w-full border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+                  />
+                </label>
+                <label className="block rounded-md border border-slate-200 bg-slate-50 px-3 py-3">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Leaflet URL</span>
+                  <input
+                    value={form.leaflet_url || ''}
+                    onChange={(event) => setField('leaflet_url', event.target.value)}
+                    placeholder="https://example.com/leaflet.pdf"
+                    className="w-full border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+                  />
+                </label>
+              </div>
+
+              {medicineContentFields.map((field) => (
+                <div key={field.key} className="border border-slate-200 bg-slate-50">
+                  <div className="flex flex-col gap-1 border-b border-slate-200 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="text-sm font-semibold text-slate-900">{field.label}</div>
+                    <div className="text-xs text-slate-500">English + Bangla customer-facing copy</div>
+                  </div>
+                  <div className="grid gap-3 p-3 lg:grid-cols-2">
+                    <label className="block">
+                      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">English</span>
+                      <textarea
+                        rows="3"
+                        value={form[field.key] || ''}
+                        onChange={(event) => setField(field.key, event.target.value)}
+                        placeholder={field.placeholder}
+                        className="w-full border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Bangla</span>
+                      <textarea
+                        rows="3"
+                        value={form[field.bnKey] || ''}
+                        onChange={(event) => setField(field.bnKey, event.target.value)}
+                        placeholder="বাংলা কনটেন্ট লিখুন"
+                        className="w-full border border-slate-300 bg-white px-3 py-2 text-sm leading-6 outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+          ) : null}
+
+          {isMedicine ? (
           <section className="rounded-lg border border-slate-200 bg-white p-4">
             <div className="mb-4 flex flex-col gap-1">
               <div className="text-md font-semibold text-slate-900">Product quality</div>
@@ -600,6 +879,7 @@ export default function ProductForm({ mode = 'create' }) {
               </div>
             </div>
           </section>
+          ) : null}
 
           <section className="rounded-lg border border-slate-200 bg-white p-4">
             <div className="mb-4 text-md font-semibold text-slate-900">Description</div>
@@ -691,9 +971,18 @@ export default function ProductForm({ mode = 'create' }) {
               )}
               <div className="mt-3 font-semibold text-slate-950">{form.product_name || 'Product name'}</div>
               <div className="mt-1 text-sm text-slate-600">{selectedCategory?.category_name || 'Category'} / {selectedManufacturer?.manufacturer_name || 'Manufacturer'}</div>
+              {!isMedicine ? (
+                <div className="mt-2 text-xs text-slate-500">
+                  Sold as {packageUnitOptions.find(([value]) => value === form.package_unit)?.[1] || 'Unit'}
+                  {form.package_size ? ` (${form.package_size})` : ''}
+                </div>
+              ) : null}
               <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+                <span className="text-slate-600">{productTypeOptions.find(([value]) => value === form.product_type)?.[1] || 'Medicine'}</span>
                 <span className={form.is_active ? 'text-emerald-600' : 'text-rose-600'}>{form.is_active ? 'Active' : 'Inactive'}</span>
-                <span className={form.requires_prescription ? 'text-amber-600' : 'text-slate-500'}>{form.requires_prescription ? 'Prescription required' : 'No prescription'}</span>
+                {isMedicine ? (
+                  <span className={form.requires_prescription ? 'text-amber-600' : 'text-slate-500'}>{form.requires_prescription ? 'Prescription required' : 'No prescription'}</span>
+                ) : null}
               </div>
             </div>
           </section>
@@ -705,10 +994,12 @@ export default function ProductForm({ mode = 'create' }) {
                 <span>Active product</span>
                 <input type="checkbox" checked={Boolean(form.is_active)} onChange={(event) => setField('is_active', event.target.checked)} className="h-4 w-4 accent-emerald-600" />
               </label>
-              <label className="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">
-                <span>Prescription required</span>
-                <input type="checkbox" checked={Boolean(form.requires_prescription)} onChange={(event) => setField('requires_prescription', event.target.checked)} className="h-4 w-4 accent-emerald-600" />
-              </label>
+              {isMedicine ? (
+                <label className="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">
+                  <span>Prescription required</span>
+                  <input type="checkbox" checked={Boolean(form.requires_prescription)} onChange={(event) => setField('requires_prescription', event.target.checked)} className="h-4 w-4 accent-emerald-600" />
+                </label>
+              ) : null}
               <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700">
                 <FiUploadCloud className="h-4 w-4" />
                 <span>Choose images</span>

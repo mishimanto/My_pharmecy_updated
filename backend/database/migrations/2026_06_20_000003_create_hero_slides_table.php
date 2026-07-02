@@ -32,10 +32,10 @@ return new class extends Migration
             [
                 'eyebrow' => 'Prescription-aware ordering',
                 'eyebrow_bn' => 'প্রেসক্রিপশনসহ নিরাপদ অর্ডার',
-                'title' => 'Your trusted online pharmacy in Bangladesh.',
-                'title_bn' => 'বাংলাদেশের বিশ্বস্ত অনলাইন ফার্মেসি।',
-                'primary_label' => 'Shop medicines',
-                'primary_label_bn' => 'ওষুধ দেখুন',
+                'title' => 'Your trusted online pharmacy',
+                'title_bn' => 'বিশ্বস্ত অনলাইন ফার্মেসি।',
+                'primary_label' => 'Order now',
+                'primary_label_bn' => 'অর্ডার করুন',
                 'primary_url' => '/products',
                 'secondary_label' => 'Upload prescription',
                 'secondary_label_bn' => 'প্রেসক্রিপশন আপলোড',
@@ -48,7 +48,7 @@ return new class extends Migration
             ],
             [
                 'eyebrow' => 'Review and support',
-                'eyebrow_bn' => 'রিভিউ ও সহায়তা',
+                'eyebrow_bn' => 'রিভিউ ও সাপোর্ট',
                 'title' => 'Prescription upload, review, and delivery in one place.',
                 'title_bn' => 'প্রেসক্রিপশন আপলোড, রিভিউ ও ডেলিভারি এক জায়গায়।',
                 'primary_label' => 'Shop medicines',

@@ -17,8 +17,17 @@ const UNIT_COPY = {
   piece: { bn: 'পিস', en: 'Piece', enPlural: 'Pieces' },
   strip: { bn: 'পাতা', en: 'Strip', enPlural: 'Strips' },
   box: { bn: 'বক্স', en: 'Box', enPlural: 'Boxes' },
+  pack: { bn: 'প্যাক', en: 'Pack', enPlural: 'Packs' },
+  packet: { bn: 'প্যাকেট', en: 'Packet', enPlural: 'Packets' },
+  bottle: { bn: 'বোতল', en: 'Bottle', enPlural: 'Bottles' },
+  kit: { bn: 'কিট', en: 'Kit', enPlural: 'Kits' },
+  device: { bn: 'ডিভাইস', en: 'Device', enPlural: 'Devices' },
+  tube: { bn: 'টিউব', en: 'Tube', enPlural: 'Tubes' },
+  jar: { bn: 'জার', en: 'Jar', enPlural: 'Jars' },
   unit: { bn: 'ইউনিট', en: 'Unit', enPlural: 'Units' },
 }
+
+const PACKAGE_UNIT_CODES = new Set(['pack', 'packet', 'bottle', 'kit', 'device', 'tube', 'jar', 'unit'])
 
 function resolveUnitCopy(code) {
   return UNIT_COPY[code] || UNIT_COPY.unit
@@ -34,12 +43,26 @@ export function getUnitPluralLabel(code, isBangla = false) {
   return isBangla ? copy.bn : copy.enPlural
 }
 
+export function getOptionUnitLabel(option, isBangla = false) {
+  if (!option) {
+    return ''
+  }
+
+  return isBangla ? getUnitLabel(option.code, true) : option.label || getUnitLabel(option.code, false)
+}
+
 export function getLocalizedConversionLabel(option, isBangla = false) {
   if (!option) {
     return ''
   }
 
   const piecesPerUnit = Number(option.pieces_per_unit || 0)
+  const usesPackageLabel = PACKAGE_UNIT_CODES.has(option.code) || (option.code === 'box' && piecesPerUnit <= 1)
+
+  if (usesPackageLabel && option.conversion_label) {
+    return option.conversion_label
+  }
+
   const unitLabel = getUnitLabel(option.code, isBangla)
 
   if (!piecesPerUnit) {
@@ -59,4 +82,19 @@ export function getUnitSummary(quantity, unitCode, isBangla = false) {
   const formattedCount = count.toLocaleString(isBangla ? 'bn-BD' : 'en-US')
 
   return `${formattedCount} ${label}`
+}
+
+export function getOptionUnitSummary(quantity, option, isBangla = false) {
+  if (!option) {
+    return ''
+  }
+
+  const count = Number(quantity || 0)
+  const formattedCount = count.toLocaleString(isBangla ? 'bn-BD' : 'en-US')
+
+  if (isBangla || count === 1) {
+    return `${formattedCount} ${getOptionUnitLabel(option, isBangla)}`
+  }
+
+  return `${formattedCount} ${getUnitPluralLabel(option.code, false)}`
 }

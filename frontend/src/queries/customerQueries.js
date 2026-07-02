@@ -9,17 +9,19 @@ import { orderApi } from '../api/orderApi'
 import { paymentMethodApi, readCachedPaymentMethods } from '../api/paymentMethodApi'
 import { prescriptionApi } from '../api/prescriptionApi'
 import { productApi } from '../api/productApi'
+import { rewardApi } from '../api/rewardApi'
 import { returnApi } from '../api/returnApi'
 import { siteSettingsApi } from '../api/siteSettingsApi'
 import { supportApi } from '../api/supportApi'
 
 const FIVE_MINUTES = 1000 * 60 * 5
 const THIRTY_MINUTES = 1000 * 60 * 30
+const PRODUCT_LIST_STALE_TIME = 1000 * 30
 
 export const customerQueryKeys = {
   products: (params = {}, offerScope = 'default') => ['products', params, offerScope],
   product: (idOrSlug, offerScope = 'default') => ['product', String(idOrSlug || ''), offerScope],
-  categories: ['categories'],
+  categories: (params = {}) => ['categories', params],
   manufacturers: ['manufacturers'],
   heroSlides: ['hero-slides'],
   bannerImages: (params = { placement: 'homepage' }) => ['banner-images', params],
@@ -27,6 +29,7 @@ export const customerQueryKeys = {
   offers: ['offers'],
   marketingPopup: ['marketing-popup'],
   paymentMethods: ['payment-methods'],
+  customerAiConfig: ['customer', 'ai-config'],
   addresses: ['customer', 'addresses'],
   orders: ['customer', 'orders'],
   order: (id) => ['customer', 'orders', String(id || '')],
@@ -39,6 +42,70 @@ export const customerQueryKeys = {
   supportTickets: ['customer', 'support-tickets'],
   supportTicket: (id) => ['customer', 'support-tickets', String(id || '')],
   deliveryAreas: ['delivery-areas'],
+  rewards: ['customer', 'rewards'],
+}
+
+export function setProductQueryData(queryClient, product, offerScope = 'default') {
+  if (!queryClient || !product) return
+
+  if (product.id != null) {
+    queryClient.setQueryData(customerQueryKeys.product(product.id, offerScope), product)
+  }
+
+  if (product.slug) {
+    queryClient.setQueryData(customerQueryKeys.product(product.slug, offerScope), product)
+  }
+}
+
+export function setProductsListQueryData(queryClient, params = {}, payload = null, offerScope = 'default') {
+  if (!queryClient || !payload) return
+
+  queryClient.setQueryData(customerQueryKeys.products(params, offerScope), payload)
+  ;(payload?.data || []).forEach((product) => setProductQueryData(queryClient, product, offerScope))
+}
+
+export function prefetchProductsQuery(queryClient, params = {}, offerScope = 'default') {
+  if (!queryClient) return Promise.resolve(null)
+
+  return queryClient.prefetchQuery({
+    queryKey: customerQueryKeys.products(params, offerScope),
+    queryFn: () => productApi.list(params, { cacheScope: offerScope }).then((response) => response.data.data),
+    staleTime: PRODUCT_LIST_STALE_TIME,
+    gcTime: THIRTY_MINUTES,
+  })
+}
+
+export function prefetchProductQuery(queryClient, idOrSlug, offerScope = 'default') {
+  if (!queryClient || !idOrSlug) return Promise.resolve(null)
+
+  return queryClient.prefetchQuery({
+    queryKey: customerQueryKeys.product(idOrSlug, offerScope),
+    queryFn: () => productApi.show(idOrSlug, { cacheScope: offerScope }).then((response) => response.data.data),
+    staleTime: PRODUCT_LIST_STALE_TIME,
+    gcTime: THIRTY_MINUTES,
+  })
+}
+
+export function prefetchCategoriesQuery(queryClient, params = {}) {
+  if (!queryClient) return Promise.resolve(null)
+
+  return queryClient.prefetchQuery({
+    queryKey: customerQueryKeys.categories(params),
+    queryFn: () => productApi.categories(params).then((response) => response.data.data || []),
+    staleTime: THIRTY_MINUTES,
+    gcTime: THIRTY_MINUTES,
+  })
+}
+
+export function prefetchManufacturersQuery(queryClient) {
+  if (!queryClient) return Promise.resolve(null)
+
+  return queryClient.prefetchQuery({
+    queryKey: customerQueryKeys.manufacturers,
+    queryFn: () => productApi.manufacturers().then((response) => response.data.data || []),
+    staleTime: THIRTY_MINUTES,
+    gcTime: THIRTY_MINUTES,
+  })
 }
 
 export function getOfferPricingSignature(offers = []) {
@@ -69,14 +136,15 @@ function useOfferPricingScope() {
 
 export function useProductsQuery(params = {}, options = {}) {
   const offerScope = useOfferPricingScope()
+  const { placeholderData, ...queryOptions } = options
 
   return useQuery({
     queryKey: customerQueryKeys.products(params, offerScope),
     queryFn: () => productApi.list(params, { cacheScope: offerScope }).then((response) => response.data.data),
-    initialData: () => productApi.getCachedList(params, { cacheScope: offerScope }) || undefined,
-    staleTime: FIVE_MINUTES,
+    staleTime: PRODUCT_LIST_STALE_TIME,
     gcTime: THIRTY_MINUTES,
-    ...options,
+    placeholderData,
+    ...queryOptions,
   })
 }
 
@@ -87,19 +155,14 @@ export function useProductQuery(idOrSlug, options = {}) {
     queryKey: customerQueryKeys.product(idOrSlug, offerScope),
     queryFn: () => productApi.show(idOrSlug, { cacheScope: offerScope }).then((response) => response.data.data),
     enabled: Boolean(idOrSlug),
-    initialData: () => productApi.getCachedProduct(idOrSlug, { cacheScope: offerScope }) || undefined,
     ...options,
   })
 }
 
-export function useCategoriesQuery(options = {}) {
+export function useCategoriesQuery(params = {}, options = {}) {
   return useQuery({
-    queryKey: customerQueryKeys.categories,
-    queryFn: () => productApi.categories().then((response) => response.data.data || []),
-    initialData: () => {
-      const cached = productApi.getCachedCategories()
-      return cached.length ? cached : undefined
-    },
+    queryKey: customerQueryKeys.categories(params),
+    queryFn: () => productApi.categories(params).then((response) => response.data.data || []),
     staleTime: THIRTY_MINUTES,
     gcTime: THIRTY_MINUTES,
     ...options,
@@ -110,10 +173,6 @@ export function useManufacturersQuery(options = {}) {
   return useQuery({
     queryKey: customerQueryKeys.manufacturers,
     queryFn: () => productApi.manufacturers().then((response) => response.data.data || []),
-    initialData: () => {
-      const cached = productApi.getCachedManufacturers()
-      return cached.length ? cached : undefined
-    },
     staleTime: THIRTY_MINUTES,
     gcTime: THIRTY_MINUTES,
     ...options,
@@ -177,10 +236,23 @@ export function usePaymentMethodsQuery(options = {}) {
   })
 }
 
+export function useCustomerAiConfigQuery(options = {}) {
+  return useQuery({
+    queryKey: customerQueryKeys.customerAiConfig,
+    queryFn: () => productApi.aiConfig().then((response) => response.data.data || { enabled: false, features: {} }),
+    staleTime: 1000 * 15,
+    gcTime: THIRTY_MINUTES,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 1000 * 60,
+    ...options,
+  })
+}
+
 export function useAddressesQuery(options = {}) {
   return useQuery({
     queryKey: customerQueryKeys.addresses,
-    queryFn: () => addressApi.list().then((response) => response.data.data || []),
+    queryFn: () => addressApi.list().then((response) => response.data.data?.data || response.data.data || []),
     ...options,
   })
 }
@@ -188,7 +260,7 @@ export function useAddressesQuery(options = {}) {
 export function useOrdersQuery(options = {}) {
   return useQuery({
     queryKey: customerQueryKeys.orders,
-    queryFn: () => orderApi.list().then((response) => response.data.data || []),
+    queryFn: () => orderApi.list().then((response) => response.data.data?.data || response.data.data || []),
     ...options,
   })
 }
@@ -211,11 +283,38 @@ export function useOrderTrackingQuery(id, options = {}) {
   })
 }
 
+export function normalizeNotifications(payload) {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  if (Array.isArray(payload?.data?.data)) return payload.data.data
+  return []
+}
+
+export function setNotificationsQueryData(queryClient, payload, params = {}) {
+  if (!queryClient) return
+
+  queryClient.setQueryData([...customerQueryKeys.notifications, params], normalizeNotifications(payload))
+}
+
+export function markNotificationReadInQueryData(queryClient, notificationId, params = {}) {
+  if (!queryClient) return
+
+  queryClient.setQueryData([...customerQueryKeys.notifications, params], (current = []) => (
+    normalizeNotifications(current).map((item) => (
+      item.id === notificationId
+        ? { ...item, status: 'read', read_at: item.read_at || new Date().toISOString() }
+        : item
+    ))
+  ))
+}
+
 export function useNotificationsQuery(options = {}) {
+  const { params = {}, ...queryOptions } = options
+
   return useQuery({
-    queryKey: customerQueryKeys.notifications,
-    queryFn: () => notificationApi.list().then((response) => response.data.data?.data || response.data.data || []),
-    ...options,
+    queryKey: [...customerQueryKeys.notifications, params],
+    queryFn: () => notificationApi.list(params).then((response) => normalizeNotifications(response.data?.data)),
+    ...queryOptions,
   })
 }
 
@@ -240,7 +339,7 @@ export function usePrescriptionQuery(id, options = {}) {
 export function useReturnsQuery(options = {}) {
   return useQuery({
     queryKey: customerQueryKeys.returns,
-    queryFn: () => returnApi.list().then((response) => response.data.data || []),
+    queryFn: () => returnApi.list().then((response) => response.data.data?.data || response.data.data || []),
     ...options,
   })
 }
@@ -275,6 +374,14 @@ export function useDeliveryAreasQuery(options = {}) {
   return useQuery({
     queryKey: customerQueryKeys.deliveryAreas,
     queryFn: () => orderApi.deliveryAreas().then((response) => response.data.data || []),
+    ...options,
+  })
+}
+
+export function useRewardsQuery(options = {}) {
+  return useQuery({
+    queryKey: customerQueryKeys.rewards,
+    queryFn: () => rewardApi.summary().then((response) => response.data.data),
     ...options,
   })
 }

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import Swal from 'sweetalert2'
@@ -7,6 +8,7 @@ import EmptyState from '../../components/common/EmptyState'
 import { prescriptionApi } from '../../api/prescriptionApi'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
+import { customerQueryKeys, usePrescriptionsQuery } from '../../queries/customerQueries'
 import { date } from '../../utils/formatters'
 import { prescriptionSlug } from '../../utils/prescriptionDisplay'
 
@@ -38,25 +40,30 @@ function statusText(status, isBangla) {
 }
 
 export default function Prescriptions() {
+  const queryClient = useQueryClient()
   const { loading: authLoading, ensureGuestToken } = useCustomerAuth()
   const { isBangla } = useLanguage()
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState(null)
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
   const locale = isBangla ? 'bn-BD' : 'en-US'
+  const prescriptionsQuery = usePrescriptionsQuery({
+    enabled: !authLoading,
+    placeholderData: (previous) => previous,
+  })
+  const items = useMemo(() => prescriptionsQuery.data || [], [prescriptionsQuery.data])
+  const loading = prescriptionsQuery.isLoading
 
   useEffect(() => {
-    if (authLoading) return
+    if (!authLoading) {
+      ensureGuestToken().catch(() => {})
+    }
+  }, [authLoading, ensureGuestToken])
 
-    ensureGuestToken()
-      .then(() => prescriptionApi.list())
-      .then(({ data }) => {
-        setItems(data.data.data || [])
-      })
-      .catch(() => toast.error(t('প্রেসক্রিপশন লোড করা যায়নি।', 'Prescriptions could not be loaded.')))
-      .finally(() => setLoading(false))
-  }, [authLoading, ensureGuestToken, t])
+  useEffect(() => {
+    if (prescriptionsQuery.isError) {
+      toast.error(t('প্রেসক্রিপশন লোড করা যায়নি।', 'Prescriptions could not be loaded.'))
+    }
+  }, [prescriptionsQuery.isError, t])
 
   const canUpload = items.length < 10
 
@@ -77,7 +84,9 @@ export default function Prescriptions() {
 
     try {
       await prescriptionApi.destroy(item.id)
-      setItems((current) => current.filter((prescription) => String(prescription.id) !== String(item.id)))
+      queryClient.setQueryData(customerQueryKeys.prescriptions, (current = []) => (
+        current.filter((prescription) => String(prescription.id) !== String(item.id))
+      ))
       toast.success(t('প্রেসক্রিপশন ডিলিট হয়েছে।', 'Prescription deleted successfully.'))
     } catch (error) {
       toast.error(error.response?.data?.message || t('প্রেসক্রিপশন ডিলিট করা যায়নি।', 'Prescription could not be deleted.'))
@@ -117,14 +126,36 @@ export default function Prescriptions() {
       {loading && items.length === 0 ? (
         <div className="grid gap-4 lg:grid-cols-2">
           {[1, 2, 3, 4].map((item) => (
-            <div key={item} className="h-48 animate-pulse border border-slate-200 bg-white" />
+            <div key={item} className="border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="animate-pulse">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <div className="h-12 w-12 shrink-0 border border-emerald-100 bg-emerald-50" />
+                    <div className="min-w-0 flex-1">
+                      <div className="h-6 w-40 bg-slate-200" />
+                      <div className="mt-3 h-4 w-32 bg-slate-100" />
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-2">
+                    <div className="hidden h-8 w-24 bg-slate-100 sm:block" />
+                    <div className="h-10 w-20 bg-slate-200" />
+                    <div className="h-10 w-10 bg-rose-50" />
+                  </div>
+                </div>
+
+                <div className="mt-4 sm:hidden">
+                  <div className="h-7 w-28 bg-slate-100" />
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       ) : null}
 
       {!loading && items.length === 0 ? (
         <div className="border border-slate-200 bg-white p-6">
-          <EmptyState title={t('এখনও কোনো প্রেসক্রিপশন নেই', 'No prescriptions yet')} text={t('চেকআউটে ব্যবহার করার জন্য একটি প্রেসক্রিপশন আপলোড করুন।', 'Upload a prescription to use it during checkout.')} />
+          <EmptyState title={t('এখনো কোনো প্রেসক্রিপশন নেই', 'No prescriptions yet')} text={t('চেকআউটে ব্যবহার করার জন্য একটি প্রেসক্রিপশন আপলোড করুন।', 'Upload a prescription to use it during checkout.')} />
         </div>
       ) : null}
 

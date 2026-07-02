@@ -9,6 +9,7 @@ use App\Services\PrescriptionFileService;
 use App\Services\ShopperContextService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class PrescriptionController extends Controller
 {
@@ -40,11 +41,17 @@ class PrescriptionController extends Controller
         abort_if($prescriptionCount >= 10, 422, 'You can keep up to 10 prescriptions. Please delete an old prescription before uploading a new one.');
 
         $data = $request->validate([
-            'prescription_file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:4096'],
+            'prescription_file' => ['required', 'file', 'max:4096'],
             'patient_name' => ['nullable', 'string', 'max:255'],
             'doctor_name' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
         ]);
+
+        if (! str_starts_with((string) $data['prescription_file']->getMimeType(), 'image/')) {
+            throw ValidationException::withMessages([
+                'prescription_file' => 'The prescription file must be an image.',
+            ]);
+        }
 
         $path = $files->store($data['prescription_file']);
 

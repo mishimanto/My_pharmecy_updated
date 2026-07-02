@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\MarketingPopup;
 use App\Models\Offer;
 use App\Services\AdminActivityService;
+use App\Services\PublicImageOptimizerService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class MarketingPopupController extends Controller
 {
@@ -22,9 +22,9 @@ class MarketingPopupController extends Controller
         );
     }
 
-    public function store(Request $request, AdminActivityService $activity)
+    public function store(Request $request, AdminActivityService $activity, PublicImageOptimizerService $images)
     {
-        $data = $this->applyImage($request, $this->applySourceOffer($this->validated($request)));
+        $data = $this->applyImage($request, $this->applySourceOffer($this->validated($request)), $images);
         $this->clearActivePopup($data);
         $popup = MarketingPopup::create($data);
         $activity->log($request, 'create', 'marketing_popups', $popup->id, null, $popup->toArray());
@@ -32,11 +32,11 @@ class MarketingPopupController extends Controller
         return $this->ok($popup->fresh('sourceOffer:id,title'), 'Popup created successfully.', 201);
     }
 
-    public function update(Request $request, int $id, AdminActivityService $activity)
+    public function update(Request $request, int $id, AdminActivityService $activity, PublicImageOptimizerService $images)
     {
         $popup = MarketingPopup::findOrFail($id);
         $old = $popup->toArray();
-        $data = $this->applyImage($request, $this->applySourceOffer($this->validated($request)), $popup);
+        $data = $this->applyImage($request, $this->applySourceOffer($this->validated($request)), $images, $popup);
         $this->clearActivePopup($data, $popup->id);
         $popup->update($data);
         $activity->log($request, 'update', 'marketing_popups', $popup->id, $old, $popup->fresh()->toArray());
@@ -48,7 +48,7 @@ class MarketingPopupController extends Controller
     {
         $popup = MarketingPopup::findOrFail($id);
         $old = $popup->toArray();
-        $this->deleteImage($popup->image_path);
+        app(PublicImageOptimizerService::class)->delete($popup->image_path);
         $popup->delete();
         $activity->log($request, 'delete', 'marketing_popups', $id, $old);
 
@@ -101,16 +101,15 @@ class MarketingPopupController extends Controller
         return $data;
     }
 
-    private function applyImage(Request $request, array $data, ?MarketingPopup $popup = null): array
+    private function applyImage(Request $request, array $data, PublicImageOptimizerService $images, ?MarketingPopup $popup = null): array
     {
         unset($data['image']);
 
         if ($request->hasFile('image')) {
-            $this->deleteImage($popup?->image_path);
-            $data['image_path'] = $request->file('image')->store('marketing-popups', 'public');
+            $data['image_path'] = $images->store($request->file('image'), 'marketing-popups', $popup?->image_path, 1200, 1200, 82);
             $data['image_url'] = null;
         } elseif ($request->filled('image_url') && $request->string('image_url')->toString() !== $popup?->image_url) {
-            $this->deleteImage($popup?->image_path);
+            $images->delete($popup?->image_path);
             $data['image_path'] = null;
         }
 
@@ -128,10 +127,5 @@ class MarketingPopupController extends Controller
         MarketingPopup::query()
             ->when($exceptId, fn ($query) => $query->whereKeyNot($exceptId))
             ->update(['is_active' => false]);
-    }
-
-    private function deleteImage(?string $path): void
-    {
-        if ($path) Storage::disk('public')->delete($path);
     }
 }

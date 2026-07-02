@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\HeroSlide;
 use App\Services\AdminActivityService;
+use App\Services\PublicImageOptimizerService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class HeroSlideController extends Controller
 {
@@ -24,10 +24,10 @@ class HeroSlideController extends Controller
         return $this->ok($query->get(), 'Hero slides loaded successfully.');
     }
 
-    public function store(Request $request, AdminActivityService $activity)
+    public function store(Request $request, AdminActivityService $activity, PublicImageOptimizerService $images)
     {
         $data = $this->validated($request);
-        $data = $this->applyImage($request, $data);
+        $data = $this->applyImage($request, $data, $images);
 
         $slide = HeroSlide::create($data);
         $activity->log($request, 'create', 'hero_slides', $slide->id, null, $slide->toArray());
@@ -35,12 +35,12 @@ class HeroSlideController extends Controller
         return $this->ok($slide->fresh(), 'Hero slide created successfully.', 201);
     }
 
-    public function update(Request $request, int $id, AdminActivityService $activity)
+    public function update(Request $request, int $id, AdminActivityService $activity, PublicImageOptimizerService $images)
     {
         $slide = HeroSlide::findOrFail($id);
         $old = $slide->toArray();
         $data = $this->validated($request);
-        $data = $this->applyImage($request, $data, $slide);
+        $data = $this->applyImage($request, $data, $images, $slide);
 
         $slide->update($data);
         $activity->log($request, 'update', 'hero_slides', $slide->id, $old, $slide->fresh()->toArray());
@@ -52,7 +52,7 @@ class HeroSlideController extends Controller
     {
         $slide = HeroSlide::findOrFail($id);
         $old = $slide->toArray();
-        $this->deleteImage($slide->image_path);
+        app(PublicImageOptimizerService::class)->delete($slide->image_path);
         $slide->delete();
         $activity->log($request, 'delete', 'hero_slides', $id, $old);
 
@@ -80,22 +80,21 @@ class HeroSlideController extends Controller
         ]);
     }
 
-    private function applyImage(Request $request, array $data, ?HeroSlide $slide = null): array
+    private function applyImage(Request $request, array $data, PublicImageOptimizerService $images, ?HeroSlide $slide = null): array
     {
         unset($data['image'], $data['remove_image']);
 
         if ($request->boolean('remove_image')) {
-            $this->deleteImage($slide?->image_path);
+            $images->delete($slide?->image_path);
             $data['image_path'] = null;
             $data['image_url'] = null;
         }
 
         if ($request->hasFile('image')) {
-            $this->deleteImage($slide?->image_path);
-            $data['image_path'] = $request->file('image')->store('hero-slides', 'public');
+            $data['image_path'] = $images->store($request->file('image'), 'hero-slides', $slide?->image_path, 1920, 1080, 82);
             $data['image_url'] = null;
         } elseif ($request->filled('image_url') && $request->string('image_url')->toString() !== $slide?->image_url) {
-            $this->deleteImage($slide?->image_path);
+            $images->delete($slide?->image_path);
             $data['image_path'] = null;
         }
 
@@ -103,12 +102,5 @@ class HeroSlideController extends Controller
         $data['status'] = $data['status'] ?? 'active';
 
         return $data;
-    }
-
-    private function deleteImage(?string $path): void
-    {
-        if ($path) {
-            Storage::disk('public')->delete($path);
-        }
     }
 }

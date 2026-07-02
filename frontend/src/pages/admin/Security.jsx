@@ -6,6 +6,7 @@ import { adminApi } from '../../api/adminApi'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import AdminStatCard from '../../components/admin/AdminStatCard'
 import EmptyState from '../../components/common/EmptyState'
+import AuthPasswordField from '../../components/common/AuthPasswordField'
 import { date } from '../../utils/formatters'
 
 const initialParams = { guard: 'staff', status: '', search: '', page: 1, per_page: 15 }
@@ -116,7 +117,7 @@ export default function Security() {
         <div className="border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-base font-semibold text-slate-950">Login History</h2>
+              <h2 className="text-lg font-semibold text-slate-950">Login History</h2>
             </div>
             <button
               type="button"
@@ -163,20 +164,19 @@ export default function Security() {
             <div>
               <h2 className="text-base font-semibold text-slate-950">Admin 2FA</h2>
             </div>
-            <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${summary?.two_factor_enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+            <span className={`inline-flex items-center gap-1 rounded-sm px-2 py-1 text-xs font-semibold ${summary?.two_factor_enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
               {summary?.two_factor_enabled ? <FiCheckCircle className="h-3.5 w-3.5" /> : <FiSlash className="h-3.5 w-3.5" />}
               {summary?.two_factor_enabled ? 'Enabled' : 'Disabled'}
             </span>
           </div>
 
           <div className="mt-4">
-            <label className="text-sm font-semibold text-slate-700">Current password</label>
-            <input
-              type="password"
+            <AuthPasswordField
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
               placeholder="Confirm your password"
-              className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+              className="mt-0"
+              inputClassName="h-10 rounded-md bg-white px-3 py-0 transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100"
+              onChange={(event) => setPassword(event.target.value)}
             />
           </div>
 

@@ -1,7 +1,9 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { FiAlertTriangle, FiArrowRight, FiHeart, FiPlus, FiMinus, FiShoppingCart, FiUpload, FiLogIn } from 'react-icons/fi'
+import { FiAlertTriangle, FiArrowRight, FiExternalLink, FiHeart, FiPlus, FiMinus, FiShoppingCart, FiUpload, FiLogIn, FiMessageCircle, FiSend } from 'react-icons/fi'
+import { PiPrescriptionBold } from 'react-icons/pi'
 import { productApi } from '../../api/productApi'
 import { prescriptionApi } from '../../api/prescriptionApi'
 import OptimizedImage from '../../components/common/OptimizedImage'
@@ -9,14 +11,14 @@ import ProductCard from '../../components/customer/ProductCard'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStorefront } from '../../context/StorefrontContext'
-import { useProductQuery } from '../../queries/customerQueries'
+import { customerQueryKeys, getOfferPricingSignature, setProductQueryData, useCustomerAiConfigQuery, useOffersQuery, useProductQuery } from '../../queries/customerQueries'
 import { handleImageFallback, MEDICINE_PLACEHOLDER_SRC, resolveImageUrl } from '../../utils/imageUrl'
 import { isPrescriptionLoginRequiredError, requiresPrescriptionLogin as requiresPrescriptionLoginForProduct, showPrescriptionLoginRequiredAlert } from '../../utils/prescriptionCartAlert'
 import { readPreferredPrescriptionId, writePreferredPrescriptionId } from '../../utils/prescriptionSelection'
 import { getProductPath, getProductRouteKey } from '../../utils/productRouting'
 import { getCategoryName } from '../../utils/categoryNames'
 import { prescriptionDisplayName, prescriptionDisplayNameById } from '../../utils/prescriptionDisplay'
-import { getDefaultPurchaseOption, getLocalizedConversionLabel, getPurchaseOptions, getUnitLabel, getUnitSummary } from '../../utils/purchaseUnits'
+import { getDefaultPurchaseOption, getLocalizedConversionLabel, getOptionUnitLabel, getOptionUnitSummary, getPurchaseOptions } from '../../utils/purchaseUnits'
 
 const selectablePrescriptionStatuses = ['approved', 'pending']
 
@@ -37,10 +39,14 @@ export default function ProductDetails() {
   const { slug } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
   const locale = isBangla ? 'bn-BD' : 'en-US'
   const banglaFontClass = isBangla ? 'font-bangla' : ''
-  const seededProduct = location.state?.product || productApi.getCachedProduct(slug)
+  const offersQuery = useOffersQuery()
+  const offerScope = getOfferPricingSignature(offersQuery.data || [])
+  const seededProduct = location.state?.product
+    || queryClient.getQueryData(customerQueryKeys.product(slug, offerScope))
   const [viewState, setViewState] = useState({
     routeKey: slug,
     product: seededProduct,
@@ -116,20 +122,28 @@ export default function ProductDetails() {
   const isLoading = viewState.routeKey === slug ? viewState.pending && !product : !seededProduct
   const loginPath = `/login?returnTo=${encodeURIComponent(location.pathname)}`
   const productQuery = useProductQuery(slug)
+  const aiConfigQuery = useCustomerAiConfigQuery()
+  const aiProductQuestionsEnabled = Boolean(aiConfigQuery.data?.features?.product_questions)
+
+  useEffect(() => {
+    if (seededProduct) {
+      setProductQueryData(queryClient, seededProduct, offerScope)
+    }
+  }, [offerScope, queryClient, seededProduct])
 
   useEffect(() => {
     const nextProduct = productQuery.data
     if (!nextProduct) return
 
     const canonicalPath = getProductPath(nextProduct)
-    productApi.primeProduct(nextProduct)
+    setProductQueryData(queryClient, nextProduct, offerScope)
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setViewState({ routeKey: slug, product: nextProduct, pending: false })
 
     if (canonicalPath !== `/products/${encodeURIComponent(slug)}`) {
       navigate(canonicalPath, { replace: true, state: { product: nextProduct } })
     }
-  }, [navigate, productQuery.data, slug])
+  }, [navigate, offerScope, productQuery.data, queryClient, slug])
 
   useEffect(() => {
     if (productQuery.isError) {
@@ -137,7 +151,12 @@ export default function ProductDetails() {
       setViewState({ routeKey: slug, product: seededProduct || null, pending: false })
 
       if (!seededProduct) {
-        toast.error(t('এই মুহূর্তে পণ্যের বিস্তারিত লোড করা যাচ্ছে না।', 'Unable to load the product details right now.'))
+        toast.error(
+          t(
+            'এই মুহূর্তে পণ্যের বিস্তারিত লোড করা যাচ্ছে না।',
+            'Unable to load the product details right now.'
+          )
+        )
       }
     }
   }, [productQuery.isError, seededProduct, slug, t])
@@ -207,21 +226,93 @@ export default function ProductDetails() {
   const brandName = (isBangla ? product?.brand_name_bn : null) || product?.brand_name
   const manufacturerName = (isBangla ? product?.manufacturer?.manufacturer_name_bn : null) || product?.manufacturer?.manufacturer_name
   const description = ((isBangla ? product?.description_bn : null) || product?.description || '').trim()
-  const activeUnitLabel = activeOption ? getUnitLabel(activeOption.code, isBangla) : ''
-  const activeUnitSummary = activeOption ? getUnitSummary(effectiveQuantity, activeOption.code, isBangla) : ''
+  const specifications = (product?.specifications || '').trim()
+  const isMedicine = (product?.product_type || 'medicine') === 'medicine'
+  const productTypeLabel = product?.product_type ? String(product.product_type).replace(/_/g, ' ') : 'medicine'
+  const activeUnitLabel = activeOption ? getOptionUnitLabel(activeOption, isBangla) : ''
+  const activeUnitSummary = activeOption ? getOptionUnitSummary(effectiveQuantity, activeOption, isBangla) : ''
   const requiresPrescriptionLogin = requiresPrescriptionLoginForProduct(product, customer)
   const alternatives = product?.alternatives || []
   const genericRelatedProducts = product?.generic_related_products || []
   const interactionWarnings = product?.interaction_warnings || []
+  const leafletUrl = product?.leaflet_url || ''
 
-  const detailsRows = [
-    { label: t('ক্যাটাগরি', 'Category'), value: categoryName || t('স্বাস্থ্যসেবা', 'Healthcare') },
-    { label: t('জেনেরিক', 'Generic'), value: genericName || t('উল্লেখ নেই', 'Not specified') },
-    { label: t('ডোজ ফর্ম', 'Dosage form'), value: dosageForm || t('সাধারণ ফর্ম', 'General form') },
-    { label: t('শক্তিমাত্রা', 'Strength'), value: strength || t('উল্লেখ নেই', 'Not specified') },
-    { label: t('ব্র্যান্ড', 'Brand'), value: brandName || manufacturerName || t('বিশ্বস্ত ব্র্যান্ড', 'Trusted brand') },
-    { label: t('ব্যাচ নম্বর', 'Batch Number'), value: batch?.batch_number || t('সক্রিয়', 'Active') },
-  ]
+  const localizedMedicineField = useCallback((key) => {
+    const bnValue = product?.[`${key}_bn`]
+    const enValue = product?.[key]
+
+    return ((isBangla ? bnValue : null) || enValue || '').trim()
+  }, [isBangla, product])
+
+  const medicineSections = useMemo(() => ([
+    ['indications', t('ইন্ডিকেশন', 'Indications')],
+    ['pharmacology', t('ফার্মাকোলজি', 'Pharmacology')],
+    ['dosage_administration', t('ডোজ ও ব্যবহারের নিয়ম', 'Dosage & administration')],
+    ['interaction_details', t('ইন্টারঅ্যাকশন', 'Interaction')],
+    ['contraindications', t('কনট্রাইন্ডিকেশন', 'Contraindications')],
+    ['side_effects', t('পার্শ্বপ্রতিক্রিয়া', 'Side effects')],
+    ['pregnancy_lactation', t('গর্ভাবস্থা ও স্তন্যদান', 'Pregnancy & lactation')],
+    ['precautions_warnings', t('সতর্কতা ও ওয়ার্নিং', 'Precautions & warnings')],
+    ['therapeutic_class', t('থেরাপিউটিক ক্লাস', 'Therapeutic class')],
+    ['storage_conditions', t('সংরক্ষণ নির্দেশনা', 'Storage conditions')],
+  ].map(([key, title]) => ({
+    key,
+    title,
+    content: localizedMedicineField(key),
+  })).filter((section) => section.content)), [localizedMedicineField, t])
+
+  const detailsRows = isMedicine ? [
+      {
+        label: t('ক্যাটাগরি', 'Category'),
+        value: categoryName || t('স্বাস্থ্যসেবা', 'Healthcare'),
+      },
+      {
+        label: t('জেনেরিক', 'Generic'),
+        value: genericName || t('উল্লেখ নেই', 'Not specified'),
+      },
+      {
+        label: t('ডোজের ধরন', 'Dosage Form'),
+        value: dosageForm || t('সাধারণ', 'General Form'),
+      },
+      {
+        label: t('শক্তি', 'Strength'),
+        value: strength || t('উল্লেখ নেই', 'Not specified'),
+      },
+      {
+        label: t('ব্র্যান্ড', 'Brand'),
+        value: brandName || manufacturerName || t('বিশ্বস্ত ব্র্যান্ড', 'Trusted Brand'),
+      },
+      {
+        label: t('ব্যাচ নম্বর', 'Batch Number'),
+        value: batch?.batch_number || t('সক্রিয়', 'Active'),
+      },
+    ]
+  : [
+      {
+        label: t('ক্যাটাগরি', 'Category'),
+        value: categoryName || t('স্বাস্থ্যসেবা', 'Healthcare'),
+      },
+      {
+        label: t('ধরন', 'Type'),
+        value: productTypeLabel,
+      },
+      {
+        label: t('ব্র্যান্ড', 'Brand'),
+        value: brandName || manufacturerName || t('বিশ্বস্ত ব্র্যান্ড', 'Trusted Brand'),
+      },
+      {
+        label: t('প্যাকেজ', 'Package'),
+        value:
+          product?.package_size ||
+          activeOption?.conversion_label ||
+          activeUnitLabel ||
+          t('উল্লেখ নেই', 'Not specified'),
+      },
+      {
+        label: t('ব্যাচ নম্বর', 'Batch Number'),
+        value: batch?.batch_number || t('সক্রিয়', 'Active'),
+      },
+    ]
 
   const add = async () => {
     if (!product || !activeOption || !activeOption.is_available) return
@@ -231,31 +322,48 @@ export default function ProductDetails() {
       return
     }
 
+    const successToastId = toast.success(
+      product.requires_prescription && selectedPrescriptionId
+        ? t(
+            `${activeUnitSummary} কার্টে যোগ হয়েছে। Checkout-এ ${prescriptionDisplayNameById(selectablePrescriptions, selectedPrescriptionId)} আগেই থেকে সিলেক্ট থাকবে।`,
+            `Added ${activeUnitSummary} to cart. ${prescriptionDisplayNameById(selectablePrescriptions, selectedPrescriptionId)} will be preselected at checkout.`,
+          )
+        : t(
+            `${activeUnitSummary} কার্টে যোগ করা হয়েছে।`,
+            `Added ${activeUnitSummary} to cart.`,
+          ),
+    )
+
     try {
       await addToCart({
         product_id: product.id,
         purchase_unit: activeOption.code,
         quantity: effectiveQuantity,
+      }, {
+        product_name: product.product_name,
+        product_name_bn: product.product_name_bn,
+        generic_name: product.generic_name,
+        generic_name_bn: product.generic_name_bn,
+        strength: product.strength,
+        dosage_form: product.dosage_form,
+        requires_prescription: product.requires_prescription,
+        image_url: product.primary_image?.image_url || product.images?.[0]?.image_url || null,
+        thumbnail_url: product.primary_image?.thumbnail_url || product.images?.[0]?.thumbnail_url || null,
+        purchase_unit_label: activeUnitLabel,
+        pieces_per_unit: activeOption.pieces_per_unit || 1,
+        conversion_label: activeOption.conversion_label || '',
+        unit_price: activeOption.unit_price || product.display_price || 0,
+        available_stock: product.available_stock || 0,
       })
 
-      toast.success(
-        product.requires_prescription && selectedPrescriptionId
-          ? t(
-            `${activeUnitSummary} কার্টে যোগ হয়েছে। Checkout-এ ${prescriptionDisplayNameById(selectablePrescriptions, selectedPrescriptionId)} আগে থেকেই সিলেক্ট থাকবে।`,
-            `Added ${activeUnitSummary} to cart. ${prescriptionDisplayNameById(selectablePrescriptions, selectedPrescriptionId)} will be preselected at checkout.`,
-          )
-          : t(
-            `${activeUnitSummary} কার্টে যোগ করা হয়েছে।`,
-            `Added ${activeUnitSummary} to cart.`,
-          ),
-      )
     } catch (error) {
+      toast.dismiss(successToastId)
       if (isPrescriptionLoginRequiredError(error)) {
         await showPrescriptionLoginRequiredAlert(isBangla)
         return
       }
 
-      toast.error(t('এই পণ্যটি কার্টে যোগ করা যায়নি।', 'Could not add this item to the cart.'))
+      toast.error(t('এই পণ্যটি কার্টে যোগ করা যায়নি।', 'Could not add this item to the cart.'))
     }
   }
 
@@ -268,9 +376,9 @@ export default function ProductDetails() {
   if (!product) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-16 text-center sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-semibold text-slate-950">{t('পণ্যটি পাওয়া যায়নি।', 'Product not found.')}</h1>
+        <h1 className="text-3xl font-semibold text-slate-950">{t('পণ্য খুঁজে পাওয়া যায়নি.', 'Product not found.')}</h1>
         <Link to="/products" className="mt-6 inline-flex items-center gap-2 bg-[#0d4b59] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#0b5f69]">
-          {t('পণ্যের তালিকায় ফিরে যান', 'Back to catalog')}
+         {t('ক্যাটালগে ফিরে যান', 'Back to Catalog')}
           <FiArrowRight className="h-4 w-4" />
         </Link>
       </div>
@@ -287,14 +395,14 @@ export default function ProductDetails() {
             </Link>
             <span>/</span>
             <Link to="/products" className="font-medium text-[#0d4b59] transition hover:text-[#0b5f69]">
-              {t('পণ্য', 'Products')}
+              {t('পণ্যসমূহ', 'Products')}
             </Link>
             <span>/</span>
             <span className="truncate text-[#11343c]">{productName}</span>
           </div>
         </section>
 
-        <section className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <section className="mt-5 grid gap-8 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <div className="space-y-4">
             <div>
               <div className="overflow-hidden border border-[#b7d5d2] bg-[#e8f5f3] shadow-[0_24px_64px_-48px_rgba(13,75,89,0.34)]">
@@ -318,7 +426,7 @@ export default function ProductDetails() {
                         activeImage === image ? 'border-[#0f766e]' : 'border-[#b7d5d2] hover:border-[#13b8b0]'
                       }`}
                     >
-                      <OptimizedImage src={image} alt={t('পণ্যের ছবি', 'Product thumbnail')} className="h-20 w-full object-cover" onError={handleImageFallback} />
+                      <OptimizedImage src={image} alt={t('পণ্যের থাম্বনেইল', 'Product thumbnail')} className="h-20 w-full object-cover" onError={handleImageFallback} />
                     </button>
                   ))}
                 </div>
@@ -335,22 +443,71 @@ export default function ProductDetails() {
 
             {description ? (
               <div className="border border-[#b7d5d2] bg-[#eef8f7] p-5 shadow-[0_22px_60px_-48px_rgba(13,75,89,0.28)] sm:p-6">
-                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0f766e]">{t('পণ্যের বিবরণ', 'Description')}</div>
+                <div className="text-sm font-semibold uppercase tracking-[0.18em] ">{t('পণ্যের বিবরণ', 'Description')}</div>
                 <p className="mt-3 text-sm leading-7 text-[#4f6f6b]">{description}</p>
               </div>
             ) : null}
 
-            {interactionWarnings.length > 0 ? (
+            {!isMedicine && specifications ? (
+              <div className="border border-[#b7d5d2] bg-white p-5 shadow-[0_22px_60px_-48px_rgba(13,75,89,0.22)] sm:p-6">
+                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0d4b59]">{t('স্পেসিফিকেশন', 'Specifications')}</div>
+                <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[#4f6f6b]">{specifications}</p>
+              </div>
+            ) : null}
+
+            {isMedicine && medicineSections.length > 0 ? (
+              <section className="border border-[#b7d5d2] bg-white p-5 shadow-[0_22px_60px_-48px_rgba(13,75,89,0.22)] sm:p-6">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0d4b59]">
+                      {t('মেডিসিন তথ্য', 'Medicine details')}
+                    </div>
+                    <p className="mt-2 text-sm leading-7 text-[#4f6f6b]">
+                      {t(
+                        'বিস্তারিত ওষুধ-সংক্রান্ত তথ্য নিচের সেকশনগুলোতে সাজানো আছে। প্রয়োজনে ফার্মাসিস্টের পরামর্শ নিন।',
+                        'Detailed medicine information is arranged in the sections below. Ask a pharmacist if you need personal guidance.',
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  {medicineSections.map((section, index) => (
+                    <details
+                      key={section.key}
+                      className="border border-[#b7d5d2] bg-[#f8fcfb] open:bg-white"
+                      open={index === 0}
+                    >
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold text-[#11343c]">
+                        <span>{section.title}</span>
+                        <span className="text-xs uppercase tracking-[0.16em] text-[#4f6f6b]">
+                          {t('বিস্তারিত', 'Details')}
+                        </span>
+                      </summary>
+                      <div className="border-t border-[#d7ebe8] px-4 py-4 text-sm leading-7 text-[#4f6f6b] whitespace-pre-line">
+                        {section.content}
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {aiProductQuestionsEnabled ? (
+              <ProductAiQuestionPanel product={product} routeKey={routeKey || slug} t={t} />
+            ) : null}
+
+            {isMedicine && interactionWarnings.length > 0 ? (
               <div className="border border-amber-200 bg-amber-50 p-5 shadow-[0_22px_60px_-48px_rgba(180,83,9,0.24)] sm:p-6">
                 <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-amber-700">
                   <FiAlertTriangle className="h-4 w-4" />
-                  {t('ড্রাগ ইন্টারঅ্যাকশন সতর্কতা', 'Drug interaction warning')}
+                  {t('ওষুধের পারস্পরিক প্রতিক্রিয়া সতর্কতা', 'Drug interaction warning')}
                 </div>
                 <div className="mt-3 space-y-3">
                   {interactionWarnings.map((warning) => (
                     <div key={`${warning.interacts_with_generic_name}-${warning.severity}`} className="border border-amber-200 bg-white/70 px-4 py-3 text-sm leading-7 text-amber-900">
                       <div className="font-semibold">{warning.interacts_with_generic_name}</div>
-                      <p className="mt-1">{warning.warning || t('এই জেনেরিকের সাথে একসাথে ব্যবহার করার আগে ফার্মাসিস্টের পরামর্শ নিন।', 'Ask a pharmacist before using this generic together with this product.')}</p>
+                      <p className="mt-1">{warning.warning || t('এই জেনেরিকটি এই পণ্যের সাথে একসাথে ব্যবহার করার আগে একজন ফার্মাসিস্টের পরামর্শ নিন।', 'Ask a pharmacist before using this generic together with this product.')}</p>
                       <div className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">{warning.severity || 'moderate'}</div>
                     </div>
                   ))}
@@ -362,14 +519,31 @@ export default function ProductDetails() {
           <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
             <section className="border border-[#b7d5d2] bg-[#eef8f7] shadow-[0_24px_64px_-48px_rgba(13,75,89,0.34)]">
               <div className="border-b border-[#b7d5d2] p-4 sm:p-5">
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                   <span className="border border-[#0f766e]/15 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#0d4b59]">
                     {categoryName || t('স্বাস্থ্যসেবা', 'Healthcare')}
                   </span>
                   {product.requires_prescription ? (
-                    <span className="border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
-                      {t('প্রেসক্রিপশন প্রয়োজন', 'Prescription required')}
+                    <span
+                      className="inline-flex items-center justify-center rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-rose-700"
+                      aria-label={t('এই পণ্যের জন্য প্রেসক্রিপশন প্রয়োজন', 'This product requires a prescription')}
+                    >
+                      <PiPrescriptionBold className="h-4 w-4" />
                     </span>
+                  ) : null}
+                  </div>
+
+                  {isMedicine && leafletUrl ? (
+                    <a
+                      href={leafletUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 border border-[#b7d5d2] bg-white/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#0d4b59] transition hover:border-[#13b8b0] hover:bg-white"
+                    >
+                      {t('লিফলেট', 'Leaflet')}
+                      <FiExternalLink className="h-3.5 w-3.5" />
+                    </a>
                   ) : null}
                 </div>
 
@@ -378,11 +552,11 @@ export default function ProductDetails() {
                 {/* {product.requires_prescription ? (
                   <div className="mt-5 border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-7 text-amber-800">
                     <div className="font-semibold text-amber-900">
-                      {t('এই পণ্যের জন্য প্রেসক্রিপশন লাগবে', 'This product requires a prescription')}
+                      {t('পণ্যটির জন্য প্রেসক্রিপশন প্রয়োজন', 'This product requires a prescription')}
                     </div>
                     <p className="mt-1">
                       {t(
-                        'প্রেসক্রিপশন ছাড়া এই পণ্যের অর্ডার কনফার্ম হবে না। অর্ডার করতে হলে প্রেসক্রিপশন আপলোড করে checkout-এ সেটা সিলেক্ট করতে হবে।',
+                        'পণ্যটি প্রেসক্রিপশন ছাড়া অর্ডার করা যাবে না। অর্ডার সম্পন্ন করতে প্রেসক্রিপশন আপলোড করুন এবং চেক-আউটে সিলেক্ট করুন。',
                         'This product cannot be ordered without a prescription. Upload a prescription and select it during checkout to place the order.',
                       )}
                     </p>
@@ -391,19 +565,19 @@ export default function ProductDetails() {
 
                 <div className="mt-6 grid gap-px border border-[#b7d5d2] bg-[#b7d5d2] sm:grid-cols-3">
                   <FactTile
-                    label={t('শুরু মূল্য', 'Starts at')}
+                    label={t('শুরু', 'Starts at')}
                     value={roundedMoney(product.display_price || batch?.selling_price, locale)}
-                    meta={t('প্রতি পিস', 'Per piece')}
+                    meta={isMedicine ? t('প্রতি পিস', 'Per piece') : t(`প্রতি ${activeUnitLabel || 'একক'}`, `Per ${activeUnitLabel || 'unit'}`)}
                   />
                   <FactTile
                     label={t('স্টক', 'Stock')}
                     value={stockPieces.toLocaleString(locale)}
-                    meta={t('পিস আছে', 'Pieces available')}
+                    meta={isMedicine ? t('পিস আছে', 'Pieces available') : t(`${activeUnitLabel || 'ইউনিট'} আছে`, `${activeUnitLabel || 'Units'} available`)}
                   />
                   <FactTile
                     label={t('প্রস্তুতকারক', 'Manufacturer')}
-                    value={manufacturerName || t('নির্ধারিত নয়', 'Not assigned')}
-                    meta={brandName || t('ব্র্যান্ড তথ্য', 'Brand info')}
+                    value={manufacturerName || t('নির্ধারিত হয়নি', 'Not assigned')}
+                    
                   />
                 </div>
               </div>
@@ -413,7 +587,7 @@ export default function ProductDetails() {
                   <section className="border border-amber-200 bg-amber-50/40 p-5 sm:p-6">
                     <div>
                       <div className="text-sm text-center font-semibold uppercase tracking-[0.18em] text-amber-700">
-                        {t('প্রেসক্রিপশন সেকশন', 'Prescription section')}
+                        {t('প্রেসক্রিপশন বিভাগ', 'Prescription section')}
                       </div>
                     </div>
 
@@ -427,7 +601,7 @@ export default function ProductDetails() {
                         </select>
                       </div>
                     ) : customer ? (
-                      <div className="mt-5 grid gap-1 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-stretch">
+                      <div className="mt-5 grid gap-1 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center">
                       <div className="">
                         {/* <div className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-700">
                           {t('প্রেসক্রিপশন নির্বাচন করুন', 'Choose a prescription')}
@@ -451,7 +625,7 @@ export default function ProductDetails() {
                               }}
                               className="w-full border border-amber-300 bg-white px-2 py-3 text-sm text-slate-900 outline-none"
                             >
-                              <option value="">{t('একটি প্রেসক্রিপশন সিলেক্ট করুন', 'Select a prescription')}</option>
+                              <option value="">{t('প্রেসক্রিপশন নির্বাচন করুন', 'Select a prescription')}</option>
                               {selectablePrescriptions.map((item, index) => (
                                 <option key={item.id} value={item.id}>
                                   {prescriptionDisplayName(index)}
@@ -470,16 +644,16 @@ export default function ProductDetails() {
                             }}
                             className="w-full border border-amber-300 bg-white px-2 py-3 text-sm text-slate-900 outline-none"
                           >
-                            <option value="">{t('একটি প্রেসক্রিপশন সিলেক্ট করুন', 'Select a prescription')}</option>
+                            <option value="">{t('প্রেসক্রিপশন নির্বাচন করুন', 'Select a prescription')}</option>
                           </select>
                         )}
                       </div>
 
                       <div className="flex items-center justify-center">
-                        <div className="flex w-full items-center gap-2 lg:w-auto lg:flex-col lg:gap-3">
+                        <div className="flex w-full items-center justify-center gap-2 lg:w-auto lg:flex-col lg:gap-3">
                           
-                          <span className="inline-flex items-center justify-center px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
-                            or
+                          <span className="inline-flex w-full items-center justify-center px-2 py-1 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700 lg:w-auto">
+                            {t('অথবা', 'or')}
                           </span>
                           
                         </div>
@@ -505,7 +679,7 @@ export default function ProductDetails() {
                       <div className="mt-5 border border-amber-200 bg-white/65 p-4 text-center">
                         <p className="text-sm leading-6 text-[#4f6f6b]">
                           {t(
-                            'প্রেসক্রিপশন পণ্য অর্ডার করতে আগে আপনার অ্যাকাউন্টে লগইন করুন।',
+                            'প্রেসক্রিপশন আপলোড বা নির্বাচন করার আগে নিজের অ্যাকাউন্টে লগইন করুন',
                             'Login to your account before uploading or selecting a prescription.',
                           )}
                         </p>
@@ -514,7 +688,7 @@ export default function ProductDetails() {
                           className="mt-4 inline-flex items-center justify-center gap-2 border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 transition hover:border-amber-400 hover:bg-white"
                         >
                           <FiLogIn className="h-4 w-4" />
-                          {t('লগইন করে চালিয়ে যান', 'Login to continue')}
+                          {t('লগইন করুন', 'Login to continue')}
                         </Link>
                       </div>
                     )}
@@ -524,7 +698,7 @@ export default function ProductDetails() {
                 <div className="border border-[#b7d5d2] bg-[#e8f5f3] p-3 sm:p-4">
                   <div className="flex items-center justify-center gap-4">
                     <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0f766e]">
-                      {t('দরকারি ইউনিটটি বেছে নিন', 'Choose the unit you need')}
+                      {t('ইউনিট নির্বাচন করুন', 'Choose the unit you need')}
                     </div>
                   </div>
 
@@ -544,23 +718,26 @@ export default function ProductDetails() {
                         >
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-lg font-semibold text-[#11343c]">{getUnitLabel(option.code, isBangla)}</span>
+                              <span className="text-lg font-semibold text-[#11343c]">{getOptionUnitLabel(option, isBangla)}</span>
                               {option.savings > 0 ? (
                                 <span className="border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">
-                                  {t('সাশ্রয়', 'Save')} {roundedMoney(option.savings, locale)}
+                                  {t('সেভ করুন', 'Save')} {roundedMoney(option.savings, locale)}
                                 </span>
                               ) : null}
                             </div>
                             <div className="mt-2 text-sm text-[#4f6f6b]">{getLocalizedConversionLabel(option, isBangla) || option.conversion_label}</div>
                             <div className="mt-2 text-xs uppercase tracking-[0.16em] text-[#6a8883]">
-                              {t('স্টক', 'Stock')} {option.available_quantity.toLocaleString(isBangla ? 'bn-BD' : 'en-US')} {getUnitLabel(option.code, isBangla)}
+                              {t('স্টক', 'Stock')} {option.available_quantity.toLocaleString(isBangla ? 'bn-BD' : 'en-US')} {getOptionUnitLabel(option, isBangla)}
                             </div>
                           </div>
 
                           <div className="border-t border-[#b7d5d2] pt-4 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 sm:text-right">
                             <div className="text-xl font-semibold text-[#0f766e]">{roundedMoney(option.unit_price, locale)}</div>
                             {/* <div className="mt-1 text-xs text-[#4f6f6b]">
-                              {option.savings > 0 ? t('পিসের তুলনায় কম', 'Better than piece price') : t('স্ট্যান্ডার্ড মূল্য', 'Standard price')}
+                              {option.savings > 0 
+                                ? t('পিস প্রাইসের চেয়ে ভালো', 'Better than piece price') 
+                                : t('স্ট্যান্ডার্ড দাম', 'Standard price')
+                              }
                             </div> */}
                           </div>
                         </button>
@@ -600,46 +777,26 @@ export default function ProductDetails() {
                       <div className="mt-5 grid gap-px border border-[#b7d5d2] bg-[#b7d5d2] sm:grid-cols-2 2xl:grid-cols-3">
                         <FactTile
                           label={t('ইউনিট', 'Unit')}
-                          value={activeUnitLabel || t('নেই', 'None')}
-                          meta={(activeOption && getLocalizedConversionLabel(activeOption, isBangla)) || t('কোনো ইউনিট নেই', 'No unit available')}
+                          value={activeUnitLabel || t('কিছু না', 'None')}
+                          meta={(activeOption && getLocalizedConversionLabel(activeOption, isBangla)) || t('কোনও ইউনিট নেই', 'No unit available')}
                         />
                         <FactTile
-                          label={t('মোট পিস', 'Total pieces')}
+                          label={isMedicine ? t('মোট পিস', 'Total pieces') : t('মোট ইউনিট', 'Total units')}
                           value={totalPieces.toLocaleString(locale)}
-                          meta={activeOption ? activeUnitSummary : t('ইউনিট বেছে নিন', 'Select a unit')}
+                          meta={activeOption ? activeUnitSummary : t('ইউনিট সিলেক্ট করুন', 'Select a unit')}
                         />
                         <FactTile
-                          label={t('মোট মূল্য', 'Total')}
+                          label={t('মোট', 'Total')}
                           value={roundedMoney(totalPrice, locale)}
-                          meta={totalSavings > 0 ? `${t('সাশ্রয়', 'Save')} ${roundedMoney(totalSavings, locale)}` : t('স্ট্যান্ডার্ড মূল্য', 'Standard price')}
+                          meta={totalSavings > 0 ? `${t('সেভ করুন', 'Save')} ${roundedMoney(totalSavings, locale)}` : t('স্ট্যান্ডার্ড দাম', 'Standard price')}
                         />
                       </div>
                     </div>
 
-                    <aside className="">
-                      {/* <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0e6574]">{t('অর্ডার', 'Order')}</div>
-                        <div className="text-2xl font-semibold tracking-tight text-slate-950">{roundedMoney(totalPrice)}</div>
-                      </div>
-                      <p className="mt-2 text-sm text-slate-500">
-                        {activeOption
-                          ? `${activeUnitSummary} • ${totalPieces.toLocaleString(isBangla ? 'bn-BD' : 'en-US')} ${t('পিস', 'pieces')}`
-                          : t('প্রথমে একটি ইউনিট বেছে নিন', 'Choose a unit first')}
-                      </p> */}
-
-                      {/* {product.requires_prescription ? (
-                        <div className="mt-4 rounded-md border border-amber-200 bg-white p-4 text-sm text-slate-600">
-                          {selectedPrescription
-                            ? t(
-                              `Prescription #${selectedPrescription.id} এই পণ্যের জন্য সিলেক্ট করা আছে।`,
-                              `Prescription #${selectedPrescription.id} is selected for this product.`,
-                            )
-                            : t('অর্ডারের আগে উপরের সেকশন থেকে একটি প্রেসক্রিপশন বেছে নিন।', 'Choose a prescription from the section above before placing the order.')}
-                        </div>
-                      ) : null} */}
+                    <aside className="">                
 
                       <div className="space-y-3">
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2 sm:flex-row">
                         <button
                           className="w-full bg-[#0d4b59] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#0b5f69] disabled:cursor-not-allowed disabled:bg-slate-300"
                           onClick={add}
@@ -648,7 +805,7 @@ export default function ProductDetails() {
                           <span className="inline-flex items-center gap-2">
                             <FiShoppingCart className="h-4 w-4" />
                             {activeOption
-                              ? t(`${activeUnitSummary} কার্টে যোগ করুন`, `Add ${activeUnitSummary}`)
+                              ? t(`${activeUnitSummary} যোগ করুন`, `Add ${activeUnitSummary}`)
                               : t('কার্টে যোগ করুন', 'Add to cart')}
                           </span>
                         </button>
@@ -664,14 +821,16 @@ export default function ProductDetails() {
                         >
                           <span className="inline-flex items-center gap-2">
                             <FiHeart className={`h-4 w-4 ${saved ? 'fill-current' : ''}`} />
-                            {saved ? t('উইশলিস্টে রাখা হয়েছে', 'Saved to wishlist') : t('উইশলিস্টে রাখুন', 'Save to wishlist')}
+                            {saved 
+                              ? t('উইশলিস্টে সংরক্ষিত', 'Saved to wishlist') 
+                              : t('উইশলিস্টে সংরক্ষণ করুন', 'Save to wishlist')}
                           </span>
                         </button>
                         </div>
 
                         {!product.requires_prescription ? (
                           <Link to="/products" className="flex w-full items-center justify-center gap-2 border border-[#b7d5d2] bg-white/75 px-5 py-3.5 text-sm font-semibold text-[#0d4b59] transition hover:border-[#13b8b0] hover:bg-white">
-                            {t('আরও দেখুন', 'Browse more')}
+                            {t('আরো ব্রাউজ করুন', 'Browse more')}
                             <FiArrowRight className="h-4 w-4" />
                           </Link>
                         ) : null}
@@ -685,19 +844,23 @@ export default function ProductDetails() {
           </div>
         </section>
 
-        <RelatedProductSection
-          title={t('বিকল্প ওষুধ', 'Medicine alternatives')}
-          subtitle={t('ফার্মেসি টিম ম্যানুয়ালি রিভিউ করা বিকল্প পণ্য।', 'Alternative products reviewed by the pharmacy team.')}
-          products={alternatives}
-        />
+        {isMedicine ? (
+          <>
+            <RelatedProductSection
+              title={t('বিকল্প ওষুধ', 'Medicine alternatives')}
+              subtitle={t('ফার্মাসিস্ট কর্তৃক যাচাইকৃত বিকল্প ওষুধসমূহ।', 'Alternative products reviewed by the pharmacy team.')}
+              products={alternatives}
+            />
 
-        <RelatedProductSection
-          title={t('একই ধরনের পণ্য', 'Similer products')}
-          subtitle={genericName
-            ? t(`${genericName} জেনেরিকের সাথে মিল আছে।`, `Products matched by the ${genericName} generic.`)
-            : t('জেনেরিক তথ্য পাওয়া গেলে এখানে মিল থাকা পণ্য দেখাবে।', 'Matching products appear here when generic data is available.')}
-          products={genericRelatedProducts}
-        />
+            <RelatedProductSection
+              title={t('অন্যান্য পণ্য', 'Similar products')}
+              subtitle={genericName
+                ? t(`${genericName} জেনেরিকযুক্ত অন্যান্য উপলব্ধ পণ্য`, `Products matched by the ${genericName} generic.`)
+                : t('জেনেরিক তথ্য পাওয়া গেলে একই ধরনের পণ্য এখানে দেখানো হবে।', 'Matching products appear here when generic data is available.')}
+              products={genericRelatedProducts}
+            />
+          </>
+        ) : null}
       </div>
     </div>
   )
@@ -718,6 +881,95 @@ function RelatedProductSection({ title, products }) {
           <ProductCard key={item.id} product={item} compact />
         ))}
       </div>
+    </section>
+  )
+}
+
+function ProductAiQuestionPanel({ product, routeKey, t }) {
+  const [question, setQuestion] = useState('')
+  const [answer, setAnswer] = useState(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const submitQuestion = async (event) => {
+    event.preventDefault()
+
+    const trimmed = question.trim()
+    if (trimmed.length < 3 || loading) return
+
+    setLoading(true)
+    setError('')
+
+    try {
+      const { data } = await productApi.askProductQuestion(routeKey || product?.slug || product?.id, trimmed)
+      setAnswer(data.data)
+    } catch (requestError) {
+      const message = requestError?.response?.data?.message
+        || t('এই মুহূর্তে AI সহকারী নেই। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।', 'AI assistant is not available right now. Please try again later.')
+
+      setError(message)
+      setAnswer(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <section className="border border-[#b7d5d2] bg-white/80 p-5 shadow-[0_22px_60px_-48px_rgba(13,75,89,0.28)] sm:p-6">
+      <div className="flex items-center gap-2">
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center ">
+          <FiMessageCircle className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-sm font-semibold uppercase tracking-[0.18em] ">
+            {t('এই পণ্য সম্পর্কে জিজ্ঞাসা করুন', 'Ask about this product')}
+          </div>
+          {/* <h2 className="mt-1 text-lg font-semibold text-[#11343c]">
+            {t('এই পণ্য সম্পর্কে জিজ্ঞাসা করুন', 'Ask about this product')}
+          </h2> */}
+        </div>
+      </div>
+
+      <form onSubmit={submitQuestion} className="mt-8 space-y-3">
+        <textarea
+          value={question}
+          onChange={(event) => setQuestion(event.target.value)}
+          rows={3}
+          maxLength={800}
+          placeholder={t('উদাহরণ: এটি কী কাজে ব্যবহৃত হয়?', 'Example: What is this used for?')}
+          className="w-full resize-none border border-[#b7d5d2] bg-[#f8fcfb] px-4 py-3 text-sm leading-6 text-[#11343c] outline-none transition placeholder:text-[#7c9995] focus:border-[#0f766e] focus:bg-white"
+        />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-xs leading-5 text-[#6a8883]">
+            {t('এই তথ্য শুধুমাত্র সাধারণ তথ্য প্রদানের উদ্দেশ্যে। এটি চিকিৎসক বা নিবন্ধিত ফার্মাসিস্টের পেশাগত পরামর্শের বিকল্প নয়।', 'This gives general information, not a replacement for doctor or pharmacist advice.')}
+          </div>
+          <button
+            type="submit"
+            disabled={loading || question.trim().length < 3}
+            className="inline-flex items-center justify-center gap-2 bg-[#0d4b59] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0b5f69] disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            <FiSend className="h-4 w-4" />
+            {loading ? t('উত্তর দেওয়া হচ্ছে...', 'Answering...') : t('জিজ্ঞাসা করুন', 'Ask')}
+          </button>
+        </div>
+      </form>
+
+      {error ? (
+        <div className="mt-4 border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-700">
+          {error}
+        </div>
+      ) : null}
+
+      {answer?.answer ? (
+        <div className="mt-4 border border-[#b7d5d2] bg-[#eef8f7] p-4">
+          <div className="text-sm leading-7 text-[#11343c] whitespace-pre-line">{answer.answer}</div>
+          {answer.disclaimer ? (
+            <div className="mt-4 border-t border-[#b7d5d2] pt-3 text-xs leading-5 text-[#5f7f7a]">
+              {answer.disclaimer}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   )
 }
@@ -813,7 +1065,7 @@ function ProductDetailsSkeleton() {
           </div>
           <div className="grid gap-px bg-[#b7d5d2] sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} className="min-h-[288px] bg-white p-3.5">
+              <div key={index} className="min-h-72 bg-white p-3.5">
                 <div className="h-32 bg-[#eef8f7]" />
                 <div className="mt-4 h-3 w-24 bg-[#b7d5d2]/70" />
                 <div className="mt-3 h-5 w-full bg-[#b7d5d2]/60" />
@@ -848,5 +1100,4 @@ function MetaRow({ label, value }) {
     </div>
   )
 }
-
 

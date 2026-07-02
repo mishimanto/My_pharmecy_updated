@@ -14,7 +14,7 @@ export default function CustomerLoader({ size = 120, inline = false, transition 
   }
 
   return (
-    <div className={`fixed inset-0 z-80 flex items-center justify-center backdrop-blur-[6px] ${animationClass}`}>
+    <div className={`fixed inset-0 z-80 flex items-center justify-center backdrop-blur-lg ${animationClass}`}>
       <DotLottieLoader className="drop-shadow-[0_18px_34px_rgba(15,23,42,0.18)]" size={size} src={CUSTOMER_LOADER_SRC} />
     </div>
   )

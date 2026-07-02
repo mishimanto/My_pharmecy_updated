@@ -27,7 +27,7 @@ class CartController extends Controller
         $data = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
             'quantity' => ['required', 'integer', 'min:1'],
-            'purchase_unit' => ['nullable', 'in:piece,strip,box'],
+            'purchase_unit' => ['nullable', 'in:piece,strip,box,pack,packet,bottle,kit,device,tube,jar,unit'],
         ]);
 
         $product = Product::with(['images', 'batches' => $catalog->validBatchConstraint()])->findOrFail($data['product_id']);
@@ -122,13 +122,14 @@ class CartController extends Controller
     private function cartPayload(Cart $cart, InventoryService $inventory, ProductCatalogService $catalog): array
     {
         $cart->load('items.product.images');
+        $stockMap = $inventory->getAvailableStockMap($cart->items->pluck('product_id')->all());
 
-        $items = $cart->items->map(fn (CartItem $item) => $this->cartItemPayload($item, $inventory, $catalog))->values();
+        $items = $cart->items->map(fn (CartItem $item) => $this->cartItemPayload($item, $inventory, $catalog, $stockMap))->values();
         $requiresPrescription = $items->contains(fn ($item) => (bool) $item['requires_prescription']);
         $warnings = [];
 
         foreach ($cart->items as $item) {
-            $available = $inventory->getAvailableStock($item->product_id);
+            $available = (int) ($stockMap[$item->product_id] ?? 0);
             if ($available < $item->piece_quantity) {
                 $warnings[] = "{$item->product->product_name} does not have enough stock.";
             }
@@ -152,13 +153,29 @@ class CartController extends Controller
         ];
     }
 
-    private function cartItemPayload(CartItem $item, InventoryService $inventory, ProductCatalogService $catalog): array
+    private function cartItemPayload(CartItem $item, InventoryService $inventory, ProductCatalogService $catalog, array $stockMap = []): array
     {
         $product = $item->product;
-        $availableStock = $inventory->getAvailableStock($product->id);
+        $availableStock = array_key_exists($product->id, $stockMap)
+            ? (int) $stockMap[$product->id]
+            : $inventory->getAvailableStock($product->id);
         $primaryImage = $product->images->firstWhere('is_primary', true) ?? $product->images->first();
         $piecesPerUnit = max(1, (int) $item->pieces_per_unit);
-        $unitLabel = $catalog->unitLabel($item->purchase_unit);
+        $unitLabel = $catalog->unitLabel($item->purchase_unit, $product);
+
+        return $this->buildCartItemPayload($item, $catalog, $availableStock, $primaryImage?->image_url, $primaryImage?->thumbnail_url, $piecesPerUnit, $unitLabel);
+    }
+
+    private function buildCartItemPayload(
+        CartItem $item,
+        ProductCatalogService $catalog,
+        int $availableStock,
+        ?string $imageUrl,
+        ?string $thumbnailUrl,
+        int $piecesPerUnit,
+        string $unitLabel
+    ): array {
+        $product = $item->product;
 
         return [
             'cart_item_id' => $item->id,
@@ -171,15 +188,15 @@ class CartController extends Controller
             'strength' => $product->strength,
             'dosage_form' => $product->dosage_form,
             'requires_prescription' => (bool) $product->requires_prescription,
-            'image_url' => $primaryImage?->image_url,
-            'thumbnail_url' => $primaryImage?->thumbnail_url,
+            'image_url' => $imageUrl,
+            'thumbnail_url' => $thumbnailUrl,
             'quantity' => (int) $item->quantity,
             'purchase_quantity' => (int) $item->quantity,
             'purchase_unit' => $item->purchase_unit,
             'purchase_unit_label' => $unitLabel,
             'pieces_per_unit' => $piecesPerUnit,
             'piece_quantity' => (int) $item->piece_quantity,
-            'conversion_label' => "1 {$unitLabel} = {$piecesPerUnit} pieces",
+            'conversion_label' => $catalog->conversionLabelFor($product, $item->purchase_unit, $piecesPerUnit),
             'unit_price' => Currency::whole($item->unit_price),
             'subtotal' => Currency::whole($item->quantity * $item->unit_price),
             'available_stock' => $availableStock,

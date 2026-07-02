@@ -8,47 +8,8 @@ import AdminFilterBar from '../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import AdminStatCard from '../../components/admin/AdminStatCard'
 import EmptyState from '../../components/common/EmptyState'
+import { useAdminFreshListQuery } from '../../queries/adminQueries'
 import { date } from '../../utils/formatters'
-
-const ROLES_CACHE_KEY = 'admin_roles_payload_v1'
-const ROLES_CACHE_TTL = 2 * 60 * 1000
-
-function cacheKey(params) {
-  return JSON.stringify({
-    search: params.search || '',
-    page: params.page || 1,
-  })
-}
-
-function readCache(params) {
-  if (typeof window === 'undefined') return null
-
-  try {
-    const cache = JSON.parse(window.sessionStorage.getItem(ROLES_CACHE_KEY) || '{}')
-    const cached = cache[cacheKey(params)]
-    if (!cached || Date.now() - cached.cachedAt > ROLES_CACHE_TTL) return null
-    return cached.payload
-  } catch {
-    return null
-  }
-}
-
-function writeCache(params, payload) {
-  if (typeof window === 'undefined') return
-
-  try {
-    const cache = JSON.parse(window.sessionStorage.getItem(ROLES_CACHE_KEY) || '{}')
-    cache[cacheKey(params)] = { payload, cachedAt: Date.now() }
-    window.sessionStorage.setItem(ROLES_CACHE_KEY, JSON.stringify(cache))
-  } catch {
-    // Ignore storage issues.
-  }
-}
-
-function clearCache() {
-  if (typeof window === 'undefined') return
-  window.sessionStorage.removeItem(ROLES_CACHE_KEY)
-}
 
 function getInitials(name) {
   return String(name || 'R')
@@ -73,14 +34,20 @@ function actionButtonClass(tone = 'slate', disabled = false) {
 
 export default function Roles() {
   const initialParams = { search: '', page: 1 }
-  const initialCache = readCache(initialParams)
   const [params, setParams] = useState(initialParams)
-  const [roles, setRoles] = useState(initialCache?.roles || [])
-  const [meta, setMeta] = useState(initialCache?.meta || null)
-  const [allRoles, setAllRoles] = useState([])
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(!initialCache)
-  const [updating, setUpdating] = useState(false)
+  const rolesQuery = useAdminFreshListQuery('roles', params, {
+    placeholderData: (previous) => previous,
+    staleTime: 1000 * 30,
+  })
+  const statsQuery = useAdminFreshListQuery('roles', { page: 1, per_page: 100 }, {
+    staleTime: 1000 * 30,
+  })
+  const roles = rolesQuery.data?.data || []
+  const meta = rolesQuery.data || null
+  const allRoles = statsQuery.data?.data || []
+  const loading = rolesQuery.isLoading && !rolesQuery.data
+  const updating = rolesQuery.isFetching && Boolean(rolesQuery.data)
 
   const stats = useMemo(() => ({
     total: allRoles.length,
@@ -97,52 +64,11 @@ export default function Roles() {
     { label: 'No Permissions', value: stats.noPermissions, variant: 'sky', icon: FiEdit },
   ]
 
-  const loadRoleOptions = () => {
-    adminApi.listFresh('roles', { page: 1, per_page: 100 })
-      .then((res) => setAllRoles(res.data.data?.data || []))
-      .catch(() => {})
-  }
-
   useEffect(() => {
-    loadRoleOptions()
-  }, [])
-
-  useEffect(() => {
-    let active = true
-    const cached = readCache(params)
-
-    if (cached) {
-      setRoles(cached.roles || [])
-      setMeta(cached.meta || null)
-      setLoading(false)
-      setUpdating(false)
-      return () => { active = false }
+    if (rolesQuery.isError) {
+      toast.error('Unable to load roles.')
     }
-
-    const hasRows = roles.length > 0
-    setLoading(!hasRows)
-    setUpdating(hasRows)
-
-    adminApi.listFresh('roles', params)
-      .then((res) => {
-        if (!active) return
-        const payload = {
-          roles: res.data.data?.data || [],
-          meta: res.data.data,
-        }
-        setRoles(payload.roles)
-        setMeta(payload.meta)
-        writeCache(params, payload)
-      })
-      .catch(() => active && toast.error('Unable to load roles.'))
-      .finally(() => {
-        if (!active) return
-        setLoading(false)
-        setUpdating(false)
-      })
-
-    return () => { active = false }
-  }, [params])
+  }, [rolesQuery.isError])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -151,12 +77,6 @@ export default function Roles() {
 
     return () => clearTimeout(timeout)
   }, [search])
-
-  const refreshList = () => {
-    clearCache()
-    loadRoleOptions()
-    setParams((current) => ({ ...current }))
-  }
 
   const remove = async (role) => {
     const result = await Swal.fire({
@@ -173,7 +93,7 @@ export default function Roles() {
     try {
       await adminApi.remove('roles', role.id)
       toast.success('Role deleted.')
-      refreshList()
+      await Promise.all([rolesQuery.refetch(), statsQuery.refetch()])
     } catch (error) {
       toast.error(error.response?.data?.message || 'Unable to delete role.')
     }

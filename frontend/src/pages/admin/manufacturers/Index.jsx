@@ -1,7 +1,7 @@
-/* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FiEdit, FiPlus, FiTrash2 } from 'react-icons/fi'
+import { useQueryClient } from '@tanstack/react-query'
 import Swal from 'sweetalert2'
 import toast from 'react-hot-toast'
 import { adminApi } from '../../../api/adminApi'
@@ -9,13 +9,10 @@ import AdminFilterBar from '../../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../../components/admin/AdminLoadingState'
 import EmptyState from '../../../components/common/EmptyState'
 import { getManufacturerImage, handleImageFallback } from '../../../utils/imageUrl'
-import {
-  clearManufacturersCache,
-  readManufacturersCache,
-  writeManufacturersCache,
-} from '../../../utils/adminManufacturerCache'
+import { adminQueryKeys, useAdminListQuery } from '../../../queries/adminQueries'
 
 const statuses = ['', 'active', 'inactive']
+const initialParams = { search: '', status: '', page: 1 }
 
 function statusClass(status) {
   return status === 'active' ? 'text-emerald-600' : 'text-rose-600'
@@ -26,51 +23,23 @@ function initials(name) {
 }
 
 export default function ManufacturerIndex() {
-  const initialParams = { search: '', status: '', page: 1 }
-  const initialCache = readManufacturersCache(initialParams)
+  const queryClient = useQueryClient()
   const [params, setParams] = useState(initialParams)
-  const [manufacturers, setManufacturers] = useState(initialCache?.manufacturers || [])
-  const [meta, setMeta] = useState(initialCache?.meta || null)
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(!initialCache)
-  const [updating, setUpdating] = useState(false)
+  const manufacturersQuery = useAdminListQuery('manufacturers', params, {
+    placeholderData: (previous) => previous,
+    staleTime: 1000 * 60,
+  })
+  const meta = manufacturersQuery.data || null
+  const manufacturers = meta?.data || []
+  const loading = manufacturersQuery.isLoading && manufacturers.length === 0
+  const updating = manufacturersQuery.isFetching && manufacturers.length > 0
 
   useEffect(() => {
-    let active = true
-    const cached = readManufacturersCache(params)
-
-    if (cached) {
-      setManufacturers(cached.manufacturers || [])
-      setMeta(cached.meta || null)
-      setLoading(false)
-      setUpdating(false)
-      return () => { active = false }
+    if (manufacturersQuery.isError) {
+      toast.error('Unable to load manufacturers.')
     }
-
-    const hasRows = manufacturers.length > 0
-    setLoading(!hasRows)
-    setUpdating(hasRows)
-
-    adminApi.listFresh('manufacturers', params)
-      .then(({ data }) => {
-        if (!active) return
-        const payload = {
-          manufacturers: data.data?.data || [],
-          meta: data.data,
-        }
-        setManufacturers(payload.manufacturers)
-        setMeta(payload.meta)
-        writeManufacturersCache(params, payload)
-      })
-      .catch(() => active && toast.error('Unable to load manufacturers.'))
-      .finally(() => {
-        if (!active) return
-        setLoading(false)
-        setUpdating(false)
-      })
-
-    return () => { active = false }
-  }, [params])
+  }, [manufacturersQuery.isError])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -111,9 +80,8 @@ export default function ManufacturerIndex() {
 
     try {
       await adminApi.remove('manufacturers', manufacturer.id)
-      clearManufacturersCache()
       toast.success('Manufacturer deleted.')
-      setParams((current) => ({ ...current }))
+      await queryClient.invalidateQueries({ queryKey: adminQueryKeys.resourceList('manufacturers') })
     } catch (error) {
       toast.error(error.response?.data?.message || 'Unable to delete manufacturer.')
     }

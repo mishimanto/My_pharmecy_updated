@@ -40,12 +40,12 @@ export default function CustomerFooter() {
 
   return (
     <footer className={`border-t border-[#0b5f69] bg-[linear-gradient(135deg,#0d4b59_0%,#0f766e_52%,#13b8b0_100%)] text-white ${banglaFontClass}`}>
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[0.85fr_0.75fr_0.95fr] lg:items-start lg:px-8">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-2 md:gap-10 lg:px-8 xl:grid-cols-[0.85fr_0.75fr_0.95fr] xl:items-start">
         <div className="space-y-5">
           <CustomerLogo variant="footer" />
 
           <div className="space-y-3 text-sm text-white/82">
-            <div className="flex items-start gap-3 border border-white/18 bg-white/10 px-4 py-3 backdrop-blur-sm">
+            <div className="flex items-start gap-3 py-2 backdrop-blur-sm">
               <FiPhoneCall className="mt-0.5 h-4 w-4 text-white" />
               <div>
                 <div className="font-medium text-white">{settings?.support_phone || '09610-001122'}</div>
@@ -53,13 +53,13 @@ export default function CustomerFooter() {
                 <div className="mt-1">{settings?.support_email || 'support@mypharmecy.test'}</div>
               </div>
             </div>
-            <div className="flex items-start gap-3 border border-white/18 bg-white/10 px-4 py-3 backdrop-blur-sm">
+            {/* <div className="flex items-start gap-3 border border-white/18 bg-white/10 px-4 py-3 backdrop-blur-sm">
               <FiMapPin className="mt-0.5 h-4 w-4 text-white" />
               <div>
                 <div className="font-medium text-white">{localizedSetting('address', 'ঢাকা সার্ভিস পয়েন্ট', 'Dhaka service point')}</div>
                 <div>{localizedSetting('city', 'ঢাকা', 'Dhaka')}</div>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -78,13 +78,13 @@ export default function CustomerFooter() {
           ))}
         </div>
 
-        <div className="space-y-3 lg:justify-self-end">
+        <div className="space-y-3 md:col-span-2 xl:col-span-1 xl:justify-self-end">
           <div className="text-sm font-semibold uppercase tracking-[0.2em] text-white/65">{t('লোকেশন', 'Location')}</div>
           <div className="overflow-hidden border border-white/18 bg-white/95 shadow-[0_24px_48px_-28px_rgba(15,23,42,0.7)]">
             <iframe
               title={`${settings?.site_name || 'My Pharmecy'} location map`}
               src={settings?.map_embed_url || 'https://www.google.com/maps?q=Dhaka%2C%20Bangladesh&z=12&output=embed'}
-              className="h-[260px] w-full border-0 lg:w-[340px]"
+              className="h-[220px] w-full border-0 sm:h-[240px] xl:h-[260px] xl:w-[340px]"
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
             />
@@ -97,12 +97,7 @@ export default function CustomerFooter() {
           <div className="flex flex-wrap items-center gap-4">
             <span>&copy; {currentYear}</span>
             <span className="hidden text-white/25 lg:inline">|</span>
-            <span>{localizedSetting('footer_note', 'প্রেসক্রিপশন-সচেতন অনলাইন ফার্মেসি অভিজ্ঞতা', 'Prescription-aware online pharmacy experience')}</span>
-          </div>
-          <div className="flex flex-wrap gap-4">
-            <Link to="/privacy-policy" className="transition hover:text-white">{t('প্রাইভেসি পলিসি', 'Privacy policy')}</Link>
-            <Link to="/terms-and-conditions" className="transition hover:text-white">{t('শর্তাবলি', 'Terms')}</Link>
-            <Link to="/refund-and-return-policy" className="transition hover:text-white">{t('রিফান্ড পলিসি', 'Refund policy')}</Link>
+            <span>{localizedSetting('footer_note', 'সর্বস্বত্ব সংরক্ষিত', 'All rights reserved')}</span>
           </div>
         </div>
       </div>

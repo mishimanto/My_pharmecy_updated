@@ -1,46 +1,22 @@
 import { useCallback, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { FiBell, FiCheckCircle, FiClock, FiExternalLink, FiFileText, FiPackage, FiRefreshCw } from 'react-icons/fi'
 import { notificationApi } from '../../api/notificationApi'
 import { useLanguage } from '../../context/LanguageContext'
-import { customerQueryKeys, useNotificationsQuery } from '../../queries/customerQueries'
-import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
+import {
+  customerQueryKeys,
+  markNotificationReadInQueryData,
+  normalizeNotifications,
+  setNotificationsQueryData,
+  useNotificationsQuery,
+} from '../../queries/customerQueries'
+import { getCustomerNotificationLink, getCustomerNotificationMessage, getCustomerNotificationTitle, getCustomerNotificationTypeLabel } from '../../utils/customerNotificationDisplay'
 import { date } from '../../utils/formatters'
-
-const NOTIFICATIONS_CACHE_KEY = 'notifications_list'
-
-const typeLabels = {
-  order_status_update: ['অর্ডার আপডেট', 'Order update'],
-  new_order: ['অর্ডার আপডেট', 'Order update'],
-  prescription_review: ['প্রেসক্রিপশন রিভিউ', 'Prescription review'],
-  prescription_clarification: ['প্রেসক্রিপশন তথ্য প্রয়োজন', 'Prescription clarification'],
-  payment_update: ['পেমেন্ট আপডেট', 'Payment update'],
-  support_reply: ['সাপোর্ট রিপ্লাই', 'Support reply'],
-  return_status_update: ['রিটার্ন আপডেট', 'Return update'],
-  refund_update: ['রিফান্ড আপডেট', 'Refund update'],
-}
-
-const titleLabels = {
-  prescription_clarification: ['প্রেসক্রিপশন নিয়ে আরও তথ্য প্রয়োজন', 'Prescription clarification needed'],
-  prescription_review: ['প্রেসক্রিপশন রিভিউ আপডেট', 'Prescription review update'],
-  order_status_update: ['অর্ডার স্ট্যাটাস আপডেট', 'Order status updated'],
-}
 
 function localizedNumber(value, isBangla) {
   return Number(value || 0).toLocaleString(isBangla ? 'bn-BD' : 'en-US')
-}
-
-function typeLabel(type, isBangla) {
-  const labels = typeLabels[type] || ['নোটিফিকেশন', 'Notification']
-  return isBangla ? labels[0] : labels[1]
-}
-
-function notificationTitle(item, isBangla) {
-  const labels = titleLabels[item.notification_type]
-  if (labels) return isBangla ? labels[0] : labels[1]
-  return item.title || typeLabel(item.notification_type, isBangla)
 }
 
 function notificationIcon(type) {
@@ -51,27 +27,25 @@ function notificationIcon(type) {
 }
 
 function notificationLink(item) {
-  const link = item?.metadata?.link
-  return link && String(link).startsWith('/') ? link : ''
+  return getCustomerNotificationLink(item)
 }
 
 export default function Notifications() {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { isBangla } = useLanguage()
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
-  const cachedNotifications = readCustomerCache(NOTIFICATIONS_CACHE_KEY, [])
   const notificationsQuery = useNotificationsQuery({
-    initialData: cachedNotifications.length ? cachedNotifications : undefined,
+    placeholderData: (previous) => previous,
   })
-  const notifications = useMemo(() => notificationsQuery.data || [], [notificationsQuery.data])
+  const notifications = useMemo(() => normalizeNotifications(notificationsQuery.data), [notificationsQuery.data])
   const unreadNotifications = useMemo(() => notifications.filter((item) => item.status !== 'read'), [notifications])
   const readNotifications = notifications.length - unreadNotifications.length
   const loading = notificationsQuery.isLoading
   const refreshing = notificationsQuery.isFetching && !loading
 
   const updateNotificationCache = useCallback((nextNotifications) => {
-    queryClient.setQueryData(customerQueryKeys.notifications, nextNotifications)
-    writeCustomerCache(NOTIFICATIONS_CACHE_KEY, nextNotifications)
+    setNotificationsQueryData(queryClient, nextNotifications)
   }, [queryClient])
 
   useEffect(() => {
@@ -80,19 +54,30 @@ export default function Notifications() {
     }
   }, [notificationsQuery.isError, t])
 
-  useEffect(() => {
-    writeCustomerCache(NOTIFICATIONS_CACHE_KEY, notifications)
-  }, [notifications])
-
   const markRead = async (id) => {
     try {
       await notificationApi.read(id)
-      updateNotificationCache(notifications.map((item) => (
-        item.id === id ? { ...item, status: 'read', read_at: new Date().toISOString() } : item
-      )))
+      markNotificationReadInQueryData(queryClient, id)
       toast.success(t('নোটিফিকেশন পড়া হয়েছে।', 'Notification marked as read.'))
     } catch {
       toast.error(t('নোটিফিকেশন আপডেট করা যায়নি।', 'Notification could not be updated.'))
+    }
+  }
+
+  const openNotification = async (item) => {
+    const link = notificationLink(item)
+
+    if (item.status !== 'read') {
+      try {
+        await notificationApi.read(item.id)
+        markNotificationReadInQueryData(queryClient, item.id)
+      } catch {
+        queryClient.invalidateQueries({ queryKey: customerQueryKeys.notifications })
+      }
+    }
+
+    if (link) {
+      navigate(link)
     }
   }
 
@@ -117,9 +102,6 @@ export default function Notifications() {
             <div className="text-md font-semibold uppercase tracking-[0.18em] text-[#0e6574]">
               {t('নোটিফিকেশন', 'Notifications')}
             </div>
-            {/* <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-              {t('অর্ডার, প্রেসক্রিপশন ও সাপোর্ট আপডেট', 'Order, prescription, and support updates')}
-            </h1> */}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -167,7 +149,7 @@ export default function Notifications() {
             <span className="mx-auto flex h-14 w-14 items-center justify-center border border-slate-200 bg-slate-50 text-slate-500">
               <FiBell className="h-6 w-6" />
             </span>
-            <h2 className="mt-4 text-lg font-semibold text-slate-950">{t('এখনও কোনো নোটিফিকেশন নেই', 'No notifications yet')}</h2>
+            <h2 className="mt-4 text-lg font-semibold text-slate-950">{t('এখনো কোনো নোটিফিকেশন নেই', 'No notifications yet')}</h2>
             <p className="mt-2 text-sm text-slate-500">{t('অর্ডার বা প্রেসক্রিপশন আপডেট এলে এখানে দেখাবে।', 'Order or prescription updates will appear here.')}</p>
           </div>
         ) : null}
@@ -181,6 +163,7 @@ export default function Notifications() {
                 isBangla={isBangla}
                 t={t}
                 onRead={markRead}
+                onOpen={openNotification}
               />
             ))}
           </div>
@@ -210,27 +193,26 @@ function SummaryCard({ label, value, icon: Icon, tone = 'slate' }) {
   )
 }
 
-function NotificationRow({ item, isBangla, t, onRead }) {
+function NotificationRow({ item, isBangla, t, onRead, onOpen }) {
   const Icon = notificationIcon(item.notification_type)
   const isUnread = item.status !== 'read'
   const link = notificationLink(item)
+  const message = getCustomerNotificationMessage(item, isBangla)
 
   return (
-    <article className={`p-5 transition ${isUnread ? 'bg-red-50/35' : 'bg-white'} hover:bg-slate-50`}>
+    <article
+      className={`p-5 transition ${isUnread ? 'bg-red-50/35' : 'bg-white'} ${link ? 'cursor-pointer hover:bg-slate-50' : 'hover:bg-slate-50'}`}
+      onClick={link ? () => onOpen(item) : undefined}
+    >
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="flex min-w-0 gap-4">
           <span className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center border ${isUnread ? 'border-red-200 bg-red-50 text-red-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
             <Icon className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] ${isUnread ? 'border-red-200 bg-red-50 text-red-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
-                {isUnread ? t('নতুন', 'Unread') : t('পড়া হয়েছে', 'Read')}
-              </span>
-              <span className="text-xs font-semibold text-[#0e6574]">{typeLabel(item.notification_type, isBangla)}</span>
-            </div>
-            <h2 className="mt-2 text-base font-semibold text-slate-950">{notificationTitle(item, isBangla)}</h2>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">{item.message}</p>
+            <h2 className={`text-base font-semibold text-slate-950 ${link ? 'transition hover:text-[#0e6574] hover:underline' : ''}`}>{getCustomerNotificationTitle(item, isBangla)}</h2>
+            <div className="mt-1 text-xs font-semibold text-[#0e6574]">{getCustomerNotificationTypeLabel(item.notification_type, isBangla)}</div>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">{message}</p>
             <div className="mt-3 text-xs text-slate-500">
               {date(item.created_at, isBangla ? 'bn-BD' : 'en-US')}
             </div>
@@ -247,7 +229,10 @@ function NotificationRow({ item, isBangla, t, onRead }) {
           {isUnread ? (
             <button
               type="button"
-              onClick={() => onRead(item.id)}
+              onClick={(event) => {
+                event.stopPropagation()
+                onRead(item.id)
+              }}
               className="inline-flex items-center gap-2 bg-slate-950 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
               <FiCheckCircle className="h-4 w-4" />

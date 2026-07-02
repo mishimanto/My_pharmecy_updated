@@ -8,6 +8,7 @@ import { adminApi } from '../../../api/adminApi'
 import AdminFilterBar from '../../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../../components/admin/AdminLoadingState'
 import EmptyState from '../../../components/common/EmptyState'
+import { handleImageFallback, resolveImageUrl } from '../../../utils/imageUrl'
 import {
   clearCategoriesCache,
   readCategoriesCache,
@@ -109,7 +110,7 @@ export default function CategoryIndex() {
   const parentFilterOptions = [
     { value: '', label: 'All categories' },
     { value: 'root', label: 'Root categories' },
-    ...allCategories.map((category) => ({ value: String(category.id), label: category.category_name })),
+    ...allCategories.map((category) => ({ value: String(category.id), label: [category.category_name, category.category_name_bn].filter(Boolean).join(' / ') })),
   ]
 
   const toggleExpanded = (id) => {
@@ -216,7 +217,15 @@ export default function CategoryIndex() {
                             </button>
                           ) : null}
                           <div>
-                            <div className="font-semibold text-slate-950">{category.category_name}</div>                            
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+                                <img src={resolveImageUrl(category.image_url)} alt="" className="h-full w-full object-cover" onError={handleImageFallback} />
+                              </div>
+                              <div>
+                                <div className="font-semibold text-slate-950">{category.category_name}</div>
+                                {category.category_name_bn ? <div className="text-xs text-slate-500">{category.category_name_bn}</div> : null}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -240,7 +249,15 @@ export default function CategoryIndex() {
                         <td className="px-4 py-3">
                           <div className="ml-10 flex items-center gap-3">
                             <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white text-xs font-semibold text-slate-500 ring-1 ring-slate-200">{index + 1}</span>
-                            <div className="font-medium text-slate-900">{child.category_name}</div>
+                            <div>
+                              <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+                                  <img src={resolveImageUrl(child.image_url)} alt="" className="h-full w-full object-cover" onError={handleImageFallback} />
+                                </div>
+                                <div className="font-medium text-slate-900">{child.category_name}</div>
+                              </div>
+                              {child.category_name_bn ? <div className="text-xs text-slate-500">{child.category_name_bn}</div> : null}
+                            </div>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-slate-600">{category.category_name}</td>

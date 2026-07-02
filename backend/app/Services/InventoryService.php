@@ -15,10 +15,33 @@ class InventoryService
             ->sum(fn (InventoryBatch $batch) => max(0, $batch->stock_quantity - $batch->reserved_quantity));
     }
 
+    public function getAvailableStockMap(array $productIds): array
+    {
+        $ids = collect($productIds)
+            ->filter(fn ($id) => filled($id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        return InventoryBatch::query()
+            ->selectRaw('product_id, SUM(GREATEST(stock_quantity - reserved_quantity, 0)) as available_stock')
+            ->whereIn('product_id', $ids)
+            ->where('status', 'active')
+            ->where('expiry_date', '>', now()->toDateString())
+            ->whereRaw('(stock_quantity - reserved_quantity) > 0')
+            ->groupBy('product_id')
+            ->pluck('available_stock', 'product_id')
+            ->map(fn ($stock) => (int) $stock)
+            ->all();
+    }
+
     public function getAvailableBatches(int $productId)
     {
         return InventoryBatch::query()
-            ->with('product', 'supplier')
             ->where('product_id', $productId)
             ->where('status', 'active')
             ->where('expiry_date', '>', now()->toDateString())

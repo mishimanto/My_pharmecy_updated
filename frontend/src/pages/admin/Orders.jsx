@@ -1,13 +1,12 @@
-/* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { FiAlertCircle, FiCheckCircle, FiClock, FiShoppingBag } from 'react-icons/fi'
-import { adminApi } from '../../api/adminApi'
 import AdminFilterBar from '../../components/admin/AdminFilterBar'
 import AdminLoadingState from '../../components/admin/AdminLoadingState'
 import AdminStatCard from '../../components/admin/AdminStatCard'
 import EmptyState from '../../components/common/EmptyState'
+import { useAdminListQuery } from '../../queries/adminQueries'
 // import PageHeader from '../../components/common/PageHeader'
 import { date, money } from '../../utils/formatters'
 import { getOrderStatusLabel } from '../../utils/statusLabels'
@@ -23,50 +22,19 @@ const statusClasses = {
   returned: 'text-orange-600',
   refunded: 'text-slate-600',
 }
-const ORDERS_CACHE_KEY = 'admin_orders_payload_v1'
-const ORDERS_CACHE_TTL = 2 * 60 * 1000
-
-function orderCacheKey(params) {
-  return JSON.stringify({
-    search: params.search || '',
-    status: params.status || '',
-    page: params.page || 1,
-  })
-}
-
-function readOrdersCache(params) {
-  if (typeof window === 'undefined') return null
-
-  try {
-    const cache = JSON.parse(window.sessionStorage.getItem(ORDERS_CACHE_KEY) || '{}')
-    const cached = cache[orderCacheKey(params)]
-    if (!cached || Date.now() - cached.cachedAt > ORDERS_CACHE_TTL) return null
-    return cached.payload
-  } catch {
-    return null
-  }
-}
-
-function writeOrdersCache(params, payload) {
-  if (typeof window === 'undefined') return
-
-  try {
-    const cache = JSON.parse(window.sessionStorage.getItem(ORDERS_CACHE_KEY) || '{}')
-    cache[orderCacheKey(params)] = { payload, cachedAt: Date.now() }
-    window.sessionStorage.setItem(ORDERS_CACHE_KEY, JSON.stringify(cache))
-  } catch {
-    // Ignore storage issues.
-  }
-}
+const initialParams = { search: '', status: '', page: 1 }
 
 export default function Orders() {
-  const [params, setParams] = useState({ search: '', status: '', page: 1 })
-  const initialCache = readOrdersCache({ search: '', status: '', page: 1 })
-  const [orders, setOrders] = useState(initialCache?.orders || [])
-  const [meta, setMeta] = useState(initialCache?.meta || null)
+  const [params, setParams] = useState(initialParams)
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(!initialCache)
-  const [updating, setUpdating] = useState(false)
+  const ordersQuery = useAdminListQuery('orders', params, {
+    placeholderData: (previous) => previous,
+    staleTime: 1000 * 30,
+  })
+  const meta = ordersQuery.data || null
+  const orders = meta?.data || []
+  const loading = ordersQuery.isLoading && orders.length === 0
+  const updating = ordersQuery.isFetching && orders.length > 0
   const statItems = useMemo(() => {
     const totalOrders = meta?.total ?? orders.length
     const pendingOrders = orders.filter((order) => ['pending_confirmation', 'prescription_review'].includes(order.order_status)).length
@@ -82,41 +50,10 @@ export default function Orders() {
   }, [meta?.total, orders])
 
   useEffect(() => {
-    let active = true
-    const cached = readOrdersCache(params)
-
-    if (cached) {
-      setOrders(cached.orders || [])
-      setMeta(cached.meta || null)
-      setLoading(false)
-      setUpdating(false)
-      return () => { active = false }
+    if (ordersQuery.isError) {
+      toast.error('Unable to load orders.')
     }
-
-    const hasRows = orders.length > 0
-    setLoading(!hasRows)
-    setUpdating(hasRows)
-
-    adminApi.listFresh('orders', params)
-      .then((res) => {
-        if (!active) return
-        const payload = {
-          orders: res.data.data?.data || [],
-          meta: res.data.data,
-        }
-        setOrders(payload.orders)
-        setMeta(payload.meta)
-        writeOrdersCache(params, payload)
-      })
-      .catch(() => active && toast.error('Unable to load orders.'))
-      .finally(() => {
-        if (!active) return
-        setLoading(false)
-        setUpdating(false)
-      })
-
-    return () => { active = false }
-  }, [params])
+  }, [ordersQuery.isError])
 
   useEffect(() => {
     const timeout = setTimeout(() => {

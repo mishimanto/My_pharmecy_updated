@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { FiAlertCircle } from 'react-icons/fi'
 import AuthLayout from '../../layouts/AuthLayout'
 import { useStaffAuth } from '../../context/StaffAuthContext'
+import AuthPasswordField from '../../components/common/AuthPasswordField'
 
 export default function AdminLogin() {
   const [form, setForm] = useState({ email: 'admin@pharmacy.com', password: 'password' })
@@ -157,19 +158,22 @@ export default function AdminLogin() {
         </div>
 
         <div>
-          <label className="text-sm font-medium text-slate-700">Password</label>
-          <input
-            className="mt-1 w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
-            type="password"
+          <AuthPasswordField
+            label="Password"
             placeholder="Enter your password"
             value={form.password}
+            error={errors.password}
             onChange={(e) => {
               setForm({ ...form, password: e.target.value })
               setErrors((current) => ({ ...current, password: '' }))
               setFormError('')
             }}
           />
-          {errors.password ? <p className="mt-2 text-sm text-rose-600">{errors.password}</p> : null}
+          <div className="mt-2 text-right">
+            <Link className="text-sm font-medium text-emerald-700 transition hover:text-emerald-800" to="/admin/forgot-password">
+              Forgot password?
+            </Link>
+          </div>
         </div>
 
         <button

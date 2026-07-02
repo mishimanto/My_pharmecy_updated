@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import Swal from 'sweetalert2'
 import PageHeader from '../../components/common/PageHeader'
 import { addressApi } from '../../api/addressApi'
 import { useLanguage } from '../../context/LanguageContext'
-import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
-
-const ADDRESSES_CACHE_KEY = 'addresses_list'
+import { customerQueryKeys, useAddressesQuery } from '../../queries/customerQueries'
 
 function createForm() {
   return {
@@ -23,28 +22,25 @@ function createForm() {
 
 export default function Addresses() {
   const { isBangla } = useLanguage()
+  const queryClient = useQueryClient()
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
   const banglaFontClass = isBangla ? 'font-bangla' : ''
-  const [addresses, setAddresses] = useState(() => readCustomerCache(ADDRESSES_CACHE_KEY, []))
   const [form, setForm] = useState(createForm())
   const [editingId, setEditingId] = useState(null)
-  const [loading, setLoading] = useState(() => readCustomerCache(ADDRESSES_CACHE_KEY, null) === null)
   const [saving, setSaving] = useState(false)
+  const {
+    data: addresses = [],
+    isLoading: loading,
+  } = useAddressesQuery({
+    placeholderData: (previous) => previous,
+    onError: () => {
+      toast.error(t('ঠিকানা লোড করা যায়নি।', 'Addresses could not be loaded.'))
+    },
+  })
 
-  const load = useCallback(() => {
-    addressApi.list()
-      .then((res) => {
-        const nextAddresses = res.data.data?.data || res.data.data || []
-        setAddresses(nextAddresses)
-        writeCustomerCache(ADDRESSES_CACHE_KEY, nextAddresses)
-      })
-      .catch(() => toast.error(t('ঠিকানা লোড করা যায়নি।', 'Addresses could not be loaded.')))
-      .finally(() => setLoading(false))
-  }, [t])
-
-  useEffect(() => {
-    load()
-  }, [load])
+  const refreshAddresses = async () => {
+    await queryClient.invalidateQueries({ queryKey: customerQueryKeys.addresses })
+  }
 
   const submit = async (event) => {
     event.preventDefault()
@@ -61,7 +57,7 @@ export default function Addresses() {
 
       setForm(createForm())
       setEditingId(null)
-      load()
+      await refreshAddresses()
     } catch (error) {
       toast.error(error.response?.data?.message || t('ঠিকানা সেভ করা যায়নি।', 'Address could not be saved.'))
     } finally {
@@ -102,7 +98,7 @@ export default function Addresses() {
         setEditingId(null)
         setForm(createForm())
       }
-      load()
+      await refreshAddresses()
     } catch (error) {
       toast.error(error.response?.data?.message || t('ঠিকানা মুছে ফেলা যায়নি।', 'Address could not be deleted.'))
     }
@@ -112,7 +108,7 @@ export default function Addresses() {
     try {
       await addressApi.setDefault(addressId)
       toast.success(t('ডিফল্ট ঠিকানা আপডেট হয়েছে।', 'Default address updated.'))
-      load()
+      await refreshAddresses()
     } catch (error) {
       toast.error(error.response?.data?.message || t('ডিফল্ট ঠিকানা আপডেট করা যায়নি।', 'Default address could not be updated.'))
     }
@@ -126,8 +122,9 @@ export default function Addresses() {
         <form onSubmit={submit} className="border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
           <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">{editingId ? t('ঠিকানা এডিট করুন', 'Edit address') : t('নতুন ঠিকানা', 'New address')}</p>
-              
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">
+                {editingId ? t('ঠিকানা এডিট করুন', 'Edit address') : t('নতুন ঠিকানা', 'New address')}
+              </p>
             </div>
             {editingId ? (
               <button
@@ -162,7 +159,11 @@ export default function Addresses() {
           </div>
 
           <button disabled={saving} className="mt-5 bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60">
-            {saving ? t('ঠিকানা সেভ হচ্ছে...', 'Saving address...') : editingId ? t('ঠিকানা আপডেট করুন', 'Update address') : t('ঠিকানা সেভ করুন', 'Save address')}
+            {saving
+              ? t('ঠিকানা সেভ হচ্ছে...', 'Saving address...')
+              : editingId
+                ? t('ঠিকানা আপডেট করুন', 'Update address')
+                : t('ঠিকানা সেভ করুন', 'Save address')}
           </button>
         </form>
 
@@ -182,9 +183,11 @@ export default function Addresses() {
                     {address.is_default ? <span className="border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700">{t('ডিফল্ট', 'Default')}</span> : null}
                   </div>
                   <p className="mt-2 text-sm leading-7 text-slate-500">
-                    {address.phone}<br />
+                    {address.phone}
+                    <br />
                     {address.address_line_1}
-                    {address.address_line_2 ? `, ${address.address_line_2}` : ''}<br />
+                    {address.address_line_2 ? `, ${address.address_line_2}` : ''}
+                    <br />
                     {address.area}, {address.city}
                     {address.postal_code ? `, ${address.postal_code}` : ''}
                   </p>

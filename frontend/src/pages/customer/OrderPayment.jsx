@@ -1,45 +1,35 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { FiArrowRight, FiCopy, FiPhone, FiSmartphone, FiUpload, FiX } from 'react-icons/fi'
 import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
 import { orderApi } from '../../api/orderApi'
+import { customerQueryKeys, useOrderQuery } from '../../queries/customerQueries'
 import { money } from '../../utils/formatters'
 import { getOrderPath } from '../../utils/orderRouting'
 import { getOrderStatusLabel, getPaymentStatusLabel } from '../../utils/statusLabels'
-import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
 
 export default function OrderPayment() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { isBangla } = useLanguage()
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
   const locale = isBangla ? 'bn-BD' : 'en-US'
-  const cacheKey = `order_payment_${id}`
-  const [order, setOrder] = useState(() => readCustomerCache(cacheKey, null))
-  const [loading, setLoading] = useState(() => readCustomerCache(cacheKey, null) === null)
   const [submitting, setSubmitting] = useState(false)
   const [transactionId, setTransactionId] = useState('')
   const [screenshot, setScreenshot] = useState(null)
+  const orderQuery = useOrderQuery(id, { placeholderData: (previous) => previous })
+  const order = orderQuery.data || null
+  const loading = orderQuery.isLoading
 
   useEffect(() => {
-    let mounted = true
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading((prev) => (prev || readCustomerCache(cacheKey, null) === null))
-
-    orderApi.show(id)
-      .then((response) => {
-        if (!mounted) return
-        const orderData = response.data.data
-        setOrder(orderData)
-        writeCustomerCache(cacheKey, orderData)
-      })
-      .catch(() => mounted && toast.error(t('পেমেন্ট পেজ লোড করা যায়নি।', 'The payment page could not be loaded.')))
-      .finally(() => mounted && setLoading(false))
-
-    return () => { mounted = false }
-  }, [id, t, cacheKey])
+    if (orderQuery.isError) {
+      toast.error(t('পেমেন্ট পেজ লোড করা যায়নি।', 'The payment page could not be loaded.'))
+    }
+  }, [orderQuery.isError, t])
 
   const screenshotUrl = useMemo(() => (screenshot ? URL.createObjectURL(screenshot) : ''), [screenshot])
 
@@ -74,7 +64,7 @@ export default function OrderPayment() {
     t(`মোবাইলে ${dialCode} ডায়াল করুন।`, `Dial ${dialCode} on your phone.`),
     t('Send Money সিলেক্ট করুন।', 'Choose Send Money.'),
     t(`Receiver number হিসেবে ${paymentNumber} দিন, তারপর amount লিখুন, তারপর PIN দিন।`, `Enter ${paymentNumber} as the receiver number, then enter the amount, then your PIN.`),
-    t('কনফার্ম SMS থেকে Transaction ID নিয়ে এই পেজে জমা দিন।', 'Take the Transaction ID from the confirmation SMS and submit it here.'),
+    t('কনফার্ম SMS থেকে Transaction ID নিয়ে এই পেজে জমা দিন।', 'Take the Transaction ID from the confirmation SMS and submit it here.'),
   ]
 
   const copyNumber = async () => {
@@ -105,11 +95,12 @@ export default function OrderPayment() {
       }
 
       const response = await orderApi.submitPaymentProof(id, formData)
-      setOrder(response.data.data)
-      toast.success(t('পেমেন্ট প্রুফ জমা হয়েছে। অ্যাডমিন রিভিউ করবে।', 'Payment proof submitted. The admin will review it.'))
-      navigate(getOrderPath(order || id))
+      queryClient.setQueryData(customerQueryKeys.order(id), response.data.data)
+      queryClient.invalidateQueries({ queryKey: customerQueryKeys.orders })
+      toast.success(t('পেমেন্ট প্রুফ জমা হয়েছে। আমরা রিভিউ করব।', 'Payment proof submitted. We will review it.'))
+      navigate(getOrderPath(response.data.data || order || id))
     } catch (error) {
-      toast.error(error.response?.data?.message || t('পেমেন্ট প্রুফ জমা দেয়া যায়নি।', 'Payment proof could not be submitted.'))
+      toast.error(error.response?.data?.message || t('পেমেন্ট প্রুফ জমা দেওয়া যায়নি।', 'Payment proof could not be submitted.'))
     } finally {
       setSubmitting(false)
     }
@@ -147,29 +138,17 @@ export default function OrderPayment() {
 
   return (
     <>
-      {/* <PageHeader
-        title={t('ম্যানুয়াল পেমেন্ট', 'Manual payment')}
-        subtitle={t(
-          'বাম পাশে app/dial payment instruction আছে, ডান পাশে transaction ID আর screenshot submit করুন।',
-          'App and dial payment instructions are on the left, while the transaction ID and screenshot form stays on the right.',
-        )}
-      /> */}
-
       <div className="grid gap-5 sm:gap-6 xl:grid-cols-[minmax(0,1.08fr)_400px]">
         <section className="space-y-6">
           <div className={`overflow-hidden border ${accent.card} ${accent.soft} p-4 shadow-[0_20px_60px_-42px_rgba(15,23,42,0.35)] sm:p-6`}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
-                {/* <div className={`text-sm font-semibold uppercase tracking-[0.18em] ${accent.badge}`}>
-                  {t('পেমেন্ট রিসিভার', 'Payment receiver')}
-                </div> */}
                 <h2 className="mt-2 flex items-center gap-3 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
                   {order?.payment_method_logo_url ? (
                     <img src={order.payment_method_logo_url} alt={paymentLabel} className="h-10 w-10" />
                   ) : null}
                   {paymentLabel}
                 </h2>
-                {/* <p className="mt-2 text-sm text-slate-600">{accountName}</p> */}
               </div>
               <div className={`w-full px-4 py-2 text-center text-sm font-semibold sm:w-auto ${accent.strong}`} style={accent.style}>
                 {order.order_number}
@@ -183,7 +162,7 @@ export default function OrderPayment() {
                 </div>
                 <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
                   <div className="min-w-0 break-all text-2xl font-semibold text-slate-950 sm:text-3xl sm:tracking-[0.06em]">
-                    <span className={`inline-flex items-center gap-3`}>{/* logo + number */}
+                    <span className="inline-flex items-center gap-3">
                       <span>{paymentNumber}</span>
                     </span>
                   </div>
@@ -197,7 +176,6 @@ export default function OrderPayment() {
                   </button>
                 </div>
               </div>
-              
             </div>
 
             <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -208,64 +186,15 @@ export default function OrderPayment() {
           </div>
 
           <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-            <InstructionCard
-              icon={FiSmartphone}
-              title={t('অ্যাপ দিয়ে পেমেন্ট', 'Pay using the app')}
-              steps={appSteps}
-              accent={accent}
-            />
-            <InstructionCard
-              icon={FiPhone}
-              title={t('ডায়াল করে পেমেন্ট', 'Pay by dial code')}
-              steps={dialSteps}
-              accent={accent}
-            />
+            <InstructionCard icon={FiSmartphone} title={t('অ্যাপ দিয়ে পেমেন্ট', 'Pay using the app')} steps={appSteps} accent={accent} />
+            <InstructionCard icon={FiPhone} title={t('ডায়াল করে পেমেন্ট', 'Pay by dial code')} steps={dialSteps} accent={accent} />
           </div>
-
-          {/* <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
-              <div className="flex items-center gap-3">
-                <span className={`inline-flex h-10 w-10 items-center justify-center border ${accent.card} bg-white text-slate-900`}>
-                  <FiCheckCircle className="h-5 w-5" />
-                </span>
-                <div>
-                  <div className={`text-sm font-semibold uppercase tracking-[0.18em] ${accent.badge}`}>{t('প্রুফ সাবমিট', 'Proof checklist')}</div>
-                  <h3 className="mt-1 text-xl font-semibold text-slate-950">{t('এই দুইটি জিনিস অবশ্যই দিন', 'Please submit these two items')}</h3>
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-3">
-                <RequirementRow
-                  icon={FiHash}
-                  title={t('ট্রানজ্যাকশন আইডি', 'Transaction ID')}
-                  body={t('SMS বা app history থেকে exact ID কপি করুন।', 'Copy the exact ID from the SMS or app history.')}
-                />
-                <RequirementRow
-                  icon={FiImage}
-                  title={t('পেমেন্ট স্ক্রিনশট', 'Payment screenshot')}
-                  body={t('Amount, receiver number, আর transaction ID যেন clear দেখা যায়।', 'Make sure the amount, receiver number, and transaction ID are clearly visible.')}
-                />
-              </div>
-            </div>
-
-            <div className={`border ${accent.card} ${accent.muted} p-6 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]`}>
-              <div className="text-sm font-semibold uppercase tracking-[0.18em]">
-                {t('গুরুত্বপূর্ণ', 'Important')}
-              </div>
-              <div className="mt-3 space-y-3 text-sm leading-7">
-                <p>{t('ভুল নাম্বারে পেমেন্ট করলে admin verify করতে পারবে না।', 'If you pay the wrong number, the admin cannot verify it.')}</p>
-                <p>{t('প্রুফ জমা দিলেও order আগে admin review করবে।', 'Even after proof submission, the order will still be reviewed by admin first.')}</p>
-                <p>{t('পেমেন্ট verify হলে memo ইমেইলে যাবে।', 'Once the payment is verified, the memo will be sent by email.')}</p>
-              </div>
-            </div>
-          </div> */}
         </section>
 
         <aside>
           <form onSubmit={submit} className="border border-slate-200 bg-white p-4 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)] sm:p-6 xl:sticky xl:top-24">
             <div className="border-b border-slate-200 pb-4">
               <p className={`text-sm text-center font-semibold uppercase tracking-[0.18em] ${accent.badge}`}>{t('পেমেন্ট ডিটেইলস', 'Payment details')}</p>
-              {/* <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{t('প্রুফ জমা দিন', 'Submit your proof')}</h2> */}
             </div>
 
             <div className="mt-5 space-y-5">
@@ -364,7 +293,6 @@ function StatusText({ status, type = 'payment', isBangla = false }) {
       return 'text-slate-700'
     }
 
-    // order status
     switch (status) {
       case 'pending_confirmation':
       case 'pending':

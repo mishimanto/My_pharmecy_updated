@@ -37,6 +37,12 @@ class SendOrderCommunicationJob implements ShouldQueue
                 'notification_type' => $this->notificationType,
                 'title' => $this->title,
                 'message' => $this->message,
+                'metadata' => [
+                    'resource' => 'orders',
+                    'resource_id' => $order->id,
+                    'link' => "/orders/{$order->order_number}",
+                    'order_number' => $order->order_number,
+                ],
             ]);
         }
 

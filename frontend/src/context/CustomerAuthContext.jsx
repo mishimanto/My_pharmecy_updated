@@ -125,6 +125,14 @@ export function CustomerAuthProvider({ children }) {
     return token
   }, [])
 
+  useEffect(() => {
+    if (loading) return
+    if (customer) return
+    if (readGuestToken()) return
+
+    ensureGuestToken().catch(() => {})
+  }, [customer, ensureGuestToken, loading])
+
   const logout = useCallback(async () => {
     await customerAuthApi.logout().catch(() => {})
     localStorage.removeItem('customer_token')

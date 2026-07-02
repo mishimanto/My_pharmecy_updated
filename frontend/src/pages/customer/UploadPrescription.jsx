@@ -5,9 +5,15 @@ import { FiFileText, FiUpload, FiX } from 'react-icons/fi'
 import { prescriptionApi } from '../../api/prescriptionApi'
 import { useCustomerAuth } from '../../context/CustomerAuthContext'
 import { useLanguage } from '../../context/LanguageContext'
+import { safeCustomerPath } from '../../utils/safeCustomerPath'
 
-const ACCEPTED_TYPES = 'image/*,.pdf'
+const ACCEPTED_TYPES = 'image/*'
 const MAX_FILE_MB = 4
+const IMAGE_EXTENSION_PATTERN = /\.(avif|bmp|gif|heic|heif|ico|jfif|jpe|jpeg|jpg|png|svg|tif|tiff|webp)$/i
+
+function isImageFile(file) {
+  return Boolean(file?.type?.startsWith('image/') || IMAGE_EXTENSION_PATTERN.test(file?.name || ''))
+}
 
 export default function UploadPrescription() {
   const { ensureGuestToken } = useCustomerAuth()
@@ -33,8 +39,7 @@ export default function UploadPrescription() {
 
   const previewKind = useMemo(() => {
     if (!file) return null
-    if (file.type?.startsWith('image/')) return 'image'
-    if (file.type === 'application/pdf' || file.name?.toLowerCase().endsWith('.pdf')) return 'pdf'
+    if (isImageFile(file)) return 'image'
     return 'file'
   }, [file])
   const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : ''), [file])
@@ -54,6 +59,13 @@ export default function UploadPrescription() {
 
     if (selectedFile && selectedFile.size > MAX_FILE_MB * 1024 * 1024) {
       toast.error(`Prescription file must be ${MAX_FILE_MB} MB or smaller.`)
+      event.target.value = ''
+      setFile(null)
+      return
+    }
+
+    if (selectedFile && !isImageFile(selectedFile)) {
+      toast.error(t('প্রেসক্রিপশন হিসেবে শুধু ছবি আপলোড করা যাবে।', 'Only image files can be uploaded as prescriptions.'))
       event.target.value = ''
       setFile(null)
       return
@@ -84,7 +96,7 @@ export default function UploadPrescription() {
       await ensureGuestToken()
       await prescriptionApi.create(body)
       toast.success(t('প্রেসক্রিপশন সফলভাবে আপলোড হয়েছে।', 'Prescription uploaded successfully.'))
-      navigate(searchParams.get('returnTo') || '/prescriptions')
+      navigate(safeCustomerPath(searchParams.get('returnTo'), '/prescriptions'))
     } catch (error) {
       toast.error(error.response?.data?.message || t('প্রেসক্রিপশন আপলোড করা যায়নি।', 'Prescription upload failed.'))
     } finally {
@@ -97,20 +109,20 @@ export default function UploadPrescription() {
       {/* <PageHeader
         title={t('প্রেসক্রিপশন আপলোড', 'Upload prescription')}
         subtitle={t(
-          'পরিষ্কার ছবি বা PDF দিন। রিভিউ শেষ হলে এটি প্রেসক্রিপশন-নির্ভর অর্ডারের জন্য ব্যবহার করতে পারবেন।',
-          'Upload a clear image or PDF. After review, you can use it for prescription-required orders.',
+          'পরিষ্কার ছবি দিন। রিভিউ শেষ হলে এটি প্রেসক্রিপশন-নির্ভর অর্ডারের জন্য ব্যবহার করতে পারবেন।',
+          'Upload a clear image. After review, you can use it for prescription-required orders.',
         )}
       /> */}
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border border-slate-200 bg-white p-5 sm:p-6">
-        <div>
+      <div className="mb-6 flex flex-col gap-3 border border-slate-200 bg-white p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4 sm:p-6">
+        <div className="min-w-0">
           <div className="text-sm font-semibold uppercase tracking-[0.18em] text-[#0e6574]">
             {t('Upload prescription', 'Upload prescription')}
           </div>
         </div>
         <Link
           to="/prescriptions"
-          className="inline-flex items-center justify-center gap-1 px-5 text-sm font-semibold text-slate-700 transition hover:border-emerald-200 hover:underline hover:text-emerald-700"
+          className="inline-flex w-full items-center justify-center gap-1 border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-emerald-200 hover:underline hover:text-emerald-700 sm:w-auto sm:border-transparent sm:px-5 sm:py-0"
         >
           <FiFileText className="h-4 w-4" />
           {t('All prescriptions', 'All prescriptions')}
@@ -138,10 +150,10 @@ export default function UploadPrescription() {
                 <div className="mt-4 text-base font-semibold text-slate-950">
                   {fileSummary
                     ? t('নতুন ফাইল দিতে এখানে ক্লিক করুন', 'Click here to choose a new file')
-                    : t('ছবি বা PDF আপলোড করুন', 'Upload an image or PDF')}
+                    : t('প্রেসক্রিপশনের ছবি আপলোড করুন', 'Upload a prescription image')}
                 </div>
                 <div className="mt-2 text-sm leading-6 text-slate-500">
-                  {t('JPG, PNG, WebP অথবা PDF। সর্বোচ্চ', 'JPG, PNG, WebP, or PDF. Up to')} {MAX_FILE_MB} MB.
+                  {t('যেকোনো ইমেজ ফাইল। সর্বোচ্চ', 'Any image file. Up to')} {MAX_FILE_MB} MB.
                 </div>
               </div>
             </label>
@@ -193,7 +205,7 @@ export default function UploadPrescription() {
             <label className="block">
               <div className="mb-1 text-sm font-medium text-slate-700">{t('নোট', 'Notes')}</div>
               <textarea
-                className="min-h-[132px] w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-950"
+                className="min-h-33 w-full border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-950"
                 placeholder={t(
                   'পণ্য, ডেলিভারি, বা রিভিউ নিয়ে কিছু জানাতে চাইলে এখানে লিখুন।',
                   'Add any note about the product, delivery, or prescription review here.',
@@ -227,9 +239,9 @@ export default function UploadPrescription() {
             </div>
 
             <div className="bg-slate-50 p-4">
-              <div className="flex min-h-[420px] items-center justify-center border border-slate-200 bg-white">
+              <div className="flex min-h-105 items-center justify-center border border-slate-200 bg-white">
                 {!fileSummary ? (
-                  <div className="max-w-[240px] text-center">
+                  <div className="max-w-60 text-center">
                     <span className="inline-flex h-14 w-14 items-center justify-center border border-slate-200 bg-slate-50 text-slate-800">
                       <FiFileText className="h-6 w-6" />
                     </span>
@@ -238,8 +250,8 @@ export default function UploadPrescription() {
                     </div>
                     <p className="mt-2 text-sm leading-6 text-slate-500">
                       {t(
-                        'বাম পাশের আপলোড বক্স থেকে ছবি বা PDF বেছে নিলে এখানেই লাইভ প্রিভিউ দেখা যাবে।',
-                        'Choose an image or PDF from the upload box and the live preview will appear here.',
+                        'বাম পাশের আপলোড বক্স থেকে ছবি বেছে নিলে এখানেই লাইভ প্রিভিউ দেখা যাবে।',
+                        'Choose an image from the upload box and the live preview will appear here.',
                       )}
                     </p>
                   </div>
@@ -247,16 +259,10 @@ export default function UploadPrescription() {
                   <img
                     src={previewUrl}
                     alt={t('প্রেসক্রিপশন প্রিভিউ', 'Prescription preview')}
-                    className="max-h-[560px] w-full object-contain"
-                  />
-                ) : previewKind === 'pdf' && previewUrl ? (
-                  <iframe
-                    src={previewUrl}
-                    title={t('প্রেসক্রিপশন PDF প্রিভিউ', 'Prescription PDF preview')}
-                    className="h-[560px] w-full"
+                    className="max-h-140 w-full object-contain"
                   />
                 ) : (
-                  <div className="max-w-[240px] text-center">
+                  <div className="max-w-60 text-center">
                     <span className="inline-flex h-14 w-14 items-center justify-center border border-slate-200 bg-slate-50 text-slate-800">
                       <FiFileText className="h-6 w-6" />
                     </span>
@@ -264,7 +270,7 @@ export default function UploadPrescription() {
                       {t('এই ফাইলের প্রিভিউ দেখানো যাচ্ছে না', 'Preview is not available for this file')}
                     </div>
                     <p className="mt-2 text-sm leading-6 text-slate-500">
-                      {t('তবুও ফাইলটি আপলোড করা যাবে।', 'You can still upload this file.')}
+                      {t('অনুগ্রহ করে একটি সঠিক ছবি নির্বাচন করুন।', 'Please choose a valid image file.')}
                     </p>
                   </div>
                 )}

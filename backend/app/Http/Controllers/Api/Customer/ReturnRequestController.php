@@ -23,14 +23,14 @@ class ReturnRequestController extends Controller
         );
     }
 
-    public function store(Request $request, int $id)
+    public function store(Request $request, string $id)
     {
         $data = $request->validate([
             'order_item_id' => ['nullable', 'exists:order_items,id'],
             'reason' => ['required', 'string'],
         ]);
 
-        $order = $request->user()->hasMany(Order::class)->with('items')->findOrFail($id);
+        $order = $this->resolveCustomerOrder($request, $id)->load('items');
         abort_unless($order->order_status === 'delivered', 422, 'শুধু ডেলিভারড অর্ডারের জন্য রিটার্ন অনুরোধ করা যাবে।');
 
         if (!empty($data['order_item_id'])) {
@@ -60,11 +60,42 @@ class ReturnRequestController extends Controller
         return $this->ok($return->load('order', 'orderItem.product', 'refund'), 'রিটার্ন অনুরোধ তৈরি হয়েছে।', 201);
     }
 
-    public function show(Request $request, int $id)
+    public function show(Request $request, string $id)
     {
         return $this->ok(
-            $request->user()->returnRequests()->with('order', 'orderItem.product', 'refund')->findOrFail($id),
+            $request->user()->returnRequests()->with('order', 'orderItem.product', 'refund')->findOrFail($this->returnIdFromReference($id)),
             'রিটার্ন বিস্তারিত পাওয়া গেছে।'
         );
+    }
+
+    private function resolveCustomerOrder(Request $request, string $reference): Order
+    {
+        $reference = trim($reference);
+
+        return $request->user()
+            ->hasMany(Order::class)
+            ->where(function ($query) use ($reference) {
+                if (ctype_digit($reference)) {
+                    $query->whereKey((int) $reference);
+                }
+
+                $query->orWhere('order_number', strtoupper($reference));
+            })
+            ->firstOrFail();
+    }
+
+    private function returnIdFromReference(string $reference): int
+    {
+        $reference = trim($reference);
+
+        if (ctype_digit($reference)) {
+            return (int) $reference;
+        }
+
+        if (preg_match('/^return-([a-z0-9]+)/i', $reference, $matches)) {
+            return (int) base_convert(strtolower($matches[1]), 36, 10);
+        }
+
+        abort(404);
     }
 }

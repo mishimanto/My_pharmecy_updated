@@ -1,38 +1,26 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { FiArrowRight, FiClock, FiPackage, FiTruck } from 'react-icons/fi'
-import { orderApi } from '../../api/orderApi'
 import PageHeader from '../../components/common/PageHeader'
 import { useLanguage } from '../../context/LanguageContext'
+import { useOrderTrackingQuery } from '../../queries/customerQueries'
 import { getOrderPath } from '../../utils/orderRouting'
 import { getDeliveryStatusLabel, getOrderStatusLabel } from '../../utils/statusLabels'
-import { readCustomerCache, writeCustomerCache } from '../../utils/customerDataCache'
 
 export default function Tracking() {
   const { id } = useParams()
   const { isBangla } = useLanguage()
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
-  const cacheKey = `tracking_${id}`
-  const [tracking, setTracking] = useState(() => readCustomerCache(cacheKey, null))
-  const [loading, setLoading] = useState(() => readCustomerCache(cacheKey, null) === null)
-
-  useEffect(() => {
-    let mounted = true
-    setLoading((prev) => (prev || readCustomerCache(cacheKey, null) === null))
-
-    orderApi.tracking(id)
-      .then((res) => {
-        if (!mounted) return
-        const trackingData = res.data.data
-        setTracking(trackingData)
-        writeCustomerCache(cacheKey, trackingData)
-      })
-      .catch(() => mounted && toast.error(t('ট্র্যাকিং তথ্য লোড করা যায়নি।', 'Tracking information could not be loaded.')))
-      .finally(() => mounted && setLoading(false))
-
-    return () => { mounted = false }
-  }, [id, t, cacheKey])
+  const {
+    data: tracking,
+    isLoading: loading,
+  } = useOrderTrackingQuery(id, {
+    placeholderData: (previous) => previous,
+    onError: () => {
+      toast.error(t('ট্র্যাকিং তথ্য লোড করা যায়নি।', 'Tracking information could not be loaded.'))
+    },
+  })
 
   if (loading) {
     return (

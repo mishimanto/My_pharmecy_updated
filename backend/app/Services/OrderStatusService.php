@@ -24,6 +24,7 @@ class OrderStatusService
     public function __construct(
         private InventoryService $inventory,
         private OrderCommunicationService $communication,
+        private RewardService $rewards,
     ) {}
 
     public function cancelByCustomer(Order $order): Order
@@ -37,7 +38,7 @@ class OrderStatusService
             $this->releaseReservedStock($order);
             $order->update([
                 'order_status' => 'cancelled',
-                'cancellation_reason' => 'Cancelled by customer before admin confirmation.',
+                'cancellation_reason' => 'Cancelled by customer before confirmation.',
                 'cancelled_at' => now(),
             ]);
 
@@ -81,7 +82,7 @@ class OrderStatusService
                 }
                 $message = "Your order {$order->order_number} has been cancelled. Reason: {$note}";
                 $emailLines = [
-                    "Your order {$order->order_number} has been cancelled by the admin team.",
+                    "Your order {$order->order_number} has been cancelled.",
                     "Reason: {$note}",
                 ];
             }
@@ -108,7 +109,7 @@ class OrderStatusService
                     $order->payment_requires_proof
                         ? 'Your payment has been verified and your invoice is attached with this email.'
                         : 'Your invoice has been prepared and will be handed over when you receive the delivery.',
-                    $note ? "Admin note: {$note}" : 'We will prepare your order for delivery shortly.',
+                    $note ? "Note: {$note}" : 'We will prepare your order for delivery shortly.',
                 ];
             }
 
@@ -119,6 +120,14 @@ class OrderStatusService
             $order->cancelled_by_staff_id = $status === 'cancelled' ? $staff->id : $order->cancelled_by_staff_id;
             $order->save();
             $this->syncDeliveryStatusFromOrder($order, $status);
+
+            if ($status === 'delivered') {
+                $this->rewards->awardOrderPoints($order);
+            }
+
+            if ($status === 'refunded') {
+                $this->rewards->reverseOrderPoints($order);
+            }
 
             DB::table('admin_activity_logs')->insert([
                 'staff_id' => $staff->id,

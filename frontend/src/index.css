@@ -114,3 +114,14 @@ button:disabled {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+.home-category-nav.swiper-button-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+
+.home-category-nav.swiper-button-disabled:hover {
+  border-color: #b7e5df;
+  color: #0b5d68;
+}

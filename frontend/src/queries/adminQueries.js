@@ -69,6 +69,38 @@ export function useAdminDashboardSummaryQuery(options = {}) {
   })
 }
 
+export function useAdminDashboardRecentOrdersQuery(options = {}) {
+  return useQuery({
+    queryKey: adminQueryKeys.dashboardRecentOrders,
+    queryFn: () => adminApi.dashboardRecentOrders().then((response) => response.data.data || []),
+    ...options,
+  })
+}
+
+export function useAdminDashboardPendingPrescriptionsQuery(options = {}) {
+  return useQuery({
+    queryKey: adminQueryKeys.dashboardPendingPrescriptions,
+    queryFn: () => adminApi.dashboardPendingPrescriptions().then((response) => response.data.data || []),
+    ...options,
+  })
+}
+
+export function useAdminDashboardLowStockQuery(options = {}) {
+  return useQuery({
+    queryKey: adminQueryKeys.dashboardLowStock,
+    queryFn: () => adminApi.dashboardLowStock().then((response) => response.data.data || []),
+    ...options,
+  })
+}
+
+export function useAdminDashboardNearExpiryQuery(options = {}) {
+  return useQuery({
+    queryKey: adminQueryKeys.dashboardNearExpiry,
+    queryFn: () => adminApi.dashboardNearExpiry().then((response) => response.data.data || []),
+    ...options,
+  })
+}
+
 export function useAdminPermissionsQuery(options = {}) {
   return useQuery({
     queryKey: adminQueryKeys.permissions,
