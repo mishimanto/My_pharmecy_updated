@@ -11,13 +11,13 @@ export function getLocalizedOffer(offer, isBangla) {
   }
 }
 
-export function getOfferTimeLeft(endsAt) {
+export function getOfferTimeLeft(endsAt, isBangla = false) {
   if (!endsAt) return null
 
   const remaining = new Date(endsAt).getTime() - Date.now()
 
   if (!Number.isFinite(remaining) || remaining <= 0) {
-    return { expired: true, label: '00:00:00' }
+    return { expired: true, label: isBangla ? '০০:০০:০০' : '00:00:00' }
   }
 
   const totalSeconds = Math.floor(remaining / 1000)
@@ -25,13 +25,16 @@ export function getOfferTimeLeft(endsAt) {
   const hours = Math.floor((totalSeconds % 86400) / 3600)
   const minutes = Math.floor((totalSeconds % 3600) / 60)
   const seconds = totalSeconds % 60
-  const pad = (value) => String(value).padStart(2, '0')
+  const formatPart = (value) => String(value).padStart(2, '0').replace(/\d/g, (digit) => (
+    isBangla ? String.fromCharCode(0x09E6 + Number(digit)) : digit
+  ))
+  const formattedDays = days.toLocaleString(isBangla ? 'bn-BD' : 'en-US')
 
   return {
     expired: false,
     days,
     label: days > 0
-      ? `${days}d ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
-      : `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`,
+      ? `${formattedDays}${isBangla ? 'দিন' : 'd'} ${formatPart(hours)}:${formatPart(minutes)}:${formatPart(seconds)}`
+      : `${formatPart(hours)}:${formatPart(minutes)}:${formatPart(seconds)}`,
   }
 }

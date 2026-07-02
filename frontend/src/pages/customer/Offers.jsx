@@ -50,10 +50,11 @@ export default function Offers() {
 function OfferCard({ offer, isBangla, nowTick }) {
   const t = (bn, en) => (isBangla ? bn : en)
   const localized = offer.localized
-  const timeLeft = nowTick >= 0 ? getOfferTimeLeft(localized.endsAt) : null
+  const timeLeft = nowTick >= 0 ? getOfferTimeLeft(localized.endsAt, isBangla) : null
+  const discountValue = Number(offer.discount_value || 0).toLocaleString(isBangla ? 'bn-BD' : 'en-US')
   const discountLabel = offer.discount_type === 'fixed'
-    ? t(`৳${Number(offer.discount_value || 0)} ছাড়`, `Tk ${Number(offer.discount_value || 0)} off`)
-    : t(`${Number(offer.discount_value || 0)}% ছাড়`, `${Number(offer.discount_value || 0)}% off`)
+    ? t(`৳${discountValue} ছাড়`, `Tk ${discountValue} off`)
+    : t(`${discountValue}% ছাড়`, `${discountValue}% off`)
   const scopeLabel = {
     all: t('সব পণ্য', 'All products'),
     category: t('ক্যাটাগরি অফার', 'Category offer'),
@@ -79,7 +80,7 @@ function OfferCard({ offer, isBangla, nowTick }) {
           </span>
           <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-50/95 px-3 py-1 text-xs font-bold text-amber-700 shadow-sm">
             <FiClock className="h-3.5 w-3.5" />
-            {timeLeft?.label || '00:00:00'}
+            {timeLeft?.label || t('০০:০০:০০', '00:00:00')}
           </span>
         </div>
       </div>

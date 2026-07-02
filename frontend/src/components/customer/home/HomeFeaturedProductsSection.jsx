@@ -26,7 +26,7 @@ export default function HomeFeaturedProductsSection({
         actionLabel={actionLabel || (isBangla ? 'সব দেখুন' : 'View all')}
       />
 
-      <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {(loading ? Array.from({ length: 8 }, (_, index) => ({ id: `placeholder-${index}` })) : featuredProducts).map((product) => {
           if (loading) {
             return <ProductCardSkeleton key={product.id} />

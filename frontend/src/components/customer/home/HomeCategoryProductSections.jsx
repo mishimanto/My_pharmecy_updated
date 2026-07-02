@@ -123,6 +123,14 @@ function CategoryRow({ isBangla, loading, row, onAdd }) {
               slidesPerView: 2,
               spaceBetween: 16,
             },
+            768: {
+              slidesPerView: 3,
+              spaceBetween: 16,
+            },
+            900: {
+              slidesPerView: 4,
+              spaceBetween: 16,
+            },
             1024: {
               slidesPerView: 5,
               spaceBetween: 16,

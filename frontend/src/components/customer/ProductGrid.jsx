@@ -444,7 +444,7 @@ export default function ProductGrid() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {loading && products.length === 0
           ? Array.from({ length: 10 }, (_, index) => <ProductCardSkeleton key={`product-skeleton-${index}`} compact />)
           : products.map((product) => (

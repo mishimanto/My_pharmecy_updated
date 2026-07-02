@@ -77,6 +77,10 @@ export default function Checkout() {
   const t = useCallback((bn, en) => (isBangla ? bn : en), [isBangla])
   const locale = isBangla ? 'bn-BD' : 'en-US'
   const formatNumber = useCallback((value) => new Intl.NumberFormat(locale).format(Number(value || 0)), [locale])
+  const localizedCartItems = useMemo(() => (cart?.items || []).map((item) => ({
+    ...item,
+    purchase_unit_label: getUnitLabel(item.purchase_unit, isBangla),
+  })), [cart?.items, isBangla])
   const draft = useMemo(() => readCheckoutDraft(), [])
   const checkoutInitRef = useRef('')
 
@@ -701,11 +705,11 @@ export default function Checkout() {
             </div>
 
             <div className="mt-4 space-y-3">
-              {cart.items.map((item) => (
+              {localizedCartItems.map((item) => (
                 <div key={item.cart_item_id} className="flex flex-col gap-2 border border-slate-200 bg-slate-50 p-3 text-sm sm:flex-row sm:justify-between sm:p-4">
                   <span className="min-w-0 text-slate-700">
                     {item.product_name}
-                    <span className="mt-1 block text-xs text-slate-500">{formatNumber(item.quantity)} {item.purchase_unit_label || getUnitLabel(item.purchase_unit, isBangla)} • {formatNumber(item.piece_quantity)} {t('পিস', 'pieces')}</span>
+                    <span className="mt-1 block text-xs text-slate-500">{formatNumber(item.quantity)} {item.purchase_unit_label || getUnitLabel(item.purchase_unit, isBangla)}</span>
                   </span>
                   <span className="font-medium text-slate-950 sm:text-right">{money(item.subtotal, locale)}</span>
                 </div>

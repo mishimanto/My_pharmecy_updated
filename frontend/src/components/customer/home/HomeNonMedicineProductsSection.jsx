@@ -18,7 +18,7 @@ export default function HomeNonMedicineProductsSection({ isBangla, loading, prod
         actionLabel={isBangla ? 'সব পণ্য দেখুন' : 'Browse products'}
       />
 
-      <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {rows.map((product) => (
           loading
             ? <ProductCardSkeleton key={product.id} />

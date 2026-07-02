@@ -64,8 +64,8 @@ export default function Cart() {
     return Number.isFinite(num) ? num : 0
   }, [])
 
-  const cartItemUnitLabel = useCallback((item) => item.purchase_unit_label || getUnitLabel(item.purchase_unit, isBangla), [isBangla])
-  const cartItemConversionLabel = useCallback((item) => item.conversion_label || getLocalizedConversionLabel({ code: item.purchase_unit, pieces_per_unit: item.pieces_per_unit }, isBangla), [isBangla])
+  const cartItemUnitLabel = useCallback((item) => getUnitLabel(item.purchase_unit, isBangla), [isBangla])
+  const cartItemConversionLabel = useCallback((item) => getLocalizedConversionLabel({ code: item.purchase_unit, pieces_per_unit: item.pieces_per_unit }, isBangla), [isBangla])
   const cartItemStockUnitLabel = useCallback((item) => Number(item.pieces_per_unit || 1) === 1 ? cartItemUnitLabel(item) : getUnitLabel('piece', isBangla), [cartItemUnitLabel, isBangla])
   const cartItemProductName = useCallback((item) => (isBangla ? item.product_name_bn || item.product_name : item.product_name), [isBangla])
   const cartItemGenericName = useCallback((item) => (isBangla ? item.generic_name_bn || item.generic_name : item.generic_name), [isBangla])

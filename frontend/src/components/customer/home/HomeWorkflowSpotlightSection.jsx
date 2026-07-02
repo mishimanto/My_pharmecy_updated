@@ -52,7 +52,7 @@ export default function HomeWorkflowSpotlightSection({
 
   return (
     <section className={`pb-10 ${banglaFontClass}`}>
-      <div className="mt-7 grid gap-6 lg:grid-cols-[0.96fr_1.04fr] lg:items-stretch">
+      <div className="mt-7 grid gap-6 md:grid-cols-[0.96fr_1.04fr] md:items-stretch">
         <div className="h-full overflow-hidden border border-[#d8ece9] bg-white shadow-[0_30px_70px_-42px_rgba(8,63,73,0.18)]">
           <div className="relative h-full min-h-72 sm:min-h-88 lg:min-h-96">
             <img
